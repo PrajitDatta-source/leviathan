@@ -1,13 +1,50 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
 import { Header } from "./Header";
 import { Workspace } from "./Workspace";
 import { CommandBar } from "./CommandBar";
 
+import { CommandPalette } from "@/components/command/CommandPalette";
+
 export function AppShell() {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === "k"
+      ) {
+        event.preventDefault();
+        setOpen(true);
+      }
+
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
   return (
-    <div className="flex h-screen flex-col bg-black text-white">
-      <Header />
-      <Workspace />
-      <CommandBar />
-    </div>
+    <>
+      <div className="flex h-screen flex-col bg-black text-white">
+        <Header />
+        <Workspace />
+        <CommandBar />
+      </div>
+
+      <CommandPalette
+        open={open}
+        onOpenChange={setOpen}
+      />
+    </>
   );
 }
