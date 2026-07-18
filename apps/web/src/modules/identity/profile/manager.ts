@@ -16,6 +16,7 @@ class ProfileManager {
   }
 
   private loadFromStorage(): void {
+    if (typeof window === "undefined") return;
     try {
       const profileStored = localStorage.getItem(this.profileStorageKey);
       if (profileStored) {
@@ -37,6 +38,7 @@ class ProfileManager {
   }
 
   private saveToStorage(): void {
+    if (typeof window === "undefined") return;
     try {
       if (this.profile) {
         localStorage.setItem(this.profileStorageKey, JSON.stringify(this.profile));

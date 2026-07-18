@@ -15,9 +15,10 @@ export function Window({ window }: Props) {
     const [isResizing, setIsResizing] = useState(false);
     const [resizeDirection, setResizeDirection] = useState<'se' | 'sw' | 'ne' | 'nw' | 'n' | 's' | 'e' | 'w' | null>(null);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-    const [position, setPosition] = useState({ x: window.x, y: window.y });
-    const [size, setSize] = useState({ width: window.width, height: window.height });
     const windowRef = useRef<HTMLDivElement>(null);
+
+    const position = { x: window.x, y: window.y };
+    const size = { width: window.width, height: window.height };
 
     const handleMouseDown = (e: React.MouseEvent) => {
         if (e.target instanceof HTMLElement && e.target.closest('button')) {
@@ -26,8 +27,8 @@ export function Window({ window }: Props) {
         
         setIsDragging(true);
         setDragOffset({
-            x: e.clientX - position.x,
-            y: e.clientY - position.y,
+            x: e.clientX - window.x,
+            y: e.clientY - window.y,
         });
         manager.focus(window.id);
     };
@@ -43,35 +44,34 @@ export function Window({ window }: Props) {
         if (isDragging) {
             const newX = e.clientX - dragOffset.x;
             const newY = e.clientY - dragOffset.y;
-            setPosition({ x: newX, y: newY });
+            manager.updatePositionAndSize(window.id, newX, newY, window.width, window.height);
         }
 
         if (isResizing && resizeDirection) {
             const minSize = 300;
-            let newWidth = size.width;
-            let newHeight = size.height;
-            let newX = position.x;
-            let newY = position.y;
+            let newWidth = window.width;
+            let newHeight = window.height;
+            let newX = window.x;
+            let newY = window.y;
 
             if (resizeDirection.includes('e')) {
-                newWidth = Math.max(minSize, e.clientX - position.x);
+                newWidth = Math.max(minSize, e.clientX - window.x);
             }
             if (resizeDirection.includes('w')) {
-                const delta = position.x - e.clientX;
-                newWidth = Math.max(minSize, size.width + delta);
-                newX = position.x - (newWidth - size.width);
+                const delta = window.x - e.clientX;
+                newWidth = Math.max(minSize, window.width + delta);
+                newX = window.x - (newWidth - window.width);
             }
             if (resizeDirection.includes('s')) {
-                newHeight = Math.max(minSize, e.clientY - position.y);
+                newHeight = Math.max(minSize, e.clientY - window.y);
             }
             if (resizeDirection.includes('n')) {
-                const delta = position.y - e.clientY;
-                newHeight = Math.max(minSize, size.height + delta);
-                newY = position.y - (newHeight - size.height);
+                const delta = window.y - e.clientY;
+                newHeight = Math.max(minSize, window.height + delta);
+                newY = window.y - (newHeight - window.height);
             }
 
-            setSize({ width: newWidth, height: newHeight });
-            setPosition({ x: newX, y: newY });
+            manager.updatePositionAndSize(window.id, newX, newY, newWidth, newHeight);
         }
     };
 
@@ -94,7 +94,7 @@ export function Window({ window }: Props) {
             globalThis.removeEventListener('mousemove', handleMouseMove);
             globalThis.removeEventListener('mouseup', handleMouseUp);
         };
-    }, [isDragging, isResizing, dragOffset, resizeDirection, size, position]);
+    }, [isDragging, isResizing, dragOffset, resizeDirection, window.x, window.y, window.width, window.height]);
 
     return (
         <div

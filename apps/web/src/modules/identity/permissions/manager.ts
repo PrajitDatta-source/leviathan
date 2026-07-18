@@ -12,6 +12,7 @@ class PermissionManager {
   }
 
   private loadFromStorage(): void {
+    if (typeof window === "undefined") return;
     try {
       const stored = localStorage.getItem(this.storageKey);
       if (stored) {
@@ -24,6 +25,7 @@ class PermissionManager {
   }
 
   private saveToStorage(): void {
+    if (typeof window === "undefined") return;
     try {
       const data = Object.fromEntries(this.state.appPermissions);
       localStorage.setItem(this.storageKey, JSON.stringify(data));

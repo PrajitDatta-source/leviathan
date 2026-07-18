@@ -13,6 +13,7 @@ class AccountManager {
   }
 
   private loadFromStorage(): void {
+    if (typeof window === "undefined") return;
     try {
       const stored = localStorage.getItem(this.storageKey);
       if (stored) {
@@ -34,6 +35,7 @@ class AccountManager {
   }
 
   private saveToStorage(): void {
+    if (typeof window === "undefined") return;
     try {
       const data = Object.fromEntries(this.state.accounts);
       localStorage.setItem(this.storageKey, JSON.stringify(data));

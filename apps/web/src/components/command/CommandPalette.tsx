@@ -3,6 +3,8 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { commandRegistry } from "@/core/command";
 import { useState, useMemo } from "react";
+import { useWindowManager } from "@/core/window/hooks";
+
 
 type CommandPaletteProps = {
   open: boolean;
@@ -54,6 +56,7 @@ export function CommandPalette({
   open,
   onOpenChange,
 }: CommandPaletteProps) {
+  const windowManager = useWindowManager();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -97,14 +100,14 @@ export function CommandPalette({
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (filteredCommands[selectedIndex]) {
-        filteredCommands[selectedIndex].run();
+        filteredCommands[selectedIndex].run({ windowManager });
         onOpenChange(false);
       }
     }
   };
 
   const handleCommandClick = (command: any, index: number) => {
-    command.run();
+    command.run({ windowManager });
     onOpenChange(false);
   };
 

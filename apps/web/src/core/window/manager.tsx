@@ -150,6 +150,17 @@ export function WindowManagerProvider({
         );
     }, []);
 
+    const updatePositionAndSize = useCallback(
+        (id: string, x: number, y: number, width: number, height: number) => {
+            setWindows(current =>
+                current.map(window =>
+                    window.id === id ? { ...window, x, y, width, height } : window
+                )
+            );
+        },
+        []
+    );
+
     const value = useMemo(
         () => ({
             windows,
@@ -159,6 +170,7 @@ export function WindowManagerProvider({
             minimize,
             maximize,
             restore,
+            updatePositionAndSize,
         }),
         [
             windows,
@@ -168,6 +180,7 @@ export function WindowManagerProvider({
             minimize,
             maximize,
             restore,
+            updatePositionAndSize,
         ]
     );
 

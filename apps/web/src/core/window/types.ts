@@ -46,4 +46,11 @@ export interface WindowManagerContextValue {
   minimize(id: string): void;
   maximize(id: string): void;
   restore(id: string): void;
+  updatePositionAndSize(
+    id: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ): void;
 }

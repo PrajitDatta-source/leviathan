@@ -13,6 +13,7 @@ class AuthManager {
   }
 
   private loadFromStorage(): void {
+    if (typeof window === "undefined") return;
     try {
       const stored = localStorage.getItem(this.storageKey);
       if (stored) {
@@ -26,6 +27,7 @@ class AuthManager {
   }
 
   private saveToStorage(): void {
+    if (typeof window === "undefined") return;
     try {
       const data = Object.fromEntries(this.state.tokens);
       localStorage.setItem(this.storageKey, JSON.stringify(data));
