@@ -4,20 +4,35 @@ export function registerBuiltinCommands() {
   commandRegistry.register({
     id: "settings",
     title: "Open Settings",
-    description: "Open application settings",
+    description: "Open Leviathan settings",
     category: "System",
+    keywords: ["preferences", "config"],
+
     run: () => {
-      console.log("Settings");
+      alert("Settings window coming next 🚀");
     },
   });
 
   commandRegistry.register({
     id: "theme",
     title: "Toggle Theme",
-    description: "Switch between light and dark mode",
+    description: "Switch between dark and light theme",
     category: "Appearance",
+    keywords: ["dark", "light"],
+
     run: () => {
-      console.log("Theme");
+      console.log("Toggle Theme");
+    },
+  });
+
+  commandRegistry.register({
+    id: "clock",
+    title: "Show Clock",
+    description: "Display current time",
+    category: "Utilities",
+
+    run: () => {
+      alert(new Date().toLocaleTimeString());
     },
   });
 }
