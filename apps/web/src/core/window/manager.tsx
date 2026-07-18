@@ -98,13 +98,12 @@ export function WindowManagerProvider({
     );
 
     const close = useCallback((id: string) => {
-
-        setWindows(current =>
-            current.filter(
-                window => window.id !== id
-            )
-        );
-
+        console.log(`[PIPELINE] WindowManager close API called for: ${id}`);
+        setWindows(current => {
+            const updated = current.filter(window => window.id !== id);
+            console.log(`[PIPELINE] WindowManager close state update. Remaining windows: ${updated.map(w => w.id).join(", ")}`);
+            return updated;
+        });
     }, []);
 
     const focus = useCallback((id: string) => {
@@ -124,18 +123,22 @@ export function WindowManagerProvider({
     }, []);
 
     const minimize = useCallback((id: string) => {
-        setWindows(current =>
-            current.map(window => ({
+        console.log(`[PIPELINE] WindowManager minimize API called for: ${id}`);
+        setWindows(current => {
+            const updated = current.map(window => ({
                 ...window,
                 minimized: window.id === id ? true : window.minimized,
                 focused: false,
-            }))
-        );
+            }));
+            console.log(`[PIPELINE] WindowManager minimize state update completed.`);
+            return updated;
+        });
     }, []);
 
     const maximize = useCallback((id: string) => {
-        setWindows(current =>
-            current.map(window => {
+        console.log(`[PIPELINE] WindowManager maximize API called for: ${id}`);
+        setWindows(current => {
+            const updated = current.map(window => {
                 if (window.id !== id) return window;
 
                 return {
@@ -153,8 +156,10 @@ export function WindowManagerProvider({
                     width: typeof globalThis !== "undefined" ? globalThis.innerWidth : 1200,
                     height: typeof globalThis !== "undefined" ? globalThis.innerHeight - 48 : 752,
                 };
-            })
-        );
+            });
+            console.log(`[PIPELINE] WindowManager maximize state update completed.`);
+            return updated;
+        });
     }, []);
 
     const restore = useCallback((id: string) => {

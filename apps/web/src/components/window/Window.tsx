@@ -9,6 +9,15 @@ type Props = {
 };
 
 export function Window({ window }: Props) {
+    console.log(`[PIPELINE] React Render for Window: ${window.id}`, {
+        focused: window.focused,
+        minimized: window.minimized,
+        maximized: window.maximized,
+        x: window.x,
+        y: window.y,
+        width: window.width,
+        height: window.height
+    });
 
     const manager = useWindowManager();
     const [isDragging, setIsDragging] = useState(false);
@@ -255,6 +264,7 @@ export function Window({ window }: Props) {
                 <div className="flex gap-2">
                     <button
                         onPointerDown={(e) => {
+                            console.log("[PIPELINE] Minimize Button PointerDown triggered for window: " + window.id);
                             e.stopPropagation();
                             if (window.minimized) {
                                 manager.restore(window.id);
@@ -277,6 +287,7 @@ export function Window({ window }: Props) {
 
                     <button
                         onPointerDown={(e) => {
+                            console.log("[PIPELINE] Maximize Button PointerDown triggered for window: " + window.id);
                             e.stopPropagation();
                             if (window.maximized) {
                                 manager.restore(window.id);
@@ -297,6 +308,7 @@ export function Window({ window }: Props) {
 
                     <button
                         onPointerDown={(e) => {
+                            console.log("[PIPELINE] Close Button PointerDown triggered for window: " + window.id);
                             e.stopPropagation();
                             manager.close(window.id);
                         }}
