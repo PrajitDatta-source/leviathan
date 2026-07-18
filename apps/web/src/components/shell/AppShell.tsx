@@ -9,12 +9,14 @@ import { Taskbar } from "./Taskbar";
 
 import { CommandPalette } from "@/components/command/CommandPalette";
 import { Desktop } from "@/components/window/Desktop";
+import { ContextMenu } from "./ContextMenu";
 
 import { bootstrap } from "@/core/bootstrap";
 import { WindowManagerProvider } from "@/core/window/manager";
 
 export function AppShell() {
   const [open, setOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     bootstrap();
@@ -40,9 +42,29 @@ export function AppShell() {
     };
   }, []);
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (e.target instanceof HTMLElement) {
+      const isInsideWindow = e.target.closest(".window-instance") || e.target.closest("button") || e.target.closest("input");
+      if (isInsideWindow) return;
+    }
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleLeftClick = () => {
+    if (contextMenu) {
+      setContextMenu(null);
+    }
+  };
+
   return (
     <WindowManagerProvider>
-      <div className="flex h-screen flex-col bg-black text-white">
+      <div 
+        onContextMenu={handleContextMenu}
+        onClick={handleLeftClick}
+        className="flex h-screen flex-col text-white relative overflow-hidden select-none"
+        style={{ background: "var(--wallpaper)" }}
+      >
         <Header />
         <Workspace />
         <CommandBar />
@@ -55,6 +77,14 @@ export function AppShell() {
         open={open}
         onOpenChange={setOpen}
       />
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </WindowManagerProvider>
   );
 }

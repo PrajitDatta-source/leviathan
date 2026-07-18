@@ -43,4 +43,18 @@ export const themePresets: Record<string, ThemeConfig> = {
       card: "#000000",
     },
   },
+  glass: {
+    name: "glass",
+    displayName: "Glassmorphism",
+    colors: {
+      background: "rgba(10, 10, 12, 0.75)",
+      foreground: "#f4f4f5",
+      primary: "#f4f4f5",
+      secondary: "#a1a1aa",
+      accent: "#8b5cf6",
+      muted: "rgba(255, 255, 255, 0.03)",
+      border: "rgba(255, 255, 255, 0.08)",
+      card: "rgba(20, 20, 25, 0.35)",
+    },
+  },
 };

@@ -17,10 +17,26 @@ export function Window({ window }: Props) {
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
     const windowRef = useRef<HTMLDivElement>(null);
 
-    const position = { x: window.x, y: window.y };
-    const size = { width: window.width, height: window.height };
+    // Mobile screen responsive check
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(globalThis.innerWidth < 768);
+        checkMobile();
+        globalThis.addEventListener("resize", checkMobile);
+        return () => globalThis.removeEventListener("resize", checkMobile);
+    }, []);
 
-    const handleMouseDown = (e: React.MouseEvent) => {
+    const position = {
+        x: isMobile ? 0 : window.x,
+        y: isMobile ? 0 : window.y,
+    };
+    const size = {
+        width: isMobile ? (typeof globalThis !== "undefined" ? globalThis.innerWidth : 400) : window.width,
+        height: isMobile ? (typeof globalThis !== "undefined" ? globalThis.innerHeight - 48 : 600) : window.height,
+    };
+
+    const handlePointerDown = (e: React.PointerEvent) => {
+        if (isMobile) return; // Disable dragging on mobile (fixed full-screen stack)
         if (e.target instanceof HTMLElement && e.target.closest('button')) {
             return;
         }
@@ -33,18 +49,49 @@ export function Window({ window }: Props) {
         manager.focus(window.id);
     };
 
-    const handleResizeMouseDown = (e: React.MouseEvent, direction: 'se' | 'sw' | 'ne' | 'nw' | 'n' | 's' | 'e' | 'w') => {
+    const handleResizePointerDown = (e: React.PointerEvent, direction: 'se' | 'sw' | 'ne' | 'nw' | 'n' | 's' | 'e' | 'w') => {
         e.stopPropagation();
+        if (isMobile) return; // Disable resizing on mobile
         setIsResizing(true);
         setResizeDirection(direction);
         manager.focus(window.id);
     };
 
-    const handleMouseMove = (e: MouseEvent) => {
+    const handlePointerMove = (e: PointerEvent) => {
         if (isDragging) {
             const newX = e.clientX - dragOffset.x;
             const newY = e.clientY - dragOffset.y;
             manager.updatePositionAndSize(window.id, newX, newY, window.width, window.height);
+
+            // Snapping preview calculations
+            const edgeThreshold = 20;
+            const cornerThreshold = 60;
+            const { innerWidth: sw, innerHeight: sh } = globalThis;
+            const taskbarHeight = 48;
+
+            let preview = null;
+
+            if (e.clientY < edgeThreshold) {
+                preview = { x: 0, y: 0, width: sw, height: sh - taskbarHeight };
+            } else if (e.clientX < edgeThreshold) {
+                if (e.clientY < cornerThreshold) {
+                    preview = { x: 0, y: 0, width: sw / 2, height: (sh - taskbarHeight) / 2 };
+                } else if (e.clientY > sh - taskbarHeight - cornerThreshold) {
+                    preview = { x: 0, y: (sh - taskbarHeight) / 2, width: sw / 2, height: (sh - taskbarHeight) / 2 };
+                } else {
+                    preview = { x: 0, y: 0, width: sw / 2, height: sh - taskbarHeight };
+                }
+            } else if (e.clientX > sw - edgeThreshold) {
+                if (e.clientY < cornerThreshold) {
+                    preview = { x: sw / 2, y: 0, width: sw / 2, height: (sh - taskbarHeight) / 2 };
+                } else if (e.clientY > sh - taskbarHeight - cornerThreshold) {
+                    preview = { x: sw / 2, y: (sh - taskbarHeight) / 2, width: sw / 2, height: (sh - taskbarHeight) / 2 };
+                } else {
+                    preview = { x: sw / 2, y: 0, width: sw / 2, height: sh - taskbarHeight };
+                }
+            }
+
+            manager.setSnapPreview(preview);
         }
 
         if (isResizing && resizeDirection) {
@@ -75,7 +122,41 @@ export function Window({ window }: Props) {
         }
     };
 
-    const handleMouseUp = () => {
+    const handlePointerUp = (e: PointerEvent) => {
+        if (isDragging) {
+            const edgeThreshold = 20;
+            const cornerThreshold = 60;
+            const { innerWidth: sw, innerHeight: sh } = globalThis;
+            const taskbarHeight = 48;
+
+            let finalSnap = null;
+
+            if (e.clientY < edgeThreshold) {
+                finalSnap = { x: 0, y: 0, width: sw, height: sh - taskbarHeight };
+            } else if (e.clientX < edgeThreshold) {
+                if (e.clientY < cornerThreshold) {
+                    finalSnap = { x: 0, y: 0, width: sw / 2, height: (sh - taskbarHeight) / 2 };
+                } else if (e.clientY > sh - taskbarHeight - cornerThreshold) {
+                    finalSnap = { x: 0, y: (sh - taskbarHeight) / 2, width: sw / 2, height: (sh - taskbarHeight) / 2 };
+                } else {
+                    finalSnap = { x: 0, y: 0, width: sw / 2, height: sh - taskbarHeight };
+                }
+            } else if (e.clientX > sw - edgeThreshold) {
+                if (e.clientY < cornerThreshold) {
+                    finalSnap = { x: sw / 2, y: 0, width: sw / 2, height: (sh - taskbarHeight) / 2 };
+                } else if (e.clientY > sh - taskbarHeight - cornerThreshold) {
+                    finalSnap = { x: sw / 2, y: (sh - taskbarHeight) / 2, width: sw / 2, height: (sh - taskbarHeight) / 2 };
+                } else {
+                    finalSnap = { x: sw / 2, y: 0, width: sw / 2, height: sh - taskbarHeight };
+                }
+            }
+
+            if (finalSnap) {
+                manager.updatePositionAndSize(window.id, finalSnap.x, finalSnap.y, finalSnap.width, finalSnap.height);
+            }
+            manager.setSnapPreview(null);
+        }
+
         setIsDragging(false);
         setIsResizing(false);
         setResizeDirection(null);
@@ -83,16 +164,16 @@ export function Window({ window }: Props) {
 
     useEffect(() => {
         if (isDragging || isResizing) {
-            globalThis.addEventListener('mousemove', handleMouseMove);
-            globalThis.addEventListener('mouseup', handleMouseUp);
+            globalThis.addEventListener('pointermove', handlePointerMove);
+            globalThis.addEventListener('pointerup', handlePointerUp);
         } else {
-            globalThis.removeEventListener('mousemove', handleMouseMove);
-            globalThis.removeEventListener('mouseup', handleMouseUp);
+            globalThis.removeEventListener('pointermove', handlePointerMove);
+            globalThis.removeEventListener('pointerup', handlePointerUp);
         }
 
         return () => {
-            globalThis.removeEventListener('mousemove', handleMouseMove);
-            globalThis.removeEventListener('mouseup', handleMouseUp);
+            globalThis.removeEventListener('pointermove', handlePointerMove);
+            globalThis.removeEventListener('pointerup', handlePointerUp);
         };
     }, [isDragging, isResizing, dragOffset, resizeDirection, window.x, window.y, window.width, window.height]);
 
@@ -100,12 +181,14 @@ export function Window({ window }: Props) {
         <div
             ref={windowRef}
             className={`
+                window-instance
                 absolute
                 overflow-hidden
                 rounded-xl
                 border
-                border-zinc-700
-                bg-zinc-900
+                border-[var(--border)]
+                bg-[var(--surface)]
+                text-[var(--text)]
                 shadow-2xl
                 select-none
                 ${window.minimized ? 'hidden' : ''}
@@ -118,7 +201,7 @@ export function Window({ window }: Props) {
                 zIndex: window.zIndex,
                 cursor: isDragging ? 'grabbing' : 'default',
             }}
-            onMouseDown={handleMouseDown}
+            onPointerDown={handlePointerDown}
         >
 
             <div
@@ -127,8 +210,9 @@ export function Window({ window }: Props) {
                     items-center
                     justify-between
                     border-b
-                    border-zinc-700
-                    bg-zinc-800
+                    border-[var(--border)]
+                    bg-[var(--surface)]
+                    brightness-110
                     px-4
                     py-3
                     cursor-grab
@@ -155,7 +239,7 @@ export function Window({ window }: Props) {
                             rounded
                             px-2
                             transition
-                            hover:bg-zinc-700
+                            hover:bg-[var(--border)]
                         "
                         title={window.minimized ? "Restore" : "Minimize"}
                     >
@@ -175,7 +259,7 @@ export function Window({ window }: Props) {
                             rounded
                             px-2
                             transition
-                            hover:bg-zinc-700
+                            hover:bg-[var(--border)]
                         "
                         title={window.maximized ? "Restore" : "Maximize"}
                     >
@@ -192,6 +276,7 @@ export function Window({ window }: Props) {
                             px-2
                             transition
                             hover:bg-red-600
+                            hover:text-white
                         "
                         title="Close"
                     >
@@ -208,39 +293,39 @@ export function Window({ window }: Props) {
             </div>
 
             {/* Resize handles */}
-            {!window.maximized && (
+            {!window.maximized && !isMobile && (
                 <>
                     <div
                         className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
-                        onMouseDown={(e) => handleResizeMouseDown(e, 'se')}
+                        onPointerDown={(e) => handleResizePointerDown(e, 'se')}
                     />
                     <div
                         className="absolute bottom-0 left-0 w-4 h-4 cursor-sw-resize"
-                        onMouseDown={(e) => handleResizeMouseDown(e, 'sw')}
+                        onPointerDown={(e) => handleResizePointerDown(e, 'sw')}
                     />
                     <div
                         className="absolute top-0 right-0 w-4 h-4 cursor-ne-resize"
-                        onMouseDown={(e) => handleResizeMouseDown(e, 'ne')}
+                        onPointerDown={(e) => handleResizePointerDown(e, 'ne')}
                     />
                     <div
                         className="absolute top-0 left-0 w-4 h-4 cursor-nw-resize"
-                        onMouseDown={(e) => handleResizeMouseDown(e, 'nw')}
+                        onPointerDown={(e) => handleResizePointerDown(e, 'nw')}
                     />
                     <div
                         className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-2 cursor-n-resize"
-                        onMouseDown={(e) => handleResizeMouseDown(e, 'n')}
+                        onPointerDown={(e) => handleResizePointerDown(e, 'n')}
                     />
                     <div
                         className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-2 cursor-s-resize"
-                        onMouseDown={(e) => handleResizeMouseDown(e, 's')}
+                        onPointerDown={(e) => handleResizePointerDown(e, 's')}
                     />
                     <div
                         className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-8 cursor-w-resize"
-                        onMouseDown={(e) => handleResizeMouseDown(e, 'w')}
+                        onPointerDown={(e) => handleResizePointerDown(e, 'w')}
                     />
                     <div
                         className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-8 cursor-e-resize"
-                        onMouseDown={(e) => handleResizeMouseDown(e, 'e')}
+                        onPointerDown={(e) => handleResizePointerDown(e, 'e')}
                     />
                 </>
             )}

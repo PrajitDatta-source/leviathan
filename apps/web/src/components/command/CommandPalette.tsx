@@ -4,14 +4,9 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { commandRegistry } from "@/core/command";
 import { useState, useMemo } from "react";
 import { useWindowManager } from "@/core/window/hooks";
+import { useTheme } from "@/modules/theme/ThemeContext";
 
-
-type CommandPaletteProps = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-};
-
-// Simple fuzzy search implementation
+// Safe fuzzy search implementation
 function fuzzyMatch(text: string, query: string): boolean {
   if (!query) return true;
   
@@ -52,11 +47,38 @@ function calculateScore(text: string, query: string): number {
   return 0;
 }
 
+// Safe math evaluator helper
+function evaluateMath(expression: string): number | null {
+  const clean = expression.replace(/\s+/g, "");
+  if (!/^[0-9+\-*/().]+$/.test(clean)) {
+    return null;
+  }
+  // Require at least one math operator to identify math input
+  if (!/[+\-*/]/.test(clean)) {
+    return null;
+  }
+  try {
+    const result = new Function(`return ${clean}`)();
+    if (typeof result === "number" && !isNaN(result) && isFinite(result)) {
+      return result;
+    }
+  } catch {
+    // Ignore invalid syntax while typing
+  }
+  return null;
+}
+
+type CommandPaletteProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+};
+
 export function CommandPalette({
   open,
   onOpenChange,
 }: CommandPaletteProps) {
   const windowManager = useWindowManager();
+  const themeContext = useTheme();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -88,26 +110,49 @@ export function CommandPalette({
       .map(item => item.command);
   }, [query, allCommands]);
 
+  // Real-time calculation parsing
+  const mathResult = useMemo(() => evaluateMath(query), [query]);
+
+  // Prepend calculation result command if math expression is parsed
+  const finalCommands = useMemo(() => {
+    const list = [...filteredCommands];
+    if (mathResult !== null) {
+      list.unshift({
+        id: "calculator_result",
+        title: `= ${mathResult}`,
+        description: "Copy calculation result to clipboard",
+        category: "Calculator",
+        run: () => {
+          if (typeof window !== "undefined") {
+            navigator.clipboard.writeText(String(mathResult));
+            alert(`Copied ${mathResult} to clipboard!`);
+          }
+        }
+      } as any);
+    }
+    return list;
+  }, [filteredCommands, mathResult]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setSelectedIndex(prev => 
-        prev < filteredCommands.length - 1 ? prev + 1 : prev
+        prev < finalCommands.length - 1 ? prev + 1 : prev
       );
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setSelectedIndex(prev => prev > 0 ? prev - 1 : 0);
     } else if (e.key === "Enter") {
       e.preventDefault();
-      if (filteredCommands[selectedIndex]) {
-        filteredCommands[selectedIndex].run({ windowManager });
+      if (finalCommands[selectedIndex]) {
+        finalCommands[selectedIndex].run({ windowManager, themeContext });
         onOpenChange(false);
       }
     }
   };
 
   const handleCommandClick = (command: any, index: number) => {
-    command.run({ windowManager });
+    command.run({ windowManager, themeContext });
     onOpenChange(false);
   };
 
@@ -130,7 +175,7 @@ export function CommandPalette({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
 
-        <Dialog.Content className="fixed left-1/2 top-24 w-[650px] -translate-x-1/2 rounded-xl border border-zinc-800 bg-zinc-900 p-4 shadow-2xl">
+        <Dialog.Content className="fixed left-1/2 top-24 w-[650px] -translate-x-1/2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-2xl text-[var(--text)]">
 
           <input
             autoFocus
@@ -138,23 +183,23 @@ export function CommandPalette({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full border-b border-zinc-800 bg-transparent pb-3 text-lg outline-none"
+            className="w-full border-b border-[var(--border)] bg-transparent pb-3 text-lg outline-none text-[var(--text)]"
           />
 
           <div className="mt-4 space-y-1 max-h-[400px] overflow-y-auto">
 
-            {filteredCommands.length === 0 ? (
-              <div className="p-3 text-center text-zinc-400">
+            {finalCommands.length === 0 ? (
+              <div className="p-3 text-center text-[var(--muted)]">
                 No commands found
               </div>
             ) : (
-              filteredCommands.map((command, index) => (
+              finalCommands.map((command, index) => (
                 <button
                   key={command.id}
                   onClick={() => handleCommandClick(command, index)}
                   className={`
                     flex w-full flex-col rounded-lg p-3 text-left transition
-                    ${index === selectedIndex ? "bg-zinc-800" : "hover:bg-zinc-800"}
+                    ${index === selectedIndex ? "bg-[var(--border)]" : "hover:bg-[var(--border)]/50"}
                   `}
                 >
                   <span className="font-medium">
@@ -162,13 +207,13 @@ export function CommandPalette({
                   </span>
 
                   {command.description && (
-                    <span className="text-sm text-zinc-400">
+                    <span className="text-sm text-[var(--muted)]">
                       {command.description}
                     </span>
                   )}
 
                   {command.category && (
-                    <span className="text-xs text-zinc-500 mt-1">
+                    <span className="text-xs text-[var(--muted)]/80 mt-1">
                       {command.category}
                     </span>
                   )}
@@ -178,7 +223,7 @@ export function CommandPalette({
 
           </div>
 
-          <div className="mt-4 pt-3 border-t border-zinc-800 text-xs text-zinc-500 flex justify-between">
+          <div className="mt-4 pt-3 border-t border-[var(--border)] text-xs text-[var(--muted)]/80 flex justify-between">
             <span>↑↓ to navigate</span>
             <span>Enter to select</span>
             <span>Esc to close</span>

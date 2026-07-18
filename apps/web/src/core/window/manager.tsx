@@ -8,7 +8,7 @@ import {
 } from "react";
 
 import { WindowManagerContext } from "./context";
-import { WindowInstance } from "./types";
+import { WindowInstance, SnapPreview } from "./types";
 
 type ProviderProps = {
     children: ReactNode;
@@ -20,6 +20,9 @@ export function WindowManagerProvider({
 
     const [windows, setWindows] =
         useState<WindowInstance[]>([]);
+
+    const [snapPreview, setSnapPreview] =
+        useState<SnapPreview | null>(null);
 
     const open = useCallback(
         (
@@ -164,6 +167,8 @@ export function WindowManagerProvider({
     const value = useMemo(
         () => ({
             windows,
+            snapPreview,
+            setSnapPreview,
             open,
             close,
             focus,
@@ -174,6 +179,7 @@ export function WindowManagerProvider({
         }),
         [
             windows,
+            snapPreview,
             open,
             close,
             focus,

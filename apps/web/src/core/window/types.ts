@@ -37,8 +37,17 @@ export interface OpenWindowOptions {
   height?: number;
 }
 
+export interface SnapPreview {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface WindowManagerContextValue {
   windows: WindowInstance[];
+  snapPreview: SnapPreview | null;
+  setSnapPreview(preview: SnapPreview | null): void;
 
   open(window: OpenWindowOptions): void;
   close(id: string): void;
