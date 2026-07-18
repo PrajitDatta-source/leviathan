@@ -205,6 +205,14 @@ export function DashboardWindow() {
           <p className="text-xs text-[var(--muted)]">
             Everything in your digital workspace, organized in one central dashboard.
           </p>
+          <div className="flex gap-3.5 mt-2.5">
+            <span className="text-[10px] px-2.5 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 font-medium">
+              Active Workspace: {manager.activeWorkspace}
+            </span>
+            <span className="text-[10px] px-2.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-medium">
+              Open Windows: {manager.windows.length}
+            </span>
+          </div>
         </div>
 
         {/* Widgets Grid */}

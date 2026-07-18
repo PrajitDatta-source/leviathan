@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { vfs } from "@/modules/filesystem/vfs";
 import { useTheme } from "@/modules/theme/ThemeContext";
+import { useWindowManager } from "@/core/window/hooks";
 
 interface LogLine {
   text: string;
@@ -11,6 +12,7 @@ interface LogLine {
 
 export function TerminalWindow() {
   const { theme, setTheme } = useTheme();
+  const manager = useWindowManager();
   const [currentDirId, setCurrentDirId] = useState<string | null>(null);
   const [history, setHistory] = useState<LogLine[]>([
     { text: "Leviathan Shell v1.0.0", type: "success" },
@@ -45,14 +47,19 @@ export function TerminalWindow() {
     const command = input.trim();
     if (!command) return;
 
-    setHistory((prev) => [...prev, { text: `${getPromptPath()} $ ${command}`, type: "input" }]);
+    setHistory((prev) => [...prev, { text: `leviathan ➜ ${getPromptPath()} $ ${command}`, type: "input" }]);
     setCmdHistory((prev) => [...prev, command]);
     setHistoryIndex(-1);
     setInput("");
 
     const parts = command.split(/\s+/);
-    const cmd = parts[0].toLowerCase();
+    let cmd = parts[0].toLowerCase();
     const args = parts.slice(1);
+
+    // Command Aliases
+    if (cmd === "dir") cmd = "ls";
+    if (cmd === "cls") cmd = "clear";
+    if (cmd === "md") cmd = "mkdir";
 
     switch (cmd) {
       case "help":
@@ -214,7 +221,20 @@ export function TerminalWindow() {
         })();
         break;
 
-      case "neofetch":
+      case "neofetch": {
+        let browserName = "Chrome";
+        if (typeof navigator !== "undefined") {
+          const ua = navigator.userAgent;
+          if (ua.includes("Firefox")) browserName = "Firefox";
+          else if (ua.includes("Safari") && !ua.includes("Chrome")) browserName = "Safari";
+          else if (ua.includes("Edge")) browserName = "Edge";
+        }
+        
+        const res = typeof window !== "undefined" ? `${window.innerWidth}x${window.innerHeight}` : "1920x1080";
+        const uptime = Math.round(performance.now() / 1000);
+        const openWinCount = manager.windows.length;
+        const vfsCount = vfs.getAllNodes().length;
+
         setHistory((prev) => [
           ...prev,
           {
@@ -222,15 +242,20 @@ export function TerminalWindow() {
     /\\_/\\      user@leviathan
    ( o.o )     --------------
     > ^ <      OS: Leviathan Web OS v1.0.0
-   /  |  \\     Kernel: React 19 / Next.js 16
-  ( |_|_| )    Shell: Browser Terminal
+   /  |  \\     Browser: ${browserName}
+  ( |_|_| )    Resolution: ${res}
+               Uptime: ${uptime}s
+               Active Workspace: Workspace ${manager.activeWorkspace}
+               Open Windows: ${openWinCount}
                Theme: ${theme.toUpperCase()}
-               Database: VFS (localStorage)
+               VFS Nodes: ${vfsCount} files/folders
+               Connected Services: Telegram API, Open-Meteo Weather
 `,
             type: "success",
           },
         ]);
         break;
+      }
 
       default:
         setHistory((prev) => [
@@ -258,6 +283,34 @@ export function TerminalWindow() {
         setHistoryIndex(nextIndex);
         setInput(cmdHistory[nextIndex]);
       }
+    } else if (e.key === "Tab") {
+      e.preventDefault();
+      const trimmed = input.trim();
+      const tokens = trimmed.split(/\s+/);
+      const currentToken = tokens[tokens.length - 1] || "";
+      
+      if (tokens.length <= 1) {
+        const commands = ["ls", "cd", "mkdir", "rm", "cat", "theme", "weather", "neofetch", "clear", "help", "dir", "md", "cls"];
+        const matches = commands.filter(c => c.startsWith(currentToken.toLowerCase()));
+        if (matches.length === 1) {
+          setInput(matches[0] + " ");
+        } else if (matches.length > 1) {
+          setHistory(prev => [...prev, { text: matches.join("   "), type: "output" }]);
+        }
+      } else {
+        const children = vfs.getChildren(currentDirId);
+        const matches = children
+          .map(c => c.name)
+          .filter(name => name.toLowerCase().startsWith(currentToken.toLowerCase()));
+        
+        if (matches.length === 1) {
+          const isDir = children.find(c => c.name === matches[0])?.type === "folder";
+          tokens[tokens.length - 1] = matches[0];
+          setInput(tokens.join(" ") + (isDir ? "/" : " "));
+        } else if (matches.length > 1) {
+          setHistory(prev => [...prev, { text: matches.join("   "), type: "output" }]);
+        }
+      }
     }
   };
 
@@ -280,7 +333,7 @@ export function TerminalWindow() {
       </div>
 
       <form onSubmit={handleCommand} className="flex gap-2 border-t border-zinc-900 pt-3 mt-2 shrink-0">
-        <span className="text-violet-400 font-semibold shrink-0">{getPromptPath()} $</span>
+        <span className="text-violet-400 font-semibold shrink-0">leviathan ➜ {getPromptPath()} $</span>
         <input
           autoFocus
           value={input}

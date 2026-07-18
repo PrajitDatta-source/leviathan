@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Folder, FileText, Terminal, Settings, Trash2 } from "lucide-react";
+import { Folder, FileText, Terminal, Settings, Trash2, Sun } from "lucide-react";
 import { useWindowManager } from "@/core/window/hooks";
 import { appRegistry } from "@/core/app";
 
@@ -21,17 +21,30 @@ export function DesktopIcons() {
     { id: "notes", label: "Notes", appId: "notes", icon: FileText, x: 20, y: 116 },
     { id: "terminal", label: "Terminal", appId: "terminal", icon: Terminal, x: 20, y: 212 },
     { id: "settings", label: "Settings", appId: "settings", icon: Settings, x: 20, y: 308 },
-    { id: "trash", label: "Trash", appId: "trash", icon: Trash2, x: 20, y: 404 },
+    { id: "weather", label: "Weather", appId: "weather", icon: Sun, x: 20, y: 404 },
+    { id: "trash", label: "Trash", appId: "trash", icon: Trash2, x: 20, y: 500 },
   ]);
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [selectedIconId, setSelectedIconId] = useState<string | null>(null);
   const dragOffset = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (e.target instanceof HTMLElement && !e.target.closest(".desktop-icon-item")) {
+        setSelectedIconId(null);
+      }
+    };
+    window.addEventListener("mousedown", handleOutsideClick);
+    return () => window.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
 
   const handlePointerDown = (id: string, e: React.PointerEvent) => {
     // Only drag with left pointer / main click
     if (e.button !== 0) return;
 
     setActiveDragId(id);
+    setSelectedIconId(id);
     const targetIcon = icons.find((icon) => icon.id === id);
     if (targetIcon) {
       dragOffset.current = {
@@ -146,17 +159,20 @@ export function DesktopIcons() {
     <div className="absolute inset-0 pointer-events-none select-none z-10">
       {icons.map((icon) => {
         const isDragging = icon.id === activeDragId;
+        const isSelected = icon.id === selectedIconId;
 
         return (
           <div
             key={icon.id}
             onPointerDown={(e) => handlePointerDown(icon.id, e)}
             onDoubleClick={() => handleDoubleClick(icon.appId)}
-            className={`absolute w-20 flex flex-col items-center gap-1.5 p-1 rounded-xl pointer-events-auto cursor-default transition-all duration-75 select-none ${
+            className={`desktop-icon-item absolute w-20 flex flex-col items-center gap-1.5 p-1.5 rounded-xl pointer-events-auto cursor-default select-none border border-transparent ${
               isDragging
-                ? "bg-white/10 opacity-75 scale-95 border border-white/5"
-                : "hover:bg-white/5 border border-transparent active:scale-95"
-            }`}
+                ? "bg-white/10 opacity-70 scale-95 border-white/5"
+                : isSelected
+                ? "bg-white/10 border-white/10 shadow-sm"
+                : "hover:bg-white/5 active:scale-95"
+            } ${isDragging ? "" : "transition-[left,top] duration-200 ease-out"}`}
             style={{
               left: icon.x,
               top: icon.y,

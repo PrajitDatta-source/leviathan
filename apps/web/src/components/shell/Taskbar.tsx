@@ -14,6 +14,7 @@ export function Taskbar() {
   // Taskbar settings states
   const [isMuted, setIsMuted] = useState(false);
   const [isAutohide, setIsAutohide] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -72,12 +73,23 @@ export function Taskbar() {
     window.dispatchEvent(new CustomEvent("toggle-command-palette"));
   };
 
+  const isCollapsed = isAutohide && !isHovered;
+
   return (
-    <div
-      className={`fixed bottom-0 left-0 right-0 h-12 bg-[var(--surface)]/70 border-t border-[var(--border)] backdrop-blur-lg flex items-center px-4 justify-between z-50 text-[var(--text)] transition-transform duration-300 select-none ${
-        isAutohide ? "translate-y-[40px] hover:translate-y-0" : ""
-      }`}
-    >
+    <>
+      {isAutohide && (
+        <div
+          onMouseEnter={() => setIsHovered(true)}
+          className="fixed bottom-0 left-0 right-0 h-2.5 z-40 bg-transparent"
+        />
+      )}
+      <div
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className={`fixed bottom-0 left-0 right-0 h-12 bg-[var(--surface)]/70 border-t border-[var(--border)] backdrop-blur-lg flex items-center px-4 justify-between z-50 text-[var(--text)] transition-all duration-300 select-none ${
+          isCollapsed ? "translate-y-[42px] opacity-25" : "translate-y-0 opacity-100"
+        }`}
+      >
       {/* Left Tray: Launcher & Workspaces */}
       <div className="flex items-center gap-3 w-1/4">
         {/* App Launcher Button */}
@@ -209,5 +221,6 @@ export function Taskbar() {
 
       </div>
     </div>
+    </>
   );
 }

@@ -191,8 +191,8 @@ export function Window({ window }: Props) {
                 select-none
                 animate-window-open
                 ${window.focused ? 'border-violet-500/70 shadow-xl shadow-violet-500/5 z-40' : 'border-[var(--border)] bg-[var(--surface)]'}
-                ${window.minimized ? 'hidden' : ''}
-                ${(isDragging || isResizing) ? '' : 'transition-[width,height,left,top] duration-200 ease-out'}
+                ${window.minimized ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'}
+                ${(isDragging || isResizing) ? '' : 'transition-all duration-200 ease-out'}
             `}
             style={{
                 left: position.x,
