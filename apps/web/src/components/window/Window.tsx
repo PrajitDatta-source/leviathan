@@ -1,34 +1,75 @@
-type WindowProps = {
-  title: string;
-  children: React.ReactNode;
-  onClose: () => void;
+"use client";
+
+import { WindowInstance } from "@/core/window/types";
+import { useWindowManager } from "@/core/window/hooks";
+
+type Props = {
+    window: WindowInstance;
 };
 
-export function Window({
-  title,
-  children,
-  onClose,
-}: WindowProps) {
-  return (
-    <div className="fixed left-40 top-28 w-[700px] rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl">
+export function Window({ window }: Props) {
 
-      <div className="flex items-center justify-between border-b border-zinc-700 p-3">
+    const manager = useWindowManager();
 
-        <span className="font-semibold">
-          {title}
-        </span>
-
-        <button
-          onClick={onClose}
-          className="rounded px-2 hover:bg-zinc-700"
+    return (
+        <div
+            className="
+                absolute
+                overflow-hidden
+                rounded-xl
+                border
+                border-zinc-700
+                bg-zinc-900
+                shadow-2xl
+                select-none
+            "
+            style={{
+                left: window.x,
+                top: window.y,
+                width: window.width,
+                height: window.height,
+                zIndex: window.zIndex,
+            }}
+            onMouseDown={() => manager.focus(window.id)}
         >
-          ✕
-        </button>
 
-      </div>
+            <div
+                className="
+                    flex
+                    items-center
+                    justify-between
+                    border-b
+                    border-zinc-700
+                    bg-zinc-800
+                    px-4
+                    py-3
+                "
+            >
 
-      {children}
+                <span className="font-medium">
+                    {window.title}
+                </span>
 
-    </div>
-  );
+                <button
+                    onClick={() => manager.close(window.id)}
+                    className="
+                        rounded
+                        px-2
+                        transition
+                        hover:bg-red-600
+                    "
+                >
+                    ✕
+                </button>
+
+            </div>
+
+            <div
+                className="h-[calc(100%-52px)] overflow-auto"
+            >
+                {window.content}
+            </div>
+
+        </div>
+    );
 }

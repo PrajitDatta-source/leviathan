@@ -7,17 +7,13 @@ import { Workspace } from "./Workspace";
 import { CommandBar } from "./CommandBar";
 
 import { CommandPalette } from "@/components/command/CommandPalette";
+import { Desktop } from "@/components/window/Desktop";
 
 import { bootstrap } from "@/core/bootstrap";
-
-import { Window } from "@/components/window/Window";
-import { SettingsWindow } from "@/apps/settings/SettingsWindow";
+import { WindowManagerProvider } from "@/core/window/manager";
 
 export function AppShell() {
   const [open, setOpen] = useState(false);
-
-  // Temporary state while we build the real Window Manager
-  const [settingsOpen, setSettingsOpen] = useState(true);
 
   useEffect(() => {
     bootstrap();
@@ -44,26 +40,19 @@ export function AppShell() {
   }, []);
 
   return (
-    <>
+    <WindowManagerProvider>
       <div className="flex h-screen flex-col bg-black text-white">
         <Header />
         <Workspace />
         <CommandBar />
       </div>
 
+      <Desktop />
+
       <CommandPalette
         open={open}
         onOpenChange={setOpen}
       />
-
-      {settingsOpen && (
-        <Window
-          title="Settings"
-          onClose={() => setSettingsOpen(false)}
-        >
-          <SettingsWindow />
-        </Window>
-      )}
-    </>
+    </WindowManagerProvider>
   );
 }
