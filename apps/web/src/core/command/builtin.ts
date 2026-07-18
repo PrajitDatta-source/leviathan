@@ -1,4 +1,7 @@
 import { commandRegistry } from "./registry";
+import { appRegistry } from "../app";
+import { useWindowManager } from "../window/hooks";
+import { createElement } from "react";
 
 export function registerBuiltinCommands() {
   commandRegistry.register({
@@ -9,7 +12,22 @@ export function registerBuiltinCommands() {
     keywords: ["preferences", "config"],
 
     run: () => {
-      alert("Settings window coming next 🚀");
+      const app = appRegistry.get("settings");
+      if (!app) {
+        console.error("Settings app not found");
+        return;
+      }
+
+      const manager = useWindowManager();
+      manager.open({
+        id: "settings",
+        title: app.title,
+        content: createElement(app.component),
+        x: 100,
+        y: 100,
+        width: app.width || 700,
+        height: app.height || 500,
+      });
     },
   });
 

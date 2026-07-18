@@ -13,6 +13,16 @@ export interface WindowInstance {
 
   zIndex: number;
   focused: boolean;
+  minimized: boolean;
+  maximized: boolean;
+
+  // Store previous state for restore
+  previousState?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
 }
 
 export interface OpenWindowOptions {
@@ -33,4 +43,7 @@ export interface WindowManagerContextValue {
   open(window: OpenWindowOptions): void;
   close(id: string): void;
   focus(id: string): void;
+  minimize(id: string): void;
+  maximize(id: string): void;
+  restore(id: string): void;
 }

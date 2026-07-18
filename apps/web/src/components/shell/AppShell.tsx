@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Header } from "./Header";
 import { Workspace } from "./Workspace";
 import { CommandBar } from "./CommandBar";
+import { Taskbar } from "./Taskbar";
 
 import { CommandPalette } from "@/components/command/CommandPalette";
 import { Desktop } from "@/components/window/Desktop";
@@ -48,6 +49,7 @@ export function AppShell() {
       </div>
 
       <Desktop />
+      <Taskbar />
 
       <CommandPalette
         open={open}
