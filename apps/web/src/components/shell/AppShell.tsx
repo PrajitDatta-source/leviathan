@@ -12,6 +12,7 @@ import { bootstrap } from "@/core/bootstrap";
 import { WindowManagerProvider } from "@/core/window/manager";
 import { useWindowManager } from "@/core/window/hooks";
 import { appRegistry } from "@/core/app";
+import { useTheme } from "@/modules/theme/ThemeContext";
 
 // KeyboardManager component handles i3-inspired keyboard shortcuts
 function KeyboardManager({ setOpenPalette }: { setOpenPalette: (open: boolean) => void }) {
@@ -195,6 +196,8 @@ export function AppShell() {
     };
   }, []);
 
+  const themeContext = useTheme();
+
   const handleContextMenu = (e: React.MouseEvent) => {
     if (e.target instanceof HTMLElement) {
       const isInsideWindow = e.target.closest(".window-instance") || e.target.closest("button") || e.target.closest("input");
@@ -210,11 +213,30 @@ export function AppShell() {
     }
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUri = event.target?.result as string;
+        themeContext.setWallpaper(dataUri);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <WindowManagerProvider>
       <div 
         onContextMenu={handleContextMenu}
         onClick={handleLeftClick}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
         className="h-screen w-screen relative overflow-hidden select-none"
         style={{ background: "var(--wallpaper)" }}
       >

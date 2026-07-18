@@ -165,13 +165,53 @@ export function TerminalWindow() {
         break;
 
       case "weather":
-        setHistory((prev) => [
-          ...prev,
-          { text: "🌤️  Weather Forecast:", type: "success" },
-          { text: "   Location: Cyber City", type: "output" },
-          { text: "   Current Temp: 22°C (Clear sky)", type: "output" },
-          { text: "   Humidity: 45% | Wind: 8km/h", type: "output" },
-        ]);
+        setHistory((prev) => [...prev, { text: "Fetching live meteorological forecast...", type: "output" }]);
+        (async () => {
+          try {
+            let lat = 51.5074;
+            let lon = -0.1278;
+            let locName = "London (Default)";
+            
+            if (typeof navigator !== "undefined" && navigator.geolocation) {
+              await new Promise<void>((resolve) => {
+                navigator.geolocation.getCurrentPosition(
+                  (pos) => {
+                    lat = pos.coords.latitude;
+                    lon = pos.coords.longitude;
+                    locName = "Your Coordinates";
+                    resolve();
+                  },
+                  () => resolve()
+                );
+              });
+            }
+
+            const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+            const data = await res.json();
+            if (data && data.current_weather) {
+              const temp = Math.round(data.current_weather.temperature);
+              const wind = data.current_weather.windspeed;
+              const code = data.current_weather.weathercode;
+              
+              let text = "Clear Sky";
+              if (code >= 1 && code <= 3) text = "Partly Cloudy";
+              else if (code >= 51 && code <= 67) text = "Rainy Showers";
+              else if (code >= 71 && code <= 77) text = "Snowy Flurries";
+              else if (code >= 80 && code <= 82) text = "Heavy Rain";
+              else if (code >= 95) text = "Thunderstorm";
+
+              setHistory((prev) => [
+                ...prev,
+                { text: `🌤️  Weather Forecast (${locName}):`, type: "success" },
+                { text: `   Conditions: ${text}`, type: "output" },
+                { text: `   Temperature: ${temp}°C`, type: "output" },
+                { text: `   Wind Speed: ${wind} km/h`, type: "output" },
+              ]);
+            }
+          } catch (e) {
+            setHistory((prev) => [...prev, { text: "weather: failed to reach Open-Meteo services.", type: "error" }]);
+          }
+        })();
         break;
 
       case "neofetch":

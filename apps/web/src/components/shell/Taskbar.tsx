@@ -75,7 +75,7 @@ export function Taskbar() {
   return (
     <div
       className={`fixed bottom-0 left-0 right-0 h-12 bg-[var(--surface)]/70 border-t border-[var(--border)] backdrop-blur-lg flex items-center px-4 justify-between z-50 text-[var(--text)] transition-transform duration-300 select-none ${
-        isAutohide ? "translate-y-[44px] hover:translate-y-0" : ""
+        isAutohide ? "translate-y-[40px] hover:translate-y-0" : ""
       }`}
     >
       {/* Left Tray: Launcher & Workspaces */}

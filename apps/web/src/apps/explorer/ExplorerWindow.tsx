@@ -45,6 +45,8 @@ export function ExplorerWindow() {
 
   useEffect(() => {
     loadDirectory();
+    window.addEventListener("vfs-synced", loadDirectory);
+    return () => window.removeEventListener("vfs-synced", loadDirectory);
   }, [currentDirId]);
 
   const handleDoubleClick = (node: VFSNode) => {

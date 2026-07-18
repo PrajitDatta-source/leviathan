@@ -69,6 +69,8 @@ export function NotesWindow() {
 
   useEffect(() => {
     loadNotesList();
+    window.addEventListener("vfs-synced", loadNotesList);
+    return () => window.removeEventListener("vfs-synced", loadNotesList);
   }, []);
 
   const handleSelectNote = (note: VFSNode) => {

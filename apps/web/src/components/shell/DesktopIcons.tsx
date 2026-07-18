@@ -145,7 +145,6 @@ export function DesktopIcons() {
   return (
     <div className="absolute inset-0 pointer-events-none select-none z-10">
       {icons.map((icon) => {
-        const IconComponent = icon.icon;
         const isDragging = icon.id === activeDragId;
 
         return (
@@ -153,7 +152,7 @@ export function DesktopIcons() {
             key={icon.id}
             onPointerDown={(e) => handlePointerDown(icon.id, e)}
             onDoubleClick={() => handleDoubleClick(icon.appId)}
-            className={`absolute w-20 flex flex-col items-center gap-1.5 p-2 rounded-xl pointer-events-auto cursor-default transition-all duration-75 select-none ${
+            className={`absolute w-20 flex flex-col items-center gap-1.5 p-1 rounded-xl pointer-events-auto cursor-default transition-all duration-75 select-none ${
               isDragging
                 ? "bg-white/10 opacity-75 scale-95 border border-white/5"
                 : "hover:bg-white/5 border border-transparent active:scale-95"
@@ -164,10 +163,16 @@ export function DesktopIcons() {
               touchAction: "none",
             }}
           >
-            <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/10 to-indigo-500/10 border border-violet-500/20 text-violet-400 group-hover:scale-105 transition-transform duration-100 shadow-sm">
-              <IconComponent className="w-5 h-5" />
+            {/* Glossy 3D Fluent Image Icon */}
+            <div className="w-12 h-12 flex items-center justify-center rounded-xl overflow-hidden shadow-md group-hover:scale-105 transition-transform duration-100 bg-zinc-900 border border-white/10">
+              <img
+                src={`/assets/icons/${icon.appId}.jpg`}
+                alt={icon.label}
+                className="w-full h-full object-cover"
+                draggable={false}
+              />
             </div>
-            <span className="text-[11px] font-medium text-zinc-200 text-center tracking-wide drop-shadow-md truncate max-w-full px-0.5">
+            <span className="text-[11px] font-medium text-zinc-100 text-center tracking-wide drop-shadow-md truncate max-w-full px-0.5">
               {icon.label}
             </span>
           </div>

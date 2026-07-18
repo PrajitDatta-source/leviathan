@@ -20,6 +20,39 @@ class VFSManager {
     if (this.nodes.size === 0) {
       this.initializeDefaultFileSystem();
     }
+    // Async synchronize VFS with Next.js backend
+    if (typeof window !== "undefined") {
+      this.syncWithBackend();
+    }
+  }
+
+  async syncWithBackend() {
+    try {
+      const res = await fetch("/api/vfs");
+      const nodes = await res.json();
+      if (Array.isArray(nodes) && nodes.length > 0) {
+        this.nodes = new Map(nodes.map((node) => [node.id, node]));
+        localStorage.setItem(this.storageKey, JSON.stringify(nodes));
+        window.dispatchEvent(new CustomEvent("vfs-synced"));
+      } else {
+        this.pushToBackend();
+      }
+    } catch (e) {
+      console.error("VFS backend sync failed, fallback to local cache:", e);
+    }
+  }
+
+  async pushToBackend() {
+    try {
+      const array = Array.from(this.nodes.values());
+      await fetch("/api/vfs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(array),
+      });
+    } catch (e) {
+      console.error("VFS push to backend failed:", e);
+    }
   }
 
   private loadFromStorage() {
@@ -40,6 +73,7 @@ class VFSManager {
     try {
       const array = Array.from(this.nodes.values());
       localStorage.setItem(this.storageKey, JSON.stringify(array));
+      this.pushToBackend();
     } catch (e) {
       console.error("VFS save failed:", e);
     }

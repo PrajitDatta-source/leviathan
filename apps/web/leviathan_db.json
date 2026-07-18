@@ -1,0 +1,74 @@
+{
+  "vfsNodes": [
+    {
+      "id": "84bf3b43-eccf-44df-a776-351223a437a2",
+      "name": "Home",
+      "type": "folder",
+      "parentId": null,
+      "createdAt": "2026-07-18T12:12:26.553Z",
+      "updatedAt": "2026-07-18T12:12:26.553Z"
+    },
+    {
+      "id": "31f232a4-b0e4-452b-9be4-f31531a52d5d",
+      "name": "Documents",
+      "type": "folder",
+      "parentId": "84bf3b43-eccf-44df-a776-351223a437a2",
+      "createdAt": "2026-07-18T12:12:26.553Z",
+      "updatedAt": "2026-07-18T12:12:26.553Z"
+    },
+    {
+      "id": "1e077fd1-2f12-4041-8953-6074c8ad32bd",
+      "name": "Notes",
+      "type": "folder",
+      "parentId": "84bf3b43-eccf-44df-a776-351223a437a2",
+      "createdAt": "2026-07-18T12:12:26.553Z",
+      "updatedAt": "2026-07-18T12:12:26.553Z"
+    },
+    {
+      "id": "8c3c6166-cfb7-4def-8678-45f349a241d0",
+      "name": "Downloads",
+      "type": "folder",
+      "parentId": "84bf3b43-eccf-44df-a776-351223a437a2",
+      "createdAt": "2026-07-18T12:12:26.553Z",
+      "updatedAt": "2026-07-18T12:12:26.553Z"
+    },
+    {
+      "id": "ec6e9c85-d3fa-464d-8269-2f57d0963fa2",
+      "name": "welcome.md",
+      "type": "file",
+      "parentId": "84bf3b43-eccf-44df-a776-351223a437a2",
+      "content": "# Welcome to Leviathan OS! 👋\n\nThis is a browser-based personal operating system designed to manage your digital workspace.\n\n### Core Features in Alpha:\n- **File Explorer**: Browse folders, upload/download, create files.\n- **Notes App**: Markdown editor with auto-save and tag indexing.\n- **Terminal**: Run system commands (`ls`, `cd`, `cat`, `neofetch`).\n- **Command Palette** (`Super + D` / `Alt + D`): Run calculation operations, toggle themes, and find files.\n\nEnjoy customizing your new desktop environment!",
+      "createdAt": "2026-07-18T12:12:26.553Z",
+      "updatedAt": "2026-07-18T12:12:26.553Z"
+    },
+    {
+      "id": "49e778f5-b606-4f22-8132-7b07aa61852f",
+      "name": "Project Plan.md",
+      "type": "file",
+      "parentId": "1e077fd1-2f12-4041-8953-6074c8ad32bd",
+      "content": "# Project Plan: Phase 2 Goals\n\n- [x] Snapping layouts & snapping preview\n- [x] Custom context menu\n- [x] Mobile full-screen constraints\n- [ ] Expand desktop wallpaper settings\n- [ ] Configure full virtual workspace switching",
+      "createdAt": "2026-07-18T12:12:26.553Z",
+      "updatedAt": "2026-07-18T12:12:26.553Z"
+    }
+  ],
+  "preferences": {
+    "theme": "dark",
+    "wallpaper": "linear-gradient(135deg, #09090b 0%, #020205 100%)",
+    "notifications": true,
+    "autoSync": true
+  },
+  "telegramChats": [
+    {
+      "id": "tg_1",
+      "sender": "Telegram Bot",
+      "text": "Welcome to Leviathan OS Telegram integration! Secure connection established.",
+      "timestamp": "2026-07-18T12:47:06.969Z"
+    },
+    {
+      "id": "tg_2",
+      "sender": "Prajit (Owner)",
+      "text": "Is the server-side filesystem sync working?",
+      "timestamp": "2026-07-18T12:47:06.969Z"
+    }
+  ]
+}

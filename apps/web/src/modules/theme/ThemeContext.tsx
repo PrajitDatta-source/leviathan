@@ -20,31 +20,53 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     "linear-gradient(135deg, #09090b 0%, #020205 100%)"
   );
 
-  // Load initial theme and wallpaper from preferences on mount
+  // Load initial theme and wallpaper from preferences on mount and sync with API
   useEffect(() => {
     if (typeof window !== "undefined") {
       const prefs = profileManager.getPreferences();
       if (prefs) {
-        if (prefs.theme) {
-          setThemeState(prefs.theme as Theme);
-        }
-        if (prefs.wallpaper) {
-          setWallpaperState(prefs.wallpaper);
-        }
+        if (prefs.theme) setThemeState(prefs.theme as Theme);
+        if (prefs.wallpaper) setWallpaperState(prefs.wallpaper);
       }
+      
+      // Sync from backend
+      fetch("/api/settings")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data) {
+            if (data.theme) setThemeState(data.theme as Theme);
+            if (data.wallpaper) setWallpaperState(data.wallpaper);
+            profileManager.updatePreferences(data);
+          }
+        })
+        .catch((err) => console.error("Settings backend sync failed:", err));
     }
   }, []);
+
+  const pushSettingsToBackend = async (newTheme: Theme, newWp: string) => {
+    try {
+      await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theme: newTheme, wallpaper: newWp }),
+      });
+    } catch (e) {
+      console.error("Failed to push settings to backend:", e);
+    }
+  };
 
   // Sync theme to profileManager preferences
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
     profileManager.updatePreferences({ theme: newTheme as any });
+    pushSettingsToBackend(newTheme, wallpaper);
   };
 
   // Sync wallpaper to profileManager preferences
   const setWallpaper = (newWallpaper: string) => {
     setWallpaperState(newWallpaper);
     profileManager.updatePreferences({ wallpaper: newWallpaper });
+    pushSettingsToBackend(theme, newWallpaper);
   };
 
   useEffect(() => {

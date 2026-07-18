@@ -5,6 +5,7 @@ import { ExplorerWindow } from "./explorer/ExplorerWindow";
 import { NotesWindow } from "./notes/NotesWindow";
 import { TerminalWindow } from "./terminal/TerminalWindow";
 import { DashboardWindow } from "./dashboard/DashboardWindow";
+import { TelegramWindow } from "./telegram/TelegramWindow";
 
 export function registerApps() {
   appRegistry.register({
@@ -53,6 +54,16 @@ export function registerApps() {
     component: DashboardWindow,
     width: 850,
     height: 600,
+    resizable: true,
+    multiple: false,
+  });
+
+  appRegistry.register({
+    id: "telegram",
+    title: "Telegram",
+    component: TelegramWindow,
+    width: 750,
+    height: 500,
     resizable: true,
     multiple: false,
   });

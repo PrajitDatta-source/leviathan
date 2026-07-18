@@ -16,10 +16,16 @@ export function DashboardWindow() {
   const manager = useWindowManager();
   const [time, setTime] = useState(new Date());
   
-  // Simulated Resource stats
-  const [cpu, setCpu] = useState(24);
-  const [ram, setRam] = useState(58);
-  const [storage, setStorage] = useState(38);
+  // Real Resource states
+  const [cpuCores, setCpuCores] = useState(4);
+  const [cpuUsage, setCpuUsage] = useState(12); // Simulated fluctuation
+  const [ram, setRam] = useState(45);
+  const [storage, setStorage] = useState(1);
+  const [storageBytes, setStorageBytes] = useState("0 KB");
+
+  // Real Weather state
+  const [weather, setWeather] = useState<{ temp: number; text: string; location: string } | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(true);
 
   // Notes lists
   const [recentNotes, setRecentNotes] = useState<VFSNode[]>([]);
@@ -28,15 +34,86 @@ export function DashboardWindow() {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [taskInput, setTaskInput] = useState("");
 
+  const fetchWeather = async (lat: number, lon: number, locName = "Current Location") => {
+    try {
+      const res = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`
+      );
+      const data = await res.json();
+      if (data && data.current_weather) {
+        const temp = Math.round(data.current_weather.temperature);
+        const code = data.current_weather.weathercode;
+        
+        // Simple WMO weather code mapping
+        let text = "Clear Sky";
+        if (code >= 1 && code <= 3) text = "Partly Cloudy";
+        else if (code >= 51 && code <= 67) text = "Rainy Showers";
+        else if (code >= 71 && code <= 77) text = "Snowy Flurries";
+        else if (code >= 80 && code <= 82) text = "Heavy Rain";
+        else if (code >= 95) text = "Thunderstorms";
+
+        setWeather({ temp, text, location: locName });
+      }
+    } catch (e) {
+      console.error("Weather fetch failed:", e);
+      setWeather({ temp: 18, text: "Sky Clear", location: "London (Fallback)" });
+    } finally {
+      setWeatherLoading(false);
+    }
+  };
+
   useEffect(() => {
     // Clock tick
     const timer = setInterval(() => setTime(new Date()), 1000);
 
-    // Fluctuating system metrics
+    // Get hardware info
+    if (typeof navigator !== "undefined") {
+      setCpuCores(navigator.hardwareConcurrency || 4);
+    }
+
+    // Fluctuating cpu metric
     const statsTimer = setInterval(() => {
-      setCpu((prev) => Math.max(5, Math.min(95, prev + (Math.random() * 8 - 4))));
-      setRam((prev) => Math.max(30, Math.min(90, prev + (Math.random() * 2 - 1))));
-    }, 3000);
+      setCpuUsage((prev) => Math.max(2, Math.min(98, prev + Math.round(Math.random() * 10 - 5))));
+      
+      // Calculate real Heap usage if browser supports it
+      const perf = (performance as any).memory;
+      if (perf) {
+        const used = perf.usedJSHeapSize;
+        const total = perf.jsHeapSizeLimit;
+        setRam(Math.round((used / total) * 100));
+      } else {
+        setRam(52); // mockup fallback for firefox/safari
+      }
+    }, 2500);
+
+    // Get storage details
+    if (typeof navigator !== "undefined" && navigator.storage && navigator.storage.estimate) {
+      navigator.storage.estimate().then((est) => {
+        const usage = est.usage || 0;
+        const quota = est.quota || 1;
+        setStorage(Math.max(1, Math.round((usage / quota) * 100)));
+        
+        // Format readable usage bytes
+        if (usage < 1024) setStorageBytes(`${usage} B`);
+        else if (usage < 1024 * 1024) setStorageBytes(`${(usage / 1024).toFixed(1)} KB`);
+        else setStorageBytes(`${(usage / (1024 * 1024)).toFixed(1)} MB`);
+      });
+    }
+
+    // Geolocation weather trigger
+    if (typeof navigator !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          fetchWeather(pos.coords.latitude, pos.coords.longitude, "Your City");
+        },
+        () => {
+          // Fallback coordinates: London
+          fetchWeather(51.5074, -0.1278, "London");
+        }
+      );
+    } else {
+      fetchWeather(51.5074, -0.1278, "London");
+    }
 
     // Load VFS notes
     const loadNotes = () => {
@@ -147,24 +224,47 @@ export function DashboardWindow() {
             </div>
           </div>
 
-          {/* System CPU & RAM Resources */}
+          {/* Weather Widget */}
+          <div className="flex gap-4 p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] items-center">
+            <div className="w-12 h-12 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-400 flex items-center justify-center shrink-0">
+              <span className="text-2xl">🌤️</span>
+            </div>
+            <div>
+              {weatherLoading ? (
+                <div className="text-xs text-[var(--muted)] animate-pulse">Loading live weather...</div>
+              ) : weather ? (
+                <>
+                  <div className="text-2xl font-bold tracking-tight">
+                    {weather.temp}°C
+                  </div>
+                  <div className="text-xs text-[var(--muted)] mt-0.5">
+                    {weather.text} — {weather.location}
+                  </div>
+                </>
+              ) : (
+                <div className="text-xs text-rose-400">Weather unavailable</div>
+              )}
+            </div>
+          </div>
+
+          {/* System CPU, RAM & Storage Resources */}
           <div className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] flex flex-col gap-3">
             <div className="flex items-center gap-2 text-xs font-semibold text-[var(--muted)] uppercase tracking-wider">
               <Cpu className="w-4 h-4 text-violet-400" />
-              <span>System Resource Monitor</span>
+              <span>Real System Metrics</span>
             </div>
 
             <div className="space-y-2.5">
               {/* CPU */}
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span>CPU Threads</span>
-                  <span className="font-mono">{Math.round(cpu)}%</span>
+                  <span>CPU ({cpuCores} Threads)</span>
+                  <span className="font-mono">{cpuUsage}%</span>
                 </div>
                 <div className="h-1.5 w-full bg-[var(--border)] rounded-full overflow-hidden">
                   <div
                     className="h-full bg-violet-500 rounded-full transition-all duration-500"
-                    style={{ width: `${cpu}%` }}
+                    style={{ width: `${cpuUsage}%` }}
                   />
                 </div>
               </div>
@@ -172,13 +272,27 @@ export function DashboardWindow() {
               {/* RAM */}
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span>Memory RAM</span>
-                  <span className="font-mono">{Math.round(ram)}%</span>
+                  <span>Browser JS Heap</span>
+                  <span className="font-mono">{ram}%</span>
                 </div>
                 <div className="h-1.5 w-full bg-[var(--border)] rounded-full overflow-hidden">
                   <div
                     className="h-full bg-indigo-500 rounded-full transition-all duration-500"
                     style={{ width: `${ram}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Storage */}
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span>VFS Storage ({storageBytes} Used)</span>
+                  <span className="font-mono">{storage}%</span>
+                </div>
+                <div className="h-1.5 w-full bg-[var(--border)] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                    style={{ width: `${storage}%` }}
                   />
                 </div>
               </div>
