@@ -7,13 +7,19 @@ import { Workspace } from "./Workspace";
 import { CommandBar } from "./CommandBar";
 
 import { CommandPalette } from "@/components/command/CommandPalette";
+
 import { bootstrap } from "@/core/bootstrap";
+
+import { Window } from "@/components/window/Window";
+import { SettingsWindow } from "@/apps/settings/SettingsWindow";
 
 export function AppShell() {
   const [open, setOpen] = useState(false);
 
+  // Temporary state while we build the real Window Manager
+  const [settingsOpen, setSettingsOpen] = useState(true);
+
   useEffect(() => {
-    // Initialize Leviathan core once when the app starts.
     bootstrap();
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -49,6 +55,15 @@ export function AppShell() {
         open={open}
         onOpenChange={setOpen}
       />
+
+      {settingsOpen && (
+        <Window
+          title="Settings"
+          onClose={() => setSettingsOpen(false)}
+        >
+          <SettingsWindow />
+        </Window>
+      )}
     </>
   );
 }
