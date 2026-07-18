@@ -222,7 +222,12 @@ export function Window({ window }: Props) {
                 height: size.height,
                 zIndex: window.zIndex,
             }}
-            onPointerDownCapture={() => manager.focus(window.id)}
+            onPointerDownCapture={(e) => {
+                if (e.target instanceof HTMLElement && e.target.closest('button')) {
+                    return;
+                }
+                manager.focus(window.id);
+            }}
         >
 
             <div
@@ -249,7 +254,7 @@ export function Window({ window }: Props) {
 
                 <div className="flex gap-2">
                     <button
-                        onClick={(e) => {
+                        onPointerDown={(e) => {
                             e.stopPropagation();
                             if (window.minimized) {
                                 manager.restore(window.id);
@@ -271,7 +276,7 @@ export function Window({ window }: Props) {
                     </button>
 
                     <button
-                        onClick={(e) => {
+                        onPointerDown={(e) => {
                             e.stopPropagation();
                             if (window.maximized) {
                                 manager.restore(window.id);
@@ -291,7 +296,7 @@ export function Window({ window }: Props) {
                     </button>
 
                     <button
-                        onClick={(e) => {
+                        onPointerDown={(e) => {
                             e.stopPropagation();
                             manager.close(window.id);
                         }}
