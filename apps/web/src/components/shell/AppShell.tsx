@@ -7,11 +7,15 @@ import { Workspace } from "./Workspace";
 import { CommandBar } from "./CommandBar";
 
 import { CommandPalette } from "@/components/command/CommandPalette";
+import { bootstrap } from "@/core/bootstrap";
 
 export function AppShell() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
+    // Initialize Leviathan core once when the app starts.
+    bootstrap();
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (
         (event.ctrlKey || event.metaKey) &&
