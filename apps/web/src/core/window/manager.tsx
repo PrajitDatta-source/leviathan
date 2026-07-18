@@ -150,8 +150,8 @@ export function WindowManagerProvider({
                     },
                     x: 0,
                     y: 0,
-                    width: globalThis.innerWidth,
-                    height: globalThis.innerHeight,
+                    width: typeof globalThis !== "undefined" ? globalThis.innerWidth : 1200,
+                    height: typeof globalThis !== "undefined" ? globalThis.innerHeight - 48 : 752,
                 };
             })
         );

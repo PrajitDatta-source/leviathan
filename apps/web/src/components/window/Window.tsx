@@ -58,37 +58,47 @@ export function Window({ window }: Props) {
     };
 
     const handlePointerMove = (e: PointerEvent) => {
+        const sw = typeof globalThis !== "undefined" ? globalThis.innerWidth : 1200;
+        const sh = typeof globalThis !== "undefined" ? globalThis.innerHeight : 800;
+        const taskbarHeight = 48;
+
         if (isDragging) {
             const newX = e.clientX - dragOffset.x;
             const newY = e.clientY - dragOffset.y;
-            manager.updatePositionAndSize(window.id, newX, newY, window.width, window.height);
+            
+            // Constrain newX so at least 60px of the window width remains visible inside screen boundaries
+            const boundedX = Math.max(60 - window.width, Math.min(sw - 60, newX));
+            // Constrain newY so the title bar (approx 40px) stays visible underneath the top viewport and above the taskbar
+            const boundedY = Math.max(0, Math.min(sh - taskbarHeight - 40, newY));
+
+            manager.updatePositionAndSize(window.id, boundedX, boundedY, window.width, window.height);
 
             // Snapping preview calculations
-            const edgeThreshold = 20;
-            const cornerThreshold = 60;
-            const { innerWidth: sw, innerHeight: sh } = globalThis;
-            const taskbarHeight = 48;
-
+            const edgeThreshold = 30;
+            const cornerThreshold = 80;
             let preview = null;
 
-            if (e.clientY < edgeThreshold) {
+            if (e.clientX < cornerThreshold && e.clientY < cornerThreshold) {
+                // Top-Left Quarter layout
+                preview = { x: 0, y: 0, width: sw / 2, height: (sh - taskbarHeight) / 2 };
+            } else if (e.clientX > sw - cornerThreshold && e.clientY < cornerThreshold) {
+                // Top-Right Quarter layout
+                preview = { x: sw / 2, y: 0, width: sw / 2, height: (sh - taskbarHeight) / 2 };
+            } else if (e.clientX < cornerThreshold && e.clientY > sh - taskbarHeight - cornerThreshold) {
+                // Bottom-Left Quarter layout
+                preview = { x: 0, y: (sh - taskbarHeight) / 2, width: sw / 2, height: (sh - taskbarHeight) / 2 };
+            } else if (e.clientX > sw - cornerThreshold && e.clientY > sh - taskbarHeight - cornerThreshold) {
+                // Bottom-Right Quarter layout
+                preview = { x: sw / 2, y: (sh - taskbarHeight) / 2, width: sw / 2, height: (sh - taskbarHeight) / 2 };
+            } else if (e.clientY < edgeThreshold) {
+                // Maximize fills available desktop space
                 preview = { x: 0, y: 0, width: sw, height: sh - taskbarHeight };
             } else if (e.clientX < edgeThreshold) {
-                if (e.clientY < cornerThreshold) {
-                    preview = { x: 0, y: 0, width: sw / 2, height: (sh - taskbarHeight) / 2 };
-                } else if (e.clientY > sh - taskbarHeight - cornerThreshold) {
-                    preview = { x: 0, y: (sh - taskbarHeight) / 2, width: sw / 2, height: (sh - taskbarHeight) / 2 };
-                } else {
-                    preview = { x: 0, y: 0, width: sw / 2, height: sh - taskbarHeight };
-                }
+                // Left Half split
+                preview = { x: 0, y: 0, width: sw / 2, height: sh - taskbarHeight };
             } else if (e.clientX > sw - edgeThreshold) {
-                if (e.clientY < cornerThreshold) {
-                    preview = { x: sw / 2, y: 0, width: sw / 2, height: (sh - taskbarHeight) / 2 };
-                } else if (e.clientY > sh - taskbarHeight - cornerThreshold) {
-                    preview = { x: sw / 2, y: (sh - taskbarHeight) / 2, width: sw / 2, height: (sh - taskbarHeight) / 2 };
-                } else {
-                    preview = { x: sw / 2, y: 0, width: sw / 2, height: sh - taskbarHeight };
-                }
+                // Right Half split
+                preview = { x: sw / 2, y: 0, width: sw / 2, height: sh - taskbarHeight };
             }
 
             manager.setSnapPreview(preview);
@@ -102,19 +112,27 @@ export function Window({ window }: Props) {
             let newY = window.y;
 
             if (resizeDirection.includes('e')) {
-                newWidth = Math.max(minSize, e.clientX - window.x);
+                // Limit width to avoid stretching past right screen edge
+                const maxAllowedWidth = sw - window.x;
+                newWidth = Math.max(minSize, Math.min(maxAllowedWidth, e.clientX - window.x));
             }
             if (resizeDirection.includes('w')) {
+                // Limit width so drag coordinate stays inside left screen edge
                 const delta = window.x - e.clientX;
-                newWidth = Math.max(minSize, window.width + delta);
+                const maxAllowedWidth = window.width + window.x;
+                newWidth = Math.max(minSize, Math.min(maxAllowedWidth, window.width + delta));
                 newX = window.x - (newWidth - window.width);
             }
             if (resizeDirection.includes('s')) {
-                newHeight = Math.max(minSize, e.clientY - window.y);
+                // Limit height to avoid stretching under the taskbar
+                const maxAllowedHeight = sh - taskbarHeight - window.y;
+                newHeight = Math.max(minSize, Math.min(maxAllowedHeight, e.clientY - window.y));
             }
             if (resizeDirection.includes('n')) {
+                // Limit height to avoid stretching above top screen edge
                 const delta = window.y - e.clientY;
-                newHeight = Math.max(minSize, window.height + delta);
+                const maxAllowedHeight = window.height + window.y;
+                newHeight = Math.max(minSize, Math.min(maxAllowedHeight, window.height + delta));
                 newY = window.y - (newHeight - window.height);
             }
 
@@ -124,31 +142,34 @@ export function Window({ window }: Props) {
 
     const handlePointerUp = (e: PointerEvent) => {
         if (isDragging) {
-            const edgeThreshold = 20;
-            const cornerThreshold = 60;
+            const edgeThreshold = 30;
+            const cornerThreshold = 80;
             const { innerWidth: sw, innerHeight: sh } = globalThis;
             const taskbarHeight = 48;
 
             let finalSnap = null;
 
-            if (e.clientY < edgeThreshold) {
+            if (e.clientX < cornerThreshold && e.clientY < cornerThreshold) {
+                // Top-Left Quarter
+                finalSnap = { x: 0, y: 0, width: sw / 2, height: (sh - taskbarHeight) / 2 };
+            } else if (e.clientX > sw - cornerThreshold && e.clientY < cornerThreshold) {
+                // Top-Right Quarter
+                finalSnap = { x: sw / 2, y: 0, width: sw / 2, height: (sh - taskbarHeight) / 2 };
+            } else if (e.clientX < cornerThreshold && e.clientY > sh - taskbarHeight - cornerThreshold) {
+                // Bottom-Left Quarter
+                finalSnap = { x: 0, y: (sh - taskbarHeight) / 2, width: sw / 2, height: (sh - taskbarHeight) / 2 };
+            } else if (e.clientX > sw - cornerThreshold && e.clientY > sh - taskbarHeight - cornerThreshold) {
+                // Bottom-Right Quarter
+                finalSnap = { x: sw / 2, y: (sh - taskbarHeight) / 2, width: sw / 2, height: (sh - taskbarHeight) / 2 };
+            } else if (e.clientY < edgeThreshold) {
+                // Maximize
                 finalSnap = { x: 0, y: 0, width: sw, height: sh - taskbarHeight };
             } else if (e.clientX < edgeThreshold) {
-                if (e.clientY < cornerThreshold) {
-                    finalSnap = { x: 0, y: 0, width: sw / 2, height: (sh - taskbarHeight) / 2 };
-                } else if (e.clientY > sh - taskbarHeight - cornerThreshold) {
-                    finalSnap = { x: 0, y: (sh - taskbarHeight) / 2, width: sw / 2, height: (sh - taskbarHeight) / 2 };
-                } else {
-                    finalSnap = { x: 0, y: 0, width: sw / 2, height: sh - taskbarHeight };
-                }
+                // Left Half
+                finalSnap = { x: 0, y: 0, width: sw / 2, height: sh - taskbarHeight };
             } else if (e.clientX > sw - edgeThreshold) {
-                if (e.clientY < cornerThreshold) {
-                    finalSnap = { x: sw / 2, y: 0, width: sw / 2, height: (sh - taskbarHeight) / 2 };
-                } else if (e.clientY > sh - taskbarHeight - cornerThreshold) {
-                    finalSnap = { x: sw / 2, y: (sh - taskbarHeight) / 2, width: sw / 2, height: (sh - taskbarHeight) / 2 };
-                } else {
-                    finalSnap = { x: sw / 2, y: 0, width: sw / 2, height: sh - taskbarHeight };
-                }
+                // Right Half
+                finalSnap = { x: sw / 2, y: 0, width: sw / 2, height: sh - taskbarHeight };
             }
 
             if (finalSnap) {
@@ -298,36 +319,38 @@ export function Window({ window }: Props) {
             {/* Resize handles */}
             {!window.maximized && !isMobile && (
                 <>
+                    {/* Corners */}
                     <div
-                        className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
+                        className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-50"
                         onPointerDown={(e) => handleResizePointerDown(e, 'se')}
                     />
                     <div
-                        className="absolute bottom-0 left-0 w-4 h-4 cursor-sw-resize"
+                        className="absolute bottom-0 left-0 w-4 h-4 cursor-sw-resize z-50"
                         onPointerDown={(e) => handleResizePointerDown(e, 'sw')}
                     />
                     <div
-                        className="absolute top-0 right-0 w-4 h-4 cursor-ne-resize"
+                        className="absolute top-0 right-0 w-4 h-4 cursor-ne-resize z-50"
                         onPointerDown={(e) => handleResizePointerDown(e, 'ne')}
                     />
                     <div
-                        className="absolute top-0 left-0 w-4 h-4 cursor-nw-resize"
+                        className="absolute top-0 left-0 w-4 h-4 cursor-nw-resize z-50"
                         onPointerDown={(e) => handleResizePointerDown(e, 'nw')}
                     />
+                    {/* Edges */}
                     <div
-                        className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-2 cursor-n-resize"
+                        className="absolute top-0 left-2 right-2 h-1.5 cursor-n-resize z-50"
                         onPointerDown={(e) => handleResizePointerDown(e, 'n')}
                     />
                     <div
-                        className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-2 cursor-s-resize"
+                        className="absolute bottom-0 left-2 right-2 h-1.5 cursor-s-resize z-50"
                         onPointerDown={(e) => handleResizePointerDown(e, 's')}
                     />
                     <div
-                        className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-8 cursor-w-resize"
+                        className="absolute left-0 top-2 bottom-2 w-1.5 cursor-w-resize z-50"
                         onPointerDown={(e) => handleResizePointerDown(e, 'w')}
                     />
                     <div
-                        className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-8 cursor-e-resize"
+                        className="absolute right-0 top-2 bottom-2 w-1.5 cursor-e-resize z-50"
                         onPointerDown={(e) => handleResizePointerDown(e, 'e')}
                     />
                 </>
