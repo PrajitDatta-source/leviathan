@@ -8,6 +8,11 @@ export function Desktop() {
 
     const manager = useWindowManager();
     const preview = manager.snapPreview;
+    
+    // Filter windows to render only the ones belonging to the current workspace
+    const workspaceWindows = manager.windows.filter(
+        w => w.workspace === manager.activeWorkspace
+    );
 
     return (
         <>
@@ -23,7 +28,7 @@ export function Desktop() {
                 />
             )}
 
-            {manager.windows.map(window => (
+            {workspaceWindows.map(window => (
 
                 <Window
                     key={window.id}

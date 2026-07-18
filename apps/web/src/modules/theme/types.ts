@@ -1,4 +1,4 @@
-export type Theme = "light" | "dark" | "oled" | "glass" | "custom";
+export type Theme = "light" | "dark" | "oled" | "glass" | "nord" | "catppuccin" | "tokyonight" | "dracula" | "gruvbox" | "custom";
 
 export interface ThemeConfig {
   name: Theme;

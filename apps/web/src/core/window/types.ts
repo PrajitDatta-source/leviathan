@@ -15,6 +15,7 @@ export interface WindowInstance {
   focused: boolean;
   minimized: boolean;
   maximized: boolean;
+  workspace: number;
 
   // Store previous state for restore
   previousState?: {
@@ -46,8 +47,11 @@ export interface SnapPreview {
 
 export interface WindowManagerContextValue {
   windows: WindowInstance[];
+  activeWorkspace: number;
   snapPreview: SnapPreview | null;
   setSnapPreview(preview: SnapPreview | null): void;
+  setActiveWorkspace(ws: number): void;
+  moveWindowToWorkspace(id: string, ws: number): void;
 
   open(window: OpenWindowOptions): void;
   close(id: string): void;

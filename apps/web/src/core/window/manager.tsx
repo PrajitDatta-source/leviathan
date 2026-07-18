@@ -8,7 +8,7 @@ import {
 } from "react";
 
 import { WindowManagerContext } from "./context";
-import { WindowInstance, SnapPreview } from "./types";
+import { WindowInstance, SnapPreview, OpenWindowOptions } from "./types";
 
 type ProviderProps = {
     children: ReactNode;
@@ -24,33 +24,52 @@ export function WindowManagerProvider({
     const [snapPreview, setSnapPreview] =
         useState<SnapPreview | null>(null);
 
+    const [activeWorkspace, setActiveWorkspace] = useState(1);
+
+    const moveWindowToWorkspace = useCallback((id: string, ws: number) => {
+        setWindows(current =>
+            current.map(window =>
+                window.id === id ? { ...window, workspace: ws } : window
+            )
+        );
+    }, []);
+
     const open = useCallback(
-        (
-            window: Omit<
-                WindowInstance,
-                "zIndex" | "focused" | "minimized" | "maximized"
-            >
-        ) => {
-
+        (window: OpenWindowOptions) => {
             setWindows((current) => {
-
-                const existing =
-                    current.find(
-                        w => w.id === window.id
-                    );
+                const existing = current.find(w => w.id === window.id);
 
                 if (existing) {
-
                     return current.map(w => ({
                         ...w,
                         focused: w.id === window.id,
                         minimized: w.id === window.id ? false : w.minimized,
-                        zIndex:
-                            w.id === window.id
-                                ? current.length + 1
-                                : w.zIndex,
+                        zIndex: w.id === window.id ? current.length + 1 : w.zIndex,
+                        workspace: w.id === window.id ? activeWorkspace : w.workspace,
                     }));
+                }
 
+                const screenWidth = typeof globalThis !== "undefined" ? globalThis.innerWidth : 1200;
+                const screenHeight = typeof globalThis !== "undefined" ? globalThis.innerHeight : 800;
+                const defaultWidth = window.width || 700;
+                const defaultHeight = window.height || 500;
+
+                // Find last window in the active workspace to cascade
+                const workspaceWindows = current.filter(w => w.workspace === activeWorkspace);
+                const lastWindow = workspaceWindows[workspaceWindows.length - 1];
+
+                let finalX = window.x;
+                let finalY = window.y;
+
+                if (finalX === undefined || finalY === undefined) {
+                    finalX = lastWindow ? lastWindow.x + 30 : (screenWidth - defaultWidth) / 2;
+                    finalY = lastWindow ? lastWindow.y + 30 : (screenHeight - defaultHeight - 48) / 2;
+
+                    // Keep cascade within boundary
+                    if (finalX + defaultWidth > screenWidth || finalY + defaultHeight > screenHeight - 48) {
+                        finalX = 60;
+                        finalY = 60;
+                    }
                 }
 
                 return [
@@ -58,19 +77,24 @@ export function WindowManagerProvider({
                         ...w,
                         focused: false,
                     })),
-
                     {
-                        ...window,
+                        id: window.id,
+                        title: window.title,
+                        content: window.content,
+                        x: finalX,
+                        y: finalY,
+                        width: defaultWidth,
+                        height: defaultHeight,
                         focused: true,
                         minimized: false,
                         maximized: false,
                         zIndex: current.length + 1,
+                        workspace: activeWorkspace,
                     },
                 ];
             });
-
         },
-        []
+        [activeWorkspace]
     );
 
     const close = useCallback((id: string) => {
@@ -167,8 +191,11 @@ export function WindowManagerProvider({
     const value = useMemo(
         () => ({
             windows,
+            activeWorkspace,
             snapPreview,
             setSnapPreview,
+            setActiveWorkspace,
+            moveWindowToWorkspace,
             open,
             close,
             focus,
@@ -179,7 +206,10 @@ export function WindowManagerProvider({
         }),
         [
             windows,
+            activeWorkspace,
             snapPreview,
+            setActiveWorkspace,
+            moveWindowToWorkspace,
             open,
             close,
             focus,

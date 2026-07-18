@@ -95,6 +95,11 @@ export function SettingsWindow() {
                 { id: "light", label: "Light Mode", desc: "Clean & high contrast" },
                 { id: "oled", label: "OLED Black", desc: "Pure deep blacks" },
                 { id: "glass", label: "Glassmorphism", desc: "Translucent frosted sheets" },
+                { id: "nord", label: "Nord", desc: "Cool arctic frost colors" },
+                { id: "catppuccin", label: "Catppuccin Mocha", desc: "Soothing pastel tones" },
+                { id: "tokyonight", label: "Tokyo Night", desc: "Vibrant neon cyberpunk" },
+                { id: "dracula", label: "Dracula", desc: "Classic dark vampire palette" },
+                { id: "gruvbox", label: "Gruvbox Dark", desc: "Retro warm sand & rust" },
               ] as { id: Theme; label: string; desc: string }[]).map((t) => (
                 <button
                   key={t.id}

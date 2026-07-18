@@ -1,0 +1,254 @@
+"use client";
+
+import React, { useState, useEffect, useRef } from "react";
+import { vfs } from "@/modules/filesystem/vfs";
+import { useTheme } from "@/modules/theme/ThemeContext";
+
+interface LogLine {
+  text: string;
+  type: "input" | "output" | "error" | "success";
+}
+
+export function TerminalWindow() {
+  const { theme, setTheme } = useTheme();
+  const [currentDirId, setCurrentDirId] = useState<string | null>(null);
+  const [history, setHistory] = useState<LogLine[]>([
+    { text: "Leviathan Shell v1.0.0", type: "success" },
+    { text: "Type 'help' to see available commands.", type: "output" },
+  ]);
+  const [input, setInput] = useState("");
+  const [cmdHistory, setCmdHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const terminalEndRef = useRef<HTMLDivElement>(null);
+
+  // Initialize directory node pointer to "Home" if found
+  useEffect(() => {
+    const rootFolders = vfs.getChildren(null);
+    const homeFolder = rootFolders.find((n) => n.name === "Home");
+    if (homeFolder) {
+      setCurrentDirId(homeFolder.id);
+    }
+  }, []);
+
+  useEffect(() => {
+    terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [history]);
+
+  const getPromptPath = () => {
+    if (!currentDirId) return "/";
+    const pathNodes = vfs.getPath(currentDirId);
+    return "/" + pathNodes.map((n) => n.name).join("/");
+  };
+
+  const handleCommand = (e: React.FormEvent) => {
+    e.preventDefault();
+    const command = input.trim();
+    if (!command) return;
+
+    setHistory((prev) => [...prev, { text: `${getPromptPath()} $ ${command}`, type: "input" }]);
+    setCmdHistory((prev) => [...prev, command]);
+    setHistoryIndex(-1);
+    setInput("");
+
+    const parts = command.split(/\s+/);
+    const cmd = parts[0].toLowerCase();
+    const args = parts.slice(1);
+
+    switch (cmd) {
+      case "help":
+        setHistory((prev) => [
+          ...prev,
+          { text: "Available commands:", type: "success" },
+          { text: "  ls            - List contents of current directory", type: "output" },
+          { text: "  cd [dir]      - Change directory (e.g. 'cd Documents', 'cd ..')", type: "output" },
+          { text: "  mkdir [name]  - Create new directory", type: "output" },
+          { text: "  rm [name]     - Delete file or directory", type: "output" },
+          { text: "  cat [file]    - Display file contents", type: "output" },
+          { text: "  theme [name]  - Set theme (light, dark, oled, glass)", type: "output" },
+          { text: "  weather       - Fetch weather information", type: "output" },
+          { text: "  neofetch      - Display system details", type: "output" },
+          { text: "  clear         - Clear terminal screen", type: "output" },
+        ]);
+        break;
+
+      case "clear":
+        setHistory([]);
+        break;
+
+      case "ls":
+        const nodes = vfs.getChildren(currentDirId);
+        if (nodes.length === 0) {
+          setHistory((prev) => [...prev, { text: "(empty directory)", type: "output" }]);
+        } else {
+          nodes.forEach((n) => {
+            const prefix = n.type === "folder" ? "📁 " : "📄 ";
+            setHistory((prev) => [...prev, { text: `${prefix}${n.name}`, type: "output" }]);
+          });
+        }
+        break;
+
+      case "cd":
+        const target = args.join(" ");
+        if (!target) {
+          // Go to Root folder Home
+          const rootFolders = vfs.getChildren(null);
+          const home = rootFolders.find((n) => n.name === "Home");
+          if (home) setCurrentDirId(home.id);
+        } else if (target === "..") {
+          if (currentDirId) {
+            const node = vfs.getNode(currentDirId);
+            if (node) setCurrentDirId(node.parentId);
+          }
+        } else {
+          const children = vfs.getChildren(currentDirId);
+          const folder = children.find((n) => n.name === target && n.type === "folder");
+          if (folder) {
+            setCurrentDirId(folder.id);
+          } else {
+            setHistory((prev) => [...prev, { text: `cd: no such directory: ${target}`, type: "error" }]);
+          }
+        }
+        break;
+
+      case "mkdir":
+        const folderName = args.join(" ");
+        if (!folderName) {
+          setHistory((prev) => [...prev, { text: "mkdir: missing directory name", type: "error" }]);
+        } else {
+          vfs.createFolder(folderName, currentDirId);
+          setHistory((prev) => [...prev, { text: `Directory '${folderName}' created successfully.`, type: "success" }]);
+        }
+        break;
+
+      case "rm":
+        const removeName = args.join(" ");
+        if (!removeName) {
+          setHistory((prev) => [...prev, { text: "rm: missing node name", type: "error" }]);
+        } else {
+          const children = vfs.getChildren(currentDirId);
+          const node = children.find((n) => n.name === removeName);
+          if (node) {
+            vfs.deleteNode(node.id);
+            setHistory((prev) => [...prev, { text: `'${removeName}' removed successfully.`, type: "success" }]);
+          } else {
+            setHistory((prev) => [...prev, { text: `rm: no such file or directory: ${removeName}`, type: "error" }]);
+          }
+        }
+        break;
+
+      case "cat":
+        const fileName = args.join(" ");
+        if (!fileName) {
+          setHistory((prev) => [...prev, { text: "cat: missing file name", type: "error" }]);
+        } else {
+          const children = vfs.getChildren(currentDirId);
+          const file = children.find((n) => n.name === fileName && n.type === "file");
+          if (file) {
+            setHistory((prev) => [...prev, { text: file.content || "(empty file)", type: "output" }]);
+          } else {
+            setHistory((prev) => [...prev, { text: `cat: no such file: ${fileName}`, type: "error" }]);
+          }
+        }
+        break;
+
+      case "theme":
+        const targetTheme = args[0]?.toLowerCase();
+        if (["light", "dark", "oled", "glass"].includes(targetTheme)) {
+          setTheme(targetTheme as any);
+          setHistory((prev) => [...prev, { text: `Theme switched to '${targetTheme}'`, type: "success" }]);
+        } else {
+          setHistory((prev) => [
+            ...prev,
+            { text: `theme: theme '${targetTheme || ""}' not found. Try: light, dark, oled, glass`, type: "error" },
+          ]);
+        }
+        break;
+
+      case "weather":
+        setHistory((prev) => [
+          ...prev,
+          { text: "🌤️  Weather Forecast:", type: "success" },
+          { text: "   Location: Cyber City", type: "output" },
+          { text: "   Current Temp: 22°C (Clear sky)", type: "output" },
+          { text: "   Humidity: 45% | Wind: 8km/h", type: "output" },
+        ]);
+        break;
+
+      case "neofetch":
+        setHistory((prev) => [
+          ...prev,
+          {
+            text: `
+    /\\_/\\      user@leviathan
+   ( o.o )     --------------
+    > ^ <      OS: Leviathan Web OS v1.0.0
+   /  |  \\     Kernel: React 19 / Next.js 16
+  ( |_|_| )    Shell: Browser Terminal
+               Theme: ${theme.toUpperCase()}
+               Database: VFS (localStorage)
+`,
+            type: "success",
+          },
+        ]);
+        break;
+
+      default:
+        setHistory((prev) => [
+          ...prev,
+          { text: `bash: command not found: ${cmd}`, type: "error" },
+        ]);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (cmdHistory.length === 0) return;
+      const nextIndex = historyIndex === -1 ? cmdHistory.length - 1 : Math.max(0, historyIndex - 1);
+      setHistoryIndex(nextIndex);
+      setInput(cmdHistory[nextIndex]);
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (historyIndex === -1) return;
+      const nextIndex = historyIndex + 1;
+      if (nextIndex >= cmdHistory.length) {
+        setHistoryIndex(-1);
+        setInput("");
+      } else {
+        setHistoryIndex(nextIndex);
+        setInput(cmdHistory[nextIndex]);
+      }
+    }
+  };
+
+  return (
+    <div className="flex h-full flex-col bg-black p-4 font-mono text-xs select-text overflow-hidden">
+      <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-thin scrollbar-thumb-zinc-800">
+        {history.map((line, idx) => {
+          let color = "text-zinc-200";
+          if (line.type === "input") color = "text-violet-400 font-semibold";
+          if (line.type === "error") color = "text-rose-400";
+          if (line.type === "success") color = "text-emerald-400";
+
+          return (
+            <div key={idx} className={`${color} whitespace-pre-wrap`}>
+              {line.text}
+            </div>
+          );
+        })}
+        <div ref={terminalEndRef} />
+      </div>
+
+      <form onSubmit={handleCommand} className="flex gap-2 border-t border-zinc-900 pt-3 mt-2 shrink-0">
+        <span className="text-violet-400 font-semibold shrink-0">{getPromptPath()} $</span>
+        <input
+          autoFocus
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="flex-1 bg-transparent text-zinc-100 outline-none select-text"
+        />
+      </form>
+    </div>
+  );
+}

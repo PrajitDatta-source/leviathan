@@ -6,6 +6,13 @@ import { useState, useMemo } from "react";
 import { useWindowManager } from "@/core/window/hooks";
 import { useTheme } from "@/modules/theme/ThemeContext";
 
+import { appRegistry } from "@/core/app";
+import { vfs } from "@/modules/filesystem/vfs";
+import { createElement } from "react";
+import { NotesWindow } from "@/apps/notes/NotesWindow";
+import { ExplorerWindow } from "@/apps/explorer/ExplorerWindow";
+import { SettingsWindow } from "@/apps/settings/SettingsWindow";
+
 // Safe fuzzy search implementation
 function fuzzyMatch(text: string, query: string): boolean {
   if (!query) return true;
@@ -82,33 +89,124 @@ export function CommandPalette({
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  const allCommands = commandRegistry.getAll();
+  const allSearchItems = useMemo(() => {
+    const list: any[] = [];
+
+    // 1. Built-in Commands
+    commandRegistry.getAll().forEach(cmd => {
+      list.push({
+        id: `cmd_${cmd.id}`,
+        title: cmd.title,
+        description: cmd.description,
+        category: "System Commands",
+        keywords: cmd.keywords,
+        run: (ctx: any) => cmd.run(ctx),
+      });
+    });
+
+    // 2. Applications
+    appRegistry.getAll().forEach(app => {
+      list.push({
+        id: `app_${app.id}`,
+        title: app.title,
+        description: `Launch ${app.title} Application`,
+        category: "Applications",
+        keywords: [app.id, app.title, "open", "launch"],
+        run: (ctx: any) => {
+          ctx.windowManager.open({
+            id: app.id,
+            title: app.title,
+            content: createElement(app.component),
+            width: app.width || 700,
+            height: app.height || 500,
+          });
+        },
+      });
+    });
+
+    // 3. VFS Files & Folders
+    vfs.getAllNodes().forEach(node => {
+      list.push({
+        id: `vfs_${node.id}`,
+        title: node.name,
+        description: `${node.type === "folder" ? "Directory folder" : "Markdown text file"} in virtual workspace`,
+        category: "Files & Folders",
+        keywords: [node.name, node.type],
+        run: (ctx: any) => {
+          if (node.name.endsWith(".md")) {
+            ctx.windowManager.open({
+              id: "notes",
+              title: "Notes",
+              content: createElement(NotesWindow),
+              width: 800,
+              height: 550,
+            });
+          } else {
+            ctx.windowManager.open({
+              id: "explorer",
+              title: "File Explorer",
+              content: createElement(ExplorerWindow),
+              width: 800,
+              height: 550,
+            });
+          }
+        },
+      });
+    });
+
+    // 4. Settings Shortcuts
+    const settingsPanels = [
+      { tab: "appearance", title: "Settings: Appearance", desc: "Choose system color themes & highlights" },
+      { tab: "wallpaper", title: "Settings: Wallpaper", desc: "Select custom background mesh-gradients" },
+      { tab: "system", title: "Settings: System Info", desc: "View environment configurations & kernels" },
+    ];
+    settingsPanels.forEach(panel => {
+      list.push({
+        id: `settings_${panel.tab}`,
+        title: panel.title,
+        description: panel.desc,
+        category: "Settings Shortcuts",
+        keywords: ["settings", panel.tab, "themes", "color", "wallpaper", "background"],
+        run: (ctx: any) => {
+          ctx.windowManager.open({
+            id: "settings",
+            title: "Settings",
+            content: createElement(SettingsWindow),
+            width: 700,
+            height: 500,
+          });
+        },
+      });
+    });
+
+    return list;
+  }, []);
 
   const filteredCommands = useMemo(() => {
-    if (!query) return allCommands;
+    if (!query) return allSearchItems.slice(0, 10);
 
-    const scored = allCommands.map(command => {
-      const titleScore = calculateScore(command.title, query);
-      const descriptionScore = command.description 
-        ? calculateScore(command.description, query)
+    const scored = allSearchItems.map(item => {
+      const titleScore = calculateScore(item.title, query);
+      const descriptionScore = item.description 
+        ? calculateScore(item.description, query)
         : 0;
-      const categoryScore = command.category
-        ? calculateScore(command.category, query)
+      const categoryScore = item.category
+        ? calculateScore(item.category, query)
         : 0;
-      const keywordsScore = command.keywords
-        ? Math.max(...command.keywords.map(k => calculateScore(k, query)))
+      const keywordsScore = item.keywords
+        ? Math.max(...item.keywords.map((k: string) => calculateScore(k, query)))
         : 0;
 
       const maxScore = Math.max(titleScore, descriptionScore, categoryScore, keywordsScore);
       
-      return { command, score: maxScore };
+      return { item, score: maxScore };
     });
 
     return scored
       .filter(item => item.score > 0)
       .sort((a, b) => b.score - a.score)
-      .map(item => item.command);
-  }, [query, allCommands]);
+      .map(item => item.item);
+  }, [query, allSearchItems]);
 
   // Real-time calculation parsing
   const mathResult = useMemo(() => evaluateMath(query), [query]);
