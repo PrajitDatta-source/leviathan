@@ -269,7 +269,7 @@ export function DesktopIcons() {
   };
 
   return (
-    <div className="absolute inset-0 pointer-events-auto select-none z-10 overflow-hidden">
+    <div className="absolute inset-0 pointer-events-none select-none z-10 overflow-hidden">
       {/* Drag Selection Box overlay */}
       {selectionBox && (
         <div
@@ -293,7 +293,7 @@ export function DesktopIcons() {
             key={icon.id}
             onPointerDown={(e) => handlePointerDown(icon.id, e)}
             onDoubleClick={() => handleDoubleClick(icon.appId)}
-            className={`desktop-icon-item absolute w-20 flex flex-col items-center gap-1.5 p-1.5 rounded-xl cursor-default select-none border border-transparent ${
+            className={`desktop-icon-item absolute w-20 flex flex-col items-center gap-1.5 p-1.5 rounded-xl cursor-default select-none border border-transparent pointer-events-auto ${
               isDragging
                 ? "bg-white/10 opacity-70 scale-95 border-white/5"
                 : isSelected
