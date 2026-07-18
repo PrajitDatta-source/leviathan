@@ -17,11 +17,11 @@ interface DesktopIcon {
 export function DesktopIcons() {
   const manager = useWindowManager();
   const [icons, setIcons] = useState<DesktopIcon[]>([
-    { id: "files", label: "Files", appId: "explorer", icon: Folder, x: 24, y: 24 },
-    { id: "notes", label: "Notes", appId: "notes", icon: FileText, x: 24, y: 124 },
-    { id: "terminal", label: "Terminal", appId: "terminal", icon: Terminal, x: 24, y: 224 },
-    { id: "settings", label: "Settings", appId: "settings", icon: Settings, x: 24, y: 324 },
-    { id: "trash", label: "Trash", appId: "trash", icon: Trash2, x: 24, y: 424 },
+    { id: "files", label: "Files", appId: "explorer", icon: Folder, x: 20, y: 20 },
+    { id: "notes", label: "Notes", appId: "notes", icon: FileText, x: 20, y: 116 },
+    { id: "terminal", label: "Terminal", appId: "terminal", icon: Terminal, x: 20, y: 212 },
+    { id: "settings", label: "Settings", appId: "settings", icon: Settings, x: 20, y: 308 },
+    { id: "trash", label: "Trash", appId: "trash", icon: Trash2, x: 20, y: 404 },
   ]);
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -61,6 +61,52 @@ export function DesktopIcons() {
   };
 
   const handlePointerUp = () => {
+    if (activeDragId) {
+      setIcons((prev) => {
+        const dragged = prev.find((icon) => icon.id === activeDragId);
+        if (!dragged) return prev;
+
+        const cellWidth = 96;
+        const cellHeight = 96;
+        const margin = 20;
+
+        const col = Math.round((dragged.x - margin) / cellWidth);
+        const row = Math.round((dragged.y - margin) / cellHeight);
+
+        const maxCols = Math.floor((globalThis.innerWidth - margin * 2) / cellWidth) - 1;
+        const maxRows = Math.floor((globalThis.innerHeight - 48 - margin * 2) / cellHeight) - 1;
+
+        const finalCol = Math.max(0, Math.min(maxCols, col));
+        const finalRow = Math.max(0, Math.min(maxRows, row));
+
+        let targetX = margin + finalCol * cellWidth;
+        let targetY = margin + finalRow * cellHeight;
+
+        // Check if coordinate is occupied
+        const isOccupied = (x: number, y: number) =>
+          prev.some((icon) => icon.id !== activeDragId && icon.x === x && icon.y === y);
+
+        if (isOccupied(targetX, targetY)) {
+          // Resolve overlap by finding nearest vacant cell in grid
+          let found = false;
+          for (let c = 0; c <= maxCols && !found; c++) {
+            for (let r = 0; r <= maxRows && !found; r++) {
+              const testX = margin + c * cellWidth;
+              const testY = margin + r * cellHeight;
+              if (!isOccupied(testX, testY)) {
+                targetX = testX;
+                targetY = testY;
+                found = true;
+              }
+            }
+          }
+        }
+
+        return prev.map((icon) =>
+          icon.id === activeDragId ? { ...icon, x: targetX, y: targetY } : icon
+        );
+      });
+    }
     setActiveDragId(null);
   };
 

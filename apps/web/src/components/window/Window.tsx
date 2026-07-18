@@ -186,12 +186,13 @@ export function Window({ window }: Props) {
                 overflow-hidden
                 rounded-xl
                 border
-                border-[var(--border)]
-                bg-[var(--surface)]
                 text-[var(--text)]
                 shadow-2xl
                 select-none
+                animate-window-open
+                ${window.focused ? 'border-violet-500/70 shadow-xl shadow-violet-500/5 z-40' : 'border-[var(--border)] bg-[var(--surface)]'}
                 ${window.minimized ? 'hidden' : ''}
+                ${(isDragging || isResizing) ? '' : 'transition-[width,height,left,top] duration-200 ease-out'}
             `}
             style={{
                 left: position.x,
@@ -199,13 +200,13 @@ export function Window({ window }: Props) {
                 width: size.width,
                 height: size.height,
                 zIndex: window.zIndex,
-                cursor: isDragging ? 'grabbing' : 'default',
             }}
-            onPointerDown={handlePointerDown}
+            onPointerDownCapture={() => manager.focus(window.id)}
         >
 
             <div
-                className="
+                onPointerDown={handlePointerDown}
+                className={`
                     flex
                     items-center
                     justify-between
@@ -214,9 +215,11 @@ export function Window({ window }: Props) {
                     bg-[var(--surface)]
                     brightness-110
                     px-4
-                    py-3
+                    py-2.5
                     cursor-grab
-                "
+                    select-none
+                    ${isDragging ? 'cursor-grabbing' : ''}
+                `}
             >
 
                 <span className="font-medium">

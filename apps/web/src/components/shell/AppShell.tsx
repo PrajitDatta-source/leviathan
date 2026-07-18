@@ -89,8 +89,8 @@ function KeyboardManager({ setOpenPalette }: { setOpenPalette: (open: boolean) =
         }
       }
 
-      // Super + Arrow keys -> Focus adjacent window
-      if (!e.shiftKey && (key === "arrowleft" || key === "arrowright")) {
+      // Super + Arrow keys -> Focus adjacent / vertical window
+      if (!e.shiftKey && ["arrowleft", "arrowright", "arrowup", "arrowdown"].includes(key)) {
         e.preventDefault();
         const activeWindows = manager.windows.filter(
           (w) => w.workspace === manager.activeWorkspace && !w.minimized
@@ -98,7 +98,7 @@ function KeyboardManager({ setOpenPalette }: { setOpenPalette: (open: boolean) =
         if (activeWindows.length > 1) {
           const currentIndex = activeWindows.findIndex((w) => w.focused);
           let nextIndex = currentIndex;
-          if (key === "arrowleft") {
+          if (key === "arrowleft" || key === "arrowup") {
             nextIndex = currentIndex > 0 ? currentIndex - 1 : activeWindows.length - 1;
           } else {
             nextIndex = currentIndex < activeWindows.length - 1 ? currentIndex + 1 : 0;

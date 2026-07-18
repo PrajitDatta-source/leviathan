@@ -161,7 +161,7 @@ export function Taskbar() {
       </div>
 
       {/* Right Tray: System Tray Status & Clock */}
-      <div className="flex items-center justify-end gap-4.5 w-1/4 text-xs">
+      <div className="flex items-center justify-end gap-4 w-1/4 text-xs">
         
         {/* Toggle Autohide Trigger */}
         <button
