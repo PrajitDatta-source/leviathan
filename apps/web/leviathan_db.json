@@ -52,7 +52,7 @@
     }
   ],
   "preferences": {
-    "theme": "dark",
+    "theme": "glass",
     "wallpaper": "linear-gradient(135deg, #09090b 0%, #020205 100%)",
     "notifications": true,
     "autoSync": true

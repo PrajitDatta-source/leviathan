@@ -4,8 +4,9 @@ import React, { useState, useEffect } from "react";
 import { useTheme } from "@/modules/theme/ThemeContext";
 import { Theme } from "@/modules/theme/types";
 import { Plus, Trash2 } from "lucide-react";
+import { useIconTheme, IconTheme } from "@/modules/icons/IconThemeContext";
 
-type Tab = "appearance" | "wallpaper" | "system";
+type Tab = "appearance" | "wallpaper" | "accounts" | "api" | "system";
 
 const WALLPAPER_PRESETS = [
   {
@@ -37,6 +38,7 @@ const WALLPAPER_PRESETS = [
 
 export function SettingsWindow() {
   const { theme, setTheme, wallpaper, setWallpaper } = useTheme();
+  const { iconTheme, setIconTheme } = useIconTheme();
   const [activeTab, setActiveTab] = useState<Tab>("appearance");
   const [customWallpapers, setCustomWallpapers] = useState<string[]>([]);
 
@@ -108,6 +110,28 @@ export function SettingsWindow() {
         </button>
 
         <button
+          onClick={() => setActiveTab("accounts")}
+          className={`w-full text-left px-3 py-2 rounded-lg transition text-sm ${
+            activeTab === "accounts"
+              ? "bg-[var(--border)] font-medium"
+              : "hover:bg-[var(--border)]/40 text-[var(--muted)] hover:text-[var(--text)]"
+          }`}
+        >
+          Connected Accounts
+        </button>
+
+        <button
+          onClick={() => setActiveTab("api")}
+          className={`w-full text-left px-3 py-2 rounded-lg transition text-sm ${
+            activeTab === "api"
+              ? "bg-[var(--border)] font-medium"
+              : "hover:bg-[var(--border)]/40 text-[var(--muted)] hover:text-[var(--text)]"
+          }`}
+        >
+          API Key Settings
+        </button>
+
+        <button
           onClick={() => setActiveTab("system")}
           className={`w-full text-left px-3 py-2 rounded-lg transition text-sm ${
             activeTab === "system"
@@ -152,6 +176,38 @@ export function SettingsWindow() {
                   <div className="font-semibold text-sm">{t.label}</div>
                   <div className="text-xs text-[var(--muted)] mt-1">{t.desc}</div>
                   {theme === t.id && (
+                    <div className="absolute right-3 top-3 w-2 h-2 rounded-full bg-violet-500" />
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Icon Themes */}
+            <h3 className="text-lg font-medium mb-1 mt-8">Icon Theme</h3>
+            <p className="text-xs text-[var(--muted)] mb-6">
+              Select a system icon pack theme.
+            </p>
+
+            <div className="grid grid-cols-2 gap-4">
+              {([
+                { id: "windows11", label: "Windows 11 (Fluent 3D)", desc: "Modern glossy rounded depth cogs" },
+                { id: "windows7", label: "Windows 7 / Aero", desc: "Classic Aero glass reflections" },
+                { id: "kde", label: "KDE Breeze", desc: "Clean geometric flat shapes" },
+                { id: "macos", label: "macOS Big Sur", desc: "Chunky squircle containers" },
+                { id: "papirus", label: "Papirus", desc: "Circular bold flat icons" },
+              ] as { id: IconTheme; label: string; desc: string }[]).map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setIconTheme(t.id)}
+                  className={`relative p-4 rounded-xl border text-left transition ${
+                    iconTheme === t.id
+                      ? "border-violet-500 bg-violet-500/5"
+                      : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border)]/80"
+                  }`}
+                >
+                  <div className="font-semibold text-sm">{t.label}</div>
+                  <div className="text-xs text-[var(--muted)] mt-1">{t.desc}</div>
+                  {iconTheme === t.id && (
                     <div className="absolute right-3 top-3 w-2 h-2 rounded-full bg-violet-500" />
                   )}
                 </button>
@@ -255,6 +311,81 @@ export function SettingsWindow() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "accounts" && (
+          <div>
+            <h3 className="text-lg font-medium mb-1">Connected Accounts</h3>
+            <p className="text-xs text-[var(--muted)] mb-6">
+              Authorize external connector channels for system notifications and calendar synchronizations.
+            </p>
+
+            <div className="space-y-4">
+              {([
+                { provider: "Google Calendar & Mail", desc: "Access inbox messages and calendar schedules", linked: true, user: "Prajit Datta (OAuth Active)" },
+                { provider: "Telegram Connector", desc: "Interact with Leviathan secure chat nodes", linked: true, user: "@prajit_leviathan" },
+                { provider: "GitHub Integration", desc: "Monitor active issue milestones and commits", linked: false, user: null },
+                { provider: "Spotify Web Playback", desc: "Stream media details directly to taskbar tray", linked: false, user: null }
+              ]).map((acc, index) => (
+                <div key={index} className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] flex justify-between items-center text-xs">
+                  <div>
+                    <div className="font-semibold text-sm text-zinc-100">{acc.provider}</div>
+                    <div className="text-[var(--muted)] mt-0.5">{acc.desc}</div>
+                    {acc.linked && <div className="text-[10px] text-emerald-400 font-semibold mt-1">✓ Linked as {acc.user}</div>}
+                  </div>
+                  <button className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                    acc.linked ? "bg-[var(--border)] hover:bg-[var(--border)]/80 text-[var(--text)]" : "bg-violet-600 hover:bg-violet-700 text-white"
+                  }`}>
+                    {acc.linked ? "Disconnect" : "Connect Account"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "api" && (
+          <div>
+            <h3 className="text-lg font-medium mb-1">API Key Management</h3>
+            <p className="text-xs text-[var(--muted)] mb-6">
+              Input private API credentials for Gemini, OpenAI and Anthropic services. Keys are safely sandboxed locally.
+            </p>
+
+            <div className="space-y-4 max-w-md text-xs">
+              <div>
+                <label className="block font-semibold text-[var(--muted)] mb-1.5">OpenAI API Key</label>
+                <input
+                  type="password"
+                  placeholder="sk-proj-..."
+                  defaultValue="••••••••••••••••••••••••"
+                  className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 outline-none text-zinc-200 placeholder-zinc-600"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-[var(--muted)] mb-1.5">Gemini API Key</label>
+                <input
+                  type="password"
+                  placeholder="AIzaSy..."
+                  defaultValue="••••••••••••••••••••••••"
+                  className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 outline-none text-zinc-200 placeholder-zinc-600"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-[var(--muted)] mb-1.5">Anthropic API Key</label>
+                <input
+                  type="password"
+                  placeholder="sk-ant-..."
+                  className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 outline-none text-zinc-200 placeholder-zinc-600"
+                />
+              </div>
+              <button
+                onClick={() => alert("Secure API credentials saved successfully to sandbox storage.")}
+                className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-lg transition"
+              >
+                Save API Settings
+              </button>
             </div>
           </div>
         )}

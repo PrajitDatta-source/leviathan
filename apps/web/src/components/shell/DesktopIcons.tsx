@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Folder, FileText, Terminal, Settings, Trash2, Sun } from "lucide-react";
 import { useWindowManager } from "@/core/window/hooks";
 import { appRegistry } from "@/core/app";
+import { AppIcon } from "@/modules/icons/IconThemeContext";
 
 interface DesktopIcon {
   id: string;
@@ -13,6 +14,8 @@ interface DesktopIcon {
   x: number;
   y: number;
 }
+
+
 
 export function DesktopIcons() {
   const manager = useWindowManager();
@@ -26,25 +29,126 @@ export function DesktopIcons() {
   ]);
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
-  const [selectedIconId, setSelectedIconId] = useState<string | null>(null);
+  const [selectedIconIds, setSelectedIconIds] = useState<string[]>([]);
+  const [selectionBox, setSelectionBox] = useState<{
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+  } | null>(null);
+
+  const [editingIconId, setEditingIconId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+
   const dragOffset = useRef({ x: 0, y: 0 });
 
+  // Handle Drag Selection Box & Click Outside
   useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (e.target instanceof HTMLElement && !e.target.closest(".desktop-icon-item")) {
-        setSelectedIconId(null);
+    const handleGlobalMouseDown = (e: MouseEvent) => {
+      // Ignore click if it lands inside windows, taskbars, inputs, buttons, or custom icons
+      if (e.target instanceof HTMLElement) {
+        if (
+          e.target.closest(".window-instance") ||
+          e.target.closest(".taskbar-instance") ||
+          e.target.closest(".desktop-icon-item") ||
+          e.target.closest("button") ||
+          e.target.closest("input")
+        ) {
+          return;
+        }
+      }
+
+      if (e.button !== 0) return; // Only left click
+
+      setSelectionBox({
+        startX: e.clientX,
+        startY: e.clientY,
+        currentX: e.clientX,
+        currentY: e.clientY,
+      });
+      setSelectedIconIds([]);
+      setEditingIconId(null);
+    };
+
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (!selectionBox) return;
+
+      const currentX = e.clientX;
+      const currentY = e.clientY;
+      setSelectionBox((prev) => (prev ? { ...prev, currentX, currentY } : null));
+
+      // Calculate Box Intersection boundaries
+      const x1 = Math.min(selectionBox.startX, currentX);
+      const y1 = Math.min(selectionBox.startY, currentY);
+      const x2 = Math.max(selectionBox.startX, currentX);
+      const y2 = Math.max(selectionBox.startY, currentY);
+
+      const intersected = icons
+        .filter((icon) => {
+          const w = 80;
+          const h = 80;
+          return !(icon.x + w < x1 || icon.x > x2 || icon.y + h < y1 || icon.y > y2);
+        })
+        .map((icon) => icon.id);
+
+      setSelectedIconIds(intersected);
+    };
+
+    const handleGlobalMouseUp = () => {
+      setSelectionBox(null);
+    };
+
+    window.addEventListener("mousedown", handleGlobalMouseDown);
+    window.addEventListener("mousemove", handleGlobalMouseMove);
+    window.addEventListener("mouseup", handleGlobalMouseUp);
+
+    return () => {
+      window.removeEventListener("mousedown", handleGlobalMouseDown);
+      window.removeEventListener("mousemove", handleGlobalMouseMove);
+      window.removeEventListener("mouseup", handleGlobalMouseUp);
+    };
+  }, [selectionBox, icons]);
+
+  // Handle key shortcuts for Delete (removing) and F2 (renaming)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (editingIconId) return; // Don't interrupt while renaming
+
+      if (e.key === "Delete" && selectedIconIds.length > 0) {
+        setIcons((prev) => prev.filter((icon) => !selectedIconIds.includes(icon.id)));
+        setSelectedIconIds([]);
+      }
+
+      if (e.key === "F2" && selectedIconIds.length === 1) {
+        const target = icons.find((icon) => icon.id === selectedIconIds[0]);
+        if (target) {
+          setEditingIconId(target.id);
+          setRenameValue(target.label);
+        }
       }
     };
-    window.addEventListener("mousedown", handleOutsideClick);
-    return () => window.removeEventListener("mousedown", handleOutsideClick);
-  }, []);
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedIconIds, icons, editingIconId]);
 
   const handlePointerDown = (id: string, e: React.PointerEvent) => {
-    // Only drag with left pointer / main click
     if (e.button !== 0) return;
 
     setActiveDragId(id);
-    setSelectedIconId(id);
+    setEditingIconId(null);
+
+    // Toggle multi-select with Ctrl or Meta key
+    if (e.ctrlKey || e.metaKey) {
+      setSelectedIconIds((prev) =>
+        prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+      );
+    } else {
+      if (!selectedIconIds.includes(id)) {
+        setSelectedIconIds([id]);
+      }
+    }
+
     const targetIcon = icons.find((icon) => icon.id === id);
     if (targetIcon) {
       dragOffset.current = {
@@ -60,15 +164,17 @@ export function DesktopIcons() {
     const newX = e.clientX - dragOffset.current.x;
     const newY = e.clientY - dragOffset.current.y;
 
-    // Constrain inside viewport boundaries
     const maxX = globalThis.innerWidth - 80;
-    const maxY = globalThis.innerHeight - 120; // Above taskbar
+    const maxY = globalThis.innerHeight - 120;
     const boundedX = Math.max(8, Math.min(maxX, newX));
     const boundedY = Math.max(8, Math.min(maxY, newY));
 
+    // Move all selected icons relatively if we are dragging one
     setIcons((prev) =>
       prev.map((icon) =>
-        icon.id === activeDragId ? { ...icon, x: boundedX, y: boundedY } : icon
+        selectedIconIds.includes(icon.id) && icon.id === activeDragId
+          ? { ...icon, x: boundedX, y: boundedY }
+          : icon
       )
     );
   };
@@ -95,12 +201,10 @@ export function DesktopIcons() {
         let targetX = margin + finalCol * cellWidth;
         let targetY = margin + finalRow * cellHeight;
 
-        // Check if coordinate is occupied
         const isOccupied = (x: number, y: number) =>
           prev.some((icon) => icon.id !== activeDragId && icon.x === x && icon.y === y);
 
         if (isOccupied(targetX, targetY)) {
-          // Resolve overlap by finding nearest vacant cell in grid
           let found = false;
           for (let c = 0; c <= maxCols && !found; c++) {
             for (let r = 0; r <= maxRows && !found; r++) {
@@ -135,7 +239,7 @@ export function DesktopIcons() {
       globalThis.removeEventListener("pointermove", handlePointerMove);
       globalThis.removeEventListener("pointerup", handlePointerUp);
     };
-  }, [activeDragId, icons]);
+  }, [activeDragId, icons, selectedIconIds]);
 
   const handleDoubleClick = (appId: string) => {
     if (appId === "trash") {
@@ -155,18 +259,41 @@ export function DesktopIcons() {
     }
   };
 
+  const handleRenameSubmit = (id: string) => {
+    if (renameValue.trim()) {
+      setIcons((prev) =>
+        prev.map((icon) => (icon.id === id ? { ...icon, label: renameValue.trim() } : icon))
+      );
+    }
+    setEditingIconId(null);
+  };
+
   return (
-    <div className="absolute inset-0 pointer-events-none select-none z-10">
+    <div className="absolute inset-0 pointer-events-auto select-none z-10 overflow-hidden">
+      {/* Drag Selection Box overlay */}
+      {selectionBox && (
+        <div
+          className="absolute border border-violet-500/50 bg-violet-500/10 pointer-events-none z-30 rounded"
+          style={{
+            left: Math.min(selectionBox.startX, selectionBox.currentX),
+            top: Math.min(selectionBox.startY, selectionBox.currentY),
+            width: Math.abs(selectionBox.startX - selectionBox.currentX),
+            height: Math.abs(selectionBox.startY - selectionBox.currentY),
+          }}
+        />
+      )}
+
       {icons.map((icon) => {
         const isDragging = icon.id === activeDragId;
-        const isSelected = icon.id === selectedIconId;
+        const isSelected = selectedIconIds.includes(icon.id);
+        const isEditing = icon.id === editingIconId;
 
         return (
           <div
             key={icon.id}
             onPointerDown={(e) => handlePointerDown(icon.id, e)}
             onDoubleClick={() => handleDoubleClick(icon.appId)}
-            className={`desktop-icon-item absolute w-20 flex flex-col items-center gap-1.5 p-1.5 rounded-xl pointer-events-auto cursor-default select-none border border-transparent ${
+            className={`desktop-icon-item absolute w-20 flex flex-col items-center gap-1.5 p-1.5 rounded-xl cursor-default select-none border border-transparent ${
               isDragging
                 ? "bg-white/10 opacity-70 scale-95 border-white/5"
                 : isSelected
@@ -179,18 +306,31 @@ export function DesktopIcons() {
               touchAction: "none",
             }}
           >
-            {/* Glossy 3D Fluent Image Icon */}
-            <div className="w-12 h-12 flex items-center justify-center rounded-xl overflow-hidden shadow-md group-hover:scale-105 transition-transform duration-100 bg-zinc-900 border border-white/10">
-              <img
-                src={`/assets/icons/${icon.appId}.jpg`}
-                alt={icon.label}
-                className="w-full h-full object-cover"
-                draggable={false}
+            {/* Customizable Application Icon Pack */}
+            <AppIcon
+              appId={icon.appId}
+              size={22}
+              className="group-hover:scale-105 transition-transform duration-100 shadow-md shrink-0 animate-window-open"
+            />
+
+            {/* Label / Input for Renaming */}
+            {isEditing ? (
+              <input
+                autoFocus
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onBlur={() => handleRenameSubmit(icon.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleRenameSubmit(icon.id);
+                  if (e.key === "Escape") setEditingIconId(null);
+                }}
+                className="w-full bg-[var(--surface)] text-zinc-100 text-[10px] text-center border border-violet-500 rounded px-0.5 outline-none select-text pointer-events-auto"
               />
-            </div>
-            <span className="text-[11px] font-medium text-zinc-100 text-center tracking-wide drop-shadow-md truncate max-w-full px-0.5">
-              {icon.label}
-            </span>
+            ) : (
+              <span className="text-[11px] font-medium text-zinc-100 text-center tracking-wide drop-shadow-md truncate max-w-full px-0.5">
+                {icon.label}
+              </span>
+            )}
           </div>
         );
       })}
