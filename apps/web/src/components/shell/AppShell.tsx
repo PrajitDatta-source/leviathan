@@ -13,58 +13,56 @@ import { WindowManagerProvider } from "@/core/window/manager";
 import { useWindowManager } from "@/core/window/hooks";
 import { appRegistry } from "@/core/app";
 import { useTheme } from "@/modules/theme/ThemeContext";
+import { loadShortcutsConfig, getShortcutCombination, matchesEvent } from "@/core/window/shortcuts";
 
 // KeyboardManager component handles i3-inspired keyboard shortcuts
 function KeyboardManager({ setOpenPalette }: { setOpenPalette: (open: boolean) => void }) {
   const manager = useWindowManager();
+  const [config, setConfig] = useState(() => loadShortcutsConfig());
+
+  useEffect(() => {
+    const handleConfigChange = () => {
+      setConfig(loadShortcutsConfig());
+    };
+    window.addEventListener("shortcuts-changed", handleConfigChange);
+    return () => window.removeEventListener("shortcuts-changed", handleConfigChange);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Allow Super (metaKey/Command) or Alt (altKey) as modifiers
-      const modifier = e.metaKey || e.altKey;
-      if (!modifier) return;
+      // Load configurations
+      const closeCombo = getShortcutCombination("close_window", config);
+      const maximizeCombo = getShortcutCombination("toggle_maximize", config);
+      const showDesktopCombo = getShortcutCombination("show_desktop", config);
+      
+      const nextWindowCombo = getShortcutCombination("next_window", config);
+      const prevWindowCombo = getShortcutCombination("prev_window", config);
+      
+      const snapLeftCombo = getShortcutCombination("snap_left", config);
+      const snapRightCombo = getShortcutCombination("snap_right", config);
+      const snapUpCombo = getShortcutCombination("snap_up", config);
+      const snapDownCombo = getShortcutCombination("snap_down", config);
+      
+      const moveLeftCombo = getShortcutCombination("move_left", config);
+      const moveRightCombo = getShortcutCombination("move_right", config);
+      const moveUpCombo = getShortcutCombination("move_up", config);
+      const moveDownCombo = getShortcutCombination("move_down", config);
+      
+      const terminalCombo = getShortcutCombination("open_terminal", config);
+      const explorerCombo = getShortcutCombination("open_explorer", config);
+      const notesCombo = getShortcutCombination("open_notes", config);
+      const settingsCombo = getShortcutCombination("open_settings", config);
 
-      const key = e.key.toLowerCase();
-
-      // Super + D -> Command Palette
-      if (key === "d") {
-        e.preventDefault();
-        setOpenPalette(true);
-      }
-
-      // App Launchers: Super + Enter -> Terminal, Super + E -> Explorer, Super + N -> Notes, Super + S -> Settings
-      if (e.key === "Enter") {
-        e.preventDefault();
-        openApp("terminal");
-      }
-      if (key === "e") {
-        e.preventDefault();
-        openApp("explorer");
-      }
-      if (key === "n") {
-        e.preventDefault();
-        openApp("notes");
-      }
-      if (key === "s") {
-        e.preventDefault();
-        openApp("settings");
-      }
-
-      // Find focused window on current workspace for window control hotkeys
       const focusedWindow = manager.windows.find(
         (w) => w.focused && w.workspace === manager.activeWorkspace
       );
 
-      // Super + Q -> Close window
-      if (key === "q") {
+      if (matchesEvent(closeCombo, e)) {
         e.preventDefault();
         if (focusedWindow) {
           manager.close(focusedWindow.id);
         }
-      }
-
-      // Super + Space -> Toggle Maximize/Restore
-      if (key === " ") {
+      } else if (matchesEvent(maximizeCombo, e)) {
         e.preventDefault();
         if (focusedWindow) {
           if (focusedWindow.maximized) {
@@ -73,69 +71,127 @@ function KeyboardManager({ setOpenPalette }: { setOpenPalette: (open: boolean) =
             manager.maximize(focusedWindow.id);
           }
         }
-      }
-
-      // Super + Shift + Arrow keys -> Move window
-      if (e.shiftKey && ["arrowleft", "arrowright", "arrowup", "arrowdown"].includes(key)) {
+      } else if (matchesEvent(showDesktopCombo, e)) {
+        e.preventDefault();
+        manager.toggleShowDesktop();
+      } else if (matchesEvent(nextWindowCombo, e)) {
+        e.preventDefault();
+        const activeWindows = manager.windows.filter(
+          (w) => w.workspace === manager.activeWorkspace && !w.minimized
+        );
+        if (activeWindows.length > 1) {
+          const currentIndex = activeWindows.findIndex((w) => w.focused);
+          const nextIndex = currentIndex < activeWindows.length - 1 ? currentIndex + 1 : 0;
+          manager.focus(activeWindows[nextIndex].id);
+        }
+      } else if (matchesEvent(prevWindowCombo, e)) {
+        e.preventDefault();
+        const activeWindows = manager.windows.filter(
+          (w) => w.workspace === manager.activeWorkspace && !w.minimized
+        );
+        if (activeWindows.length > 1) {
+          const currentIndex = activeWindows.findIndex((w) => w.focused);
+          const prevIndex = currentIndex > 0 ? currentIndex - 1 : activeWindows.length - 1;
+          manager.focus(activeWindows[prevIndex].id);
+        }
+      } else if (matchesEvent(snapLeftCombo, e)) {
+        e.preventDefault();
+        if (focusedWindow) {
+          const sw = globalThis.innerWidth;
+          const sh = globalThis.innerHeight;
+          const taskbarHeight = 48;
+          manager.updatePositionAndSize(focusedWindow.id, 0, 0, sw / 2, sh - taskbarHeight);
+        }
+      } else if (matchesEvent(snapRightCombo, e)) {
+        e.preventDefault();
+        if (focusedWindow) {
+          const sw = globalThis.innerWidth;
+          const sh = globalThis.innerHeight;
+          const taskbarHeight = 48;
+          manager.updatePositionAndSize(focusedWindow.id, sw / 2, 0, sw / 2, sh - taskbarHeight);
+        }
+      } else if (matchesEvent(snapUpCombo, e)) {
+        e.preventDefault();
+        if (focusedWindow) {
+          manager.maximize(focusedWindow.id);
+        }
+      } else if (matchesEvent(snapDownCombo, e)) {
+        e.preventDefault();
+        if (focusedWindow) {
+          if (focusedWindow.maximized) {
+            manager.restore(focusedWindow.id);
+          } else {
+            manager.minimize(focusedWindow.id);
+          }
+        }
+      } else if (matchesEvent(moveLeftCombo, e)) {
         e.preventDefault();
         if (focusedWindow && !focusedWindow.maximized) {
+          const sw = globalThis.innerWidth;
           const moveStep = 40;
-          let newX = focusedWindow.x;
-          let newY = focusedWindow.y;
-          if (key === "arrowleft") newX -= moveStep;
-          if (key === "arrowright") newX += moveStep;
-          if (key === "arrowup") newY -= moveStep;
-          if (key === "arrowdown") newY += moveStep;
-          manager.updatePositionAndSize(focusedWindow.id, newX, newY, focusedWindow.width, focusedWindow.height);
+          let newX = focusedWindow.x - moveStep;
+          newX = Math.max(60 - focusedWindow.width, Math.min(sw - 60, newX));
+          manager.updatePositionAndSize(focusedWindow.id, newX, focusedWindow.y, focusedWindow.width, focusedWindow.height);
         }
-      }
-
-      // Super + Arrow keys -> Focus adjacent / vertical window
-      if (!e.shiftKey && ["arrowleft", "arrowright", "arrowup", "arrowdown"].includes(key)) {
+      } else if (matchesEvent(moveRightCombo, e)) {
         e.preventDefault();
-        const activeWindows = manager.windows.filter(
-          (w) => w.workspace === manager.activeWorkspace && !w.minimized
-        );
-        if (activeWindows.length > 1) {
-          const currentIndex = activeWindows.findIndex((w) => w.focused);
-          let nextIndex = currentIndex;
-          if (key === "arrowleft" || key === "arrowup") {
-            nextIndex = currentIndex > 0 ? currentIndex - 1 : activeWindows.length - 1;
-          } else {
-            nextIndex = currentIndex < activeWindows.length - 1 ? currentIndex + 1 : 0;
-          }
-          manager.focus(activeWindows[nextIndex].id);
+        if (focusedWindow && !focusedWindow.maximized) {
+          const sw = globalThis.innerWidth;
+          const moveStep = 40;
+          let newX = focusedWindow.x + moveStep;
+          newX = Math.max(60 - focusedWindow.width, Math.min(sw - 60, newX));
+          manager.updatePositionAndSize(focusedWindow.id, newX, focusedWindow.y, focusedWindow.width, focusedWindow.height);
         }
-      }
-
-      // Super + 1-4 -> Workspace switching & movement
-      if (/^[1-4]$/.test(e.key)) {
+      } else if (matchesEvent(moveUpCombo, e)) {
         e.preventDefault();
-        const workspaceNum = parseInt(e.key);
-        if (e.shiftKey) {
-          if (focusedWindow) {
-            manager.moveWindowToWorkspace(focusedWindow.id, workspaceNum);
-          }
-        } else {
-          manager.setActiveWorkspace(workspaceNum);
+        if (focusedWindow && !focusedWindow.maximized) {
+          const sh = globalThis.innerHeight;
+          const taskbarHeight = 48;
+          const moveStep = 40;
+          let newY = focusedWindow.y - moveStep;
+          newY = Math.max(0, Math.min(sh - taskbarHeight - 40, newY));
+          manager.updatePositionAndSize(focusedWindow.id, focusedWindow.x, newY, focusedWindow.width, focusedWindow.height);
         }
-      }
-
-      // Super + Tab -> Switch window focus
-      if (e.key === "Tab") {
+      } else if (matchesEvent(moveDownCombo, e)) {
         e.preventDefault();
-        const activeWindows = manager.windows.filter(
-          (w) => w.workspace === manager.activeWorkspace && !w.minimized
-        );
-        if (activeWindows.length > 1) {
-          const currentIndex = activeWindows.findIndex((w) => w.focused);
-          let nextIndex = currentIndex;
-          if (e.shiftKey) {
-            nextIndex = currentIndex > 0 ? currentIndex - 1 : activeWindows.length - 1;
-          } else {
-            nextIndex = currentIndex < activeWindows.length - 1 ? currentIndex + 1 : 0;
+        if (focusedWindow && !focusedWindow.maximized) {
+          const sh = globalThis.innerHeight;
+          const taskbarHeight = 48;
+          const moveStep = 40;
+          let newY = focusedWindow.y + moveStep;
+          newY = Math.max(0, Math.min(sh - taskbarHeight - 40, newY));
+          manager.updatePositionAndSize(focusedWindow.id, focusedWindow.x, newY, focusedWindow.width, focusedWindow.height);
+        }
+      } else if (matchesEvent(terminalCombo, e)) {
+        e.preventDefault();
+        openApp("terminal");
+      } else if (matchesEvent(explorerCombo, e)) {
+        e.preventDefault();
+        openApp("explorer");
+      } else if (matchesEvent(notesCombo, e)) {
+        e.preventDefault();
+        openApp("notes");
+      } else if (matchesEvent(settingsCombo, e)) {
+        e.preventDefault();
+        openApp("settings");
+      } else {
+        // Match dynamic workspace combinations (workspace 1-9)
+        for (let wNum = 1; wNum <= 9; wNum++) {
+          const switchCombo = getShortcutCombination(`workspace_${wNum}`, config);
+          const moveCombo = getShortcutCombination(`move_workspace_${wNum}`, config);
+          
+          if (matchesEvent(switchCombo, e)) {
+            e.preventDefault();
+            manager.setActiveWorkspace(wNum);
+            break;
           }
-          manager.focus(activeWindows[nextIndex].id);
+          if (matchesEvent(moveCombo, e)) {
+            e.preventDefault();
+            if (focusedWindow) {
+              manager.moveWindowToWorkspace(focusedWindow.id, wNum);
+            }
+            break;
+          }
         }
       }
     };
@@ -157,7 +213,7 @@ function KeyboardManager({ setOpenPalette }: { setOpenPalette: (open: boolean) =
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [manager, setOpenPalette]);
+  }, [manager, setOpenPalette, config]);
 
   return null;
 }

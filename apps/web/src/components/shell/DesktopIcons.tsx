@@ -5,6 +5,7 @@ import { Folder, FileText, Terminal, Settings, Trash2, Sun } from "lucide-react"
 import { useWindowManager } from "@/core/window/hooks";
 import { appRegistry } from "@/core/app";
 import { AppIcon } from "@/modules/icons/IconThemeContext";
+import { Z_INDEX } from "@/core/window/zIndex";
 
 interface DesktopIcon {
   id: string;
@@ -19,6 +20,24 @@ interface DesktopIcon {
 
 export function DesktopIcons() {
   const manager = useWindowManager();
+
+  const isOverlapped = (icon: DesktopIcon) => {
+    const activeWindows = manager.windows.filter(
+      (w) => w.workspace === manager.activeWorkspace && !w.minimized
+    );
+    const iconWidth = 80;
+    const iconHeight = 96;
+
+    return activeWindows.some((w) => {
+      if (w.maximized) return true;
+      return !(
+        icon.x + iconWidth <= w.x ||
+        icon.x >= w.x + w.width ||
+        icon.y + iconHeight <= w.y ||
+        icon.y >= w.y + w.height
+      );
+    });
+  };
   const [icons, setIcons] = useState<DesktopIcon[]>([
     { id: "files", label: "Files", appId: "explorer", icon: Folder, x: 20, y: 20 },
     { id: "notes", label: "Notes", appId: "notes", icon: FileText, x: 20, y: 116 },
@@ -269,16 +288,20 @@ export function DesktopIcons() {
   };
 
   return (
-    <div className="absolute inset-0 pointer-events-none select-none z-10 overflow-hidden">
+    <div
+      className="absolute inset-0 pointer-events-none select-none overflow-hidden"
+      style={{ zIndex: Z_INDEX.DESKTOP_ICONS }}
+    >
       {/* Drag Selection Box overlay */}
       {selectionBox && (
         <div
-          className="absolute border border-violet-500/50 bg-violet-500/10 pointer-events-none z-30 rounded"
+          className="absolute border border-violet-500/50 bg-violet-500/10 pointer-events-none rounded"
           style={{
             left: Math.min(selectionBox.startX, selectionBox.currentX),
             top: Math.min(selectionBox.startY, selectionBox.currentY),
             width: Math.abs(selectionBox.startX - selectionBox.currentX),
             height: Math.abs(selectionBox.startY - selectionBox.currentY),
+            zIndex: Z_INDEX.DESKTOP_ICONS + 1,
           }}
         />
       )}
@@ -287,6 +310,7 @@ export function DesktopIcons() {
         const isDragging = icon.id === activeDragId;
         const isSelected = selectedIconIds.includes(icon.id);
         const isEditing = icon.id === editingIconId;
+        const overlapped = isOverlapped(icon);
 
         return (
           <div
@@ -304,6 +328,7 @@ export function DesktopIcons() {
               left: icon.x,
               top: icon.y,
               touchAction: "none",
+              visibility: overlapped ? "hidden" : "visible",
             }}
           >
             {/* Customizable Application Icon Pack */}

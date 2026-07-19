@@ -25,6 +25,28 @@ export function WindowManagerProvider({
         useState<SnapPreview | null>(null);
 
     const [activeWorkspace, setActiveWorkspace] = useState(1);
+    const [minimizedByShowDesktop, setMinimizedByShowDesktop] = useState<string[]>([]);
+
+    const toggleShowDesktop = useCallback(() => {
+        setWindows(current => {
+            const activeWorkspaceWindows = current.filter(w => w.workspace === activeWorkspace);
+            const anyVisible = activeWorkspaceWindows.some(w => !w.minimized);
+
+            if (anyVisible) {
+                const toMinimize = activeWorkspaceWindows.filter(w => !w.minimized).map(w => w.id);
+                setMinimizedByShowDesktop(toMinimize);
+                return current.map(w => 
+                    toMinimize.includes(w.id) ? { ...w, minimized: true, focused: false } : w
+                );
+            } else {
+                const toRestore = minimizedByShowDesktop;
+                setMinimizedByShowDesktop([]);
+                return current.map(w => 
+                    toRestore.includes(w.id) ? { ...w, minimized: false } : w
+                );
+            }
+        });
+    }, [activeWorkspace, minimizedByShowDesktop]);
 
     const moveWindowToWorkspace = useCallback((id: string, ws: number) => {
         setWindows(current =>
@@ -186,7 +208,7 @@ export function WindowManagerProvider({
         (id: string, x: number, y: number, width: number, height: number) => {
             setWindows(current =>
                 current.map(window =>
-                    window.id === id ? { ...window, x, y, width, height } : window
+                    window.id === id ? { ...window, x, y, width, height, maximized: false } : window
                 )
             );
         },
@@ -207,6 +229,7 @@ export function WindowManagerProvider({
             minimize,
             maximize,
             restore,
+            toggleShowDesktop,
             updatePositionAndSize,
         }),
         [
@@ -221,6 +244,7 @@ export function WindowManagerProvider({
             minimize,
             maximize,
             restore,
+            toggleShowDesktop,
             updatePositionAndSize,
         ]
     );

@@ -5,6 +5,7 @@ import { commandRegistry } from "@/core/command";
 import { useState, useMemo } from "react";
 import { useWindowManager } from "@/core/window/hooks";
 import { useTheme } from "@/modules/theme/ThemeContext";
+import { Z_INDEX } from "@/core/window/zIndex";
 
 import { appRegistry } from "@/core/app";
 import { vfs } from "@/modules/filesystem/vfs";
@@ -271,9 +272,15 @@ export function CommandPalette({
       }}
     >
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
+        <Dialog.Overlay
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+          style={{ zIndex: Z_INDEX.COMMAND_PALETTE }}
+        />
 
-        <Dialog.Content className="fixed left-1/2 top-24 w-[650px] -translate-x-1/2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-2xl text-[var(--text)]">
+        <Dialog.Content
+          className="fixed left-1/2 top-24 w-[650px] -translate-x-1/2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-2xl text-[var(--text)]"
+          style={{ zIndex: Z_INDEX.COMMAND_PALETTE }}
+        >
 
           <input
             autoFocus

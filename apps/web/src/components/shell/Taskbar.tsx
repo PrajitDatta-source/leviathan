@@ -103,7 +103,7 @@ export function Taskbar() {
 
         {/* Workspace indicators */}
         <div className="flex items-center bg-[var(--background)]/35 border border-[var(--border)] rounded-lg p-0.5 text-[10px] font-semibold">
-          {([1, 2, 3, 4]).map((num) => {
+          {([1, 2, 3, 4, 5, 6, 7, 8, 9]).map((num) => {
             const isActive = activeWorkspace === num;
             return (
               <button

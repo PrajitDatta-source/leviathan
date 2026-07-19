@@ -3,10 +3,19 @@
 import React, { useState, useEffect } from "react";
 import { useTheme } from "@/modules/theme/ThemeContext";
 import { Theme } from "@/modules/theme/types";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Keyboard, RotateCcw, Edit2 } from "lucide-react";
 import { useIconTheme, IconTheme } from "@/modules/icons/IconThemeContext";
+import {
+  SHORTCUT_DEFS,
+  loadShortcutsConfig,
+  saveShortcutsConfig,
+  getShortcutCombination,
+  formatKeyCombo,
+  GlobalModifier,
+  KeyCombination,
+} from "@/core/window/shortcuts";
 
-type Tab = "appearance" | "wallpaper" | "accounts" | "api" | "system";
+type Tab = "appearance" | "wallpaper" | "accounts" | "api" | "system" | "shortcuts";
 
 const WALLPAPER_PRESETS = [
   {
@@ -41,6 +50,59 @@ export function SettingsWindow() {
   const { iconTheme, setIconTheme } = useIconTheme();
   const [activeTab, setActiveTab] = useState<Tab>("appearance");
   const [customWallpapers, setCustomWallpapers] = useState<string[]>([]);
+  
+  const [shortcutsConfig, setShortcutsConfig] = useState(() => loadShortcutsConfig());
+  const [recordingId, setRecordingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!recordingId) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (e.key === "Escape") {
+        setRecordingId(null);
+        return;
+      }
+
+      const modifierKeys = ["control", "shift", "alt", "meta"];
+      const keyName = e.key.toLowerCase();
+      if (modifierKeys.includes(keyName)) {
+        return;
+      }
+
+      let key = keyName;
+      if (e.key === "ArrowUp") key = "arrowup";
+      if (e.key === "ArrowDown") key = "arrowdown";
+      if (e.key === "ArrowLeft") key = "arrowleft";
+      if (e.key === "ArrowRight") key = "arrowright";
+
+      const newCombo = {
+        key: key,
+        ctrl: e.ctrlKey,
+        shift: e.shiftKey,
+        alt: e.altKey,
+        meta: e.metaKey,
+      };
+
+      const updatedConfig = {
+        ...shortcutsConfig,
+        globalModifier: "custom" as const,
+        customBinds: {
+          ...shortcutsConfig.customBinds,
+          [recordingId]: newCombo,
+        },
+      };
+
+      setShortcutsConfig(updatedConfig);
+      saveShortcutsConfig(updatedConfig);
+      setRecordingId(null);
+    };
+
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [recordingId, shortcutsConfig]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -140,6 +202,17 @@ export function SettingsWindow() {
           }`}
         >
           System Info
+        </button>
+
+        <button
+          onClick={() => setActiveTab("shortcuts")}
+          className={`w-full text-left px-3 py-2 rounded-lg transition text-sm ${
+            activeTab === "shortcuts"
+              ? "bg-[var(--border)] font-medium"
+              : "hover:bg-[var(--border)]/40 text-[var(--muted)] hover:text-[var(--text)]"
+          }`}
+        >
+          Keyboard Shortcuts
         </button>
       </div>
 
@@ -415,6 +488,136 @@ export function SettingsWindow() {
                 <span className="font-mono text-xs">Development (Localhost)</span>
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === "shortcuts" && (
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <h3 className="text-lg font-medium">Keyboard Shortcuts</h3>
+              <button
+                onClick={() => {
+                  const defaultConfig = { globalModifier: "meta" as const, customBinds: {} };
+                  setShortcutsConfig(defaultConfig);
+                  saveShortcutsConfig(defaultConfig);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--border)] hover:bg-[var(--border)]/80 text-xs font-semibold rounded-lg transition text-zinc-300 cursor-pointer"
+                title="Reset all shortcuts to defaults"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Reset All
+              </button>
+            </div>
+            <p className="text-xs text-[var(--muted)] mb-6">
+              Customize the keyboard shortcuts to manage windows, navigation, workspaces, and launch applications.
+            </p>
+
+            {/* Global Modifier Selector */}
+            <div className="mb-6 p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-xs">
+              <div className="font-semibold text-sm text-zinc-100 mb-1">Global Modifier Key</div>
+              <p className="text-[11px] text-[var(--muted)] mb-3.5">
+                Quickly switch the base modifier key for all default shortcuts. Ideal if your browser or operating system intercepts the "Super" (Windows/Command) key.
+              </p>
+              <div className="flex gap-2">
+                {([
+                  { id: "meta", label: "Super (Win/Cmd)" },
+                  { id: "alt", label: "Alt (Option)" },
+                  { id: "ctrl", label: "Ctrl" },
+                  { id: "custom", label: "Custom (Individual)" }
+                ] as { id: GlobalModifier; label: string }[]).map((opt) => (
+                  <button
+                    key={opt.id}
+                    onClick={() => {
+                      const updated = { ...shortcutsConfig, globalModifier: opt.id };
+                      setShortcutsConfig(updated);
+                      saveShortcutsConfig(updated);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
+                      shortcutsConfig.globalModifier === opt.id
+                        ? "bg-violet-600 text-white"
+                        : "bg-[var(--border)] hover:bg-[var(--border)]/80 text-zinc-300"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Shortcuts List grouped by Category */}
+            <div className="space-y-6">
+              {Array.from(new Set(SHORTCUT_DEFS.map(d => d.category))).map((category) => (
+                <div key={category} className="space-y-2">
+                  <h4 className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider pl-1 mb-2">
+                    {category}
+                  </h4>
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] divide-y divide-[var(--border)] overflow-hidden">
+                    {SHORTCUT_DEFS.filter(d => d.category === category).map((def) => {
+                      const combo = getShortcutCombination(def.id, shortcutsConfig);
+                      const isCustom = !!shortcutsConfig.customBinds[def.id];
+                      return (
+                        <div key={def.id} className="flex justify-between items-center p-3 text-xs">
+                          <div>
+                            <div className="font-medium text-zinc-200">{def.name}</div>
+                            {isCustom && <div className="text-[9px] text-violet-400 font-medium mt-0.5">Customized</div>}
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono bg-[var(--background)] px-2 py-1 border border-[var(--border)] rounded text-[var(--text)] text-[11px] font-medium shadow-sm">
+                              {formatKeyCombo(combo)}
+                            </span>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => setRecordingId(def.id)}
+                                className="p-1 rounded bg-[var(--border)]/60 hover:bg-[var(--border)] text-zinc-300 transition cursor-pointer"
+                                title="Change shortcut"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              {isCustom && (
+                                <button
+                                  onClick={() => {
+                                    const updatedBinds = { ...shortcutsConfig.customBinds };
+                                    delete updatedBinds[def.id];
+                                    const updated = { ...shortcutsConfig, customBinds: updatedBinds };
+                                    setShortcutsConfig(updated);
+                                    saveShortcutsConfig(updated);
+                                  }}
+                                  className="p-1 rounded bg-[var(--border)]/60 hover:bg-red-950/40 hover:text-red-400 text-zinc-400 transition cursor-pointer"
+                                  title="Reset to default"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Recording Overlay Modal */}
+            {recordingId && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6 w-[340px] text-center shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex justify-center mb-3">
+                    <Keyboard className="w-8 h-8 text-violet-500 animate-pulse" />
+                  </div>
+                  <h4 className="font-semibold text-zinc-100 text-base mb-1">Recording Keybind</h4>
+                  <p className="text-xs text-[var(--muted)] mb-4">
+                    Press any key combination on your keyboard to assign to:
+                  </p>
+                  <div className="font-medium text-violet-400 py-2.5 px-4 bg-[var(--background)] rounded-lg mb-4 text-xs font-mono border border-violet-500/20 truncate">
+                    {SHORTCUT_DEFS.find(d => d.id === recordingId)?.name}
+                  </div>
+                  <div className="text-[10px] text-[var(--muted)] space-y-1 mb-2">
+                    <p>Press <span className="font-mono bg-[var(--border)] px-1 rounded">Escape</span> to cancel.</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

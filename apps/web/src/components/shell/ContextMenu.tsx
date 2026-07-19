@@ -6,6 +6,7 @@ import { Theme } from "@/modules/theme/types";
 import { useWindowManager } from "@/core/window/hooks";
 import { appRegistry } from "@/core/app";
 import { createElement } from "react";
+import { Z_INDEX } from "@/core/window/zIndex";
 
 interface ContextMenuProps {
   x: number;
@@ -58,8 +59,8 @@ export function ContextMenu({ x, y, onClose }: ContextMenuProps) {
   return (
     <div
       ref={menuRef}
-      className="fixed z-[100] min-w-[200px] rounded-xl border border-zinc-800 bg-zinc-950/80 backdrop-blur-md p-1.5 shadow-2xl animate-in fade-in zoom-in-95 duration-100 select-none text-sm text-zinc-200"
-      style={{ left: x, top: y }}
+      className="fixed min-w-[200px] rounded-xl border border-zinc-800 bg-zinc-950/80 backdrop-blur-md p-1.5 shadow-2xl animate-in fade-in zoom-in-95 duration-100 select-none text-sm text-zinc-200"
+      style={{ left: x, top: y, zIndex: Z_INDEX.CONTEXT_MENUS }}
     >
       <button
         onClick={handleOpenSettings}

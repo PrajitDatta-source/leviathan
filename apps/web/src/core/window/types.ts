@@ -59,6 +59,7 @@ export interface WindowManagerContextValue {
   minimize(id: string): void;
   maximize(id: string): void;
   restore(id: string): void;
+  toggleShowDesktop(): void;
   updatePositionAndSize(
     id: string,
     x: number,

@@ -3,6 +3,7 @@
 import { WindowInstance } from "@/core/window/types";
 import { useWindowManager } from "@/core/window/hooks";
 import { useState, useRef, useEffect } from "react";
+import { Z_INDEX } from "@/core/window/zIndex";
 
 type Props = {
     window: WindowInstance;
@@ -25,6 +26,16 @@ export function Window({ window }: Props) {
     const [resizeDirection, setResizeDirection] = useState<'se' | 'sw' | 'ne' | 'nw' | 'n' | 's' | 'e' | 'w' | null>(null);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
     const windowRef = useRef<HTMLDivElement>(null);
+    
+    // Store drag/resize starting state for jitter-free math
+    const resizeStart = useRef({
+        pointerX: 0,
+        pointerY: 0,
+        winX: 0,
+        winY: 0,
+        winWidth: 0,
+        winHeight: 0,
+    });
 
     // Mobile screen responsive check
     const [isMobile, setIsMobile] = useState(false);
@@ -63,6 +74,16 @@ export function Window({ window }: Props) {
         if (isMobile) return; // Disable resizing on mobile
         setIsResizing(true);
         setResizeDirection(direction);
+        
+        resizeStart.current = {
+            pointerX: e.clientX,
+            pointerY: e.clientY,
+            winX: window.x,
+            winY: window.y,
+            winWidth: window.width,
+            winHeight: window.height,
+        };
+
         manager.focus(window.id);
     };
 
@@ -114,35 +135,39 @@ export function Window({ window }: Props) {
         }
 
         if (isResizing && resizeDirection) {
-            const minSize = 300;
-            let newWidth = window.width;
-            let newHeight = window.height;
-            let newX = window.x;
-            let newY = window.y;
+            const minWidth = 300;
+            const minHeight = 200;
+            const deltaX = e.clientX - resizeStart.current.pointerX;
+            const deltaY = e.clientY - resizeStart.current.pointerY;
 
+            const startX = resizeStart.current.winX;
+            const startY = resizeStart.current.winY;
+            const startWidth = resizeStart.current.winWidth;
+            const startHeight = resizeStart.current.winHeight;
+
+            let newWidth = startWidth;
+            let newHeight = startHeight;
+            let newX = startX;
+            let newY = startY;
+
+            // Handle horizontal resizing
             if (resizeDirection.includes('e')) {
-                // Limit width to avoid stretching past right screen edge
-                const maxAllowedWidth = sw - window.x;
-                newWidth = Math.max(minSize, Math.min(maxAllowedWidth, e.clientX - window.x));
+                // Right side resize: right edge cannot exceed screen width
+                newWidth = Math.max(minWidth, Math.min(sw - startX, startWidth + deltaX));
+            } else if (resizeDirection.includes('w')) {
+                // Left side resize: left edge cannot go below 0
+                newWidth = Math.max(minWidth, Math.min(startX + startWidth, startWidth - deltaX));
+                newX = startX + startWidth - newWidth;
             }
-            if (resizeDirection.includes('w')) {
-                // Limit width so drag coordinate stays inside left screen edge
-                const delta = window.x - e.clientX;
-                const maxAllowedWidth = window.width + window.x;
-                newWidth = Math.max(minSize, Math.min(maxAllowedWidth, window.width + delta));
-                newX = window.x - (newWidth - window.width);
-            }
+
+            // Handle vertical resizing
             if (resizeDirection.includes('s')) {
-                // Limit height to avoid stretching under the taskbar
-                const maxAllowedHeight = sh - taskbarHeight - window.y;
-                newHeight = Math.max(minSize, Math.min(maxAllowedHeight, e.clientY - window.y));
-            }
-            if (resizeDirection.includes('n')) {
-                // Limit height to avoid stretching above top screen edge
-                const delta = window.y - e.clientY;
-                const maxAllowedHeight = window.height + window.y;
-                newHeight = Math.max(minSize, Math.min(maxAllowedHeight, window.height + delta));
-                newY = window.y - (newHeight - window.height);
+                // Bottom side resize: bottom edge cannot exceed screen height minus taskbar
+                newHeight = Math.max(minHeight, Math.min(sh - taskbarHeight - startY, startHeight + deltaY));
+            } else if (resizeDirection.includes('n')) {
+                // Top side resize: top edge cannot go below 0
+                newHeight = Math.max(minHeight, Math.min(startY + startHeight, startHeight - deltaY));
+                newY = startY + startHeight - newHeight;
             }
 
             manager.updatePositionAndSize(window.id, newX, newY, newWidth, newHeight);
@@ -207,6 +232,34 @@ export function Window({ window }: Props) {
         };
     }, [isDragging, isResizing, dragOffset, resizeDirection, window.x, window.y, window.width, window.height]);
 
+    // Apply global body cursor overlays during drag/resize to prevent cursor flickering
+    useEffect(() => {
+        if (isDragging) {
+            document.body.style.cursor = 'grabbing';
+            document.body.style.userSelect = 'none';
+        } else if (isResizing && resizeDirection) {
+            const cursorMap: Record<string, string> = {
+                'n': 'n-resize',
+                's': 's-resize',
+                'e': 'e-resize',
+                'w': 'w-resize',
+                'ne': 'ne-resize',
+                'nw': 'nw-resize',
+                'se': 'se-resize',
+                'sw': 'sw-resize'
+            };
+            document.body.style.cursor = cursorMap[resizeDirection] || 'default';
+            document.body.style.userSelect = 'none';
+        } else {
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        }
+        return () => {
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        };
+    }, [isDragging, isResizing, resizeDirection]);
+
     return (
         <div
             ref={windowRef}
@@ -220,7 +273,8 @@ export function Window({ window }: Props) {
                 shadow-2xl
                 select-none
                 animate-window-open
-                ${window.focused ? 'border-violet-500/70 shadow-xl shadow-violet-500/5 z-40' : 'border-[var(--border)] bg-[var(--surface)]'}
+                bg-[var(--surface)]
+                ${window.focused ? 'border-violet-500/70 shadow-xl shadow-violet-500/5' : 'border-[var(--border)]'}
                 ${window.minimized ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'}
                 ${(isDragging || isResizing) ? '' : 'transition-all duration-200 ease-out'}
             `}
@@ -229,7 +283,9 @@ export function Window({ window }: Props) {
                 top: position.y,
                 width: size.width,
                 height: size.height,
-                zIndex: window.zIndex,
+                zIndex: window.focused
+                    ? Z_INDEX.ACTIVE_WINDOW_BASE + window.zIndex
+                    : Z_INDEX.WINDOWS_BASE + window.zIndex,
             }}
             onPointerDownCapture={(e) => {
                 if (e.target instanceof HTMLElement && e.target.closest('button')) {
