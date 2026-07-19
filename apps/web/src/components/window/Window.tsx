@@ -322,13 +322,7 @@ export function Window({ window }: Props) {
                         onPointerDown={(e) => {
                             console.log("[PIPELINE] Minimize Button PointerDown triggered for window: " + window.id);
                             e.stopPropagation();
-                            if (window.minimized) {
-                                manager.restore(window.id);
-                            } else if (window.maximized) {
-                                manager.restore(window.id);
-                            } else {
-                                manager.minimize(window.id);
-                            }
+                            manager.minimize(window.id);
                         }}
                         className="
                             rounded

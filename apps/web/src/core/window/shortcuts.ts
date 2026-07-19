@@ -16,48 +16,54 @@ export interface ShortcutDefinition {
 }
 
 export const SHORTCUT_DEFS: ShortcutDefinition[] = [
-  { id: "close_window", name: "Close Focused Window", category: "Window Management", default: { key: "q", ctrl: false, shift: false, alt: false, meta: true } },
-  { id: "toggle_maximize", name: "Maximize / Restore Window", category: "Window Management", default: { key: " ", ctrl: false, shift: false, alt: false, meta: true } },
-  { id: "show_desktop", name: "Show / Hide Desktop", category: "Window Management", default: { key: "d", ctrl: false, shift: false, alt: false, meta: true } },
+  // Window Management
+  { id: "close_window", name: "Close Focused Window", category: "Window Management", default: { key: "q", ctrl: false, shift: false, alt: true, meta: false } },
+  { id: "toggle_maximize", name: "Maximize / Restore Window", category: "Window Management", default: { key: "f", ctrl: false, shift: false, alt: true, meta: false } },
+  { id: "minimize_window", name: "Minimize Focused Window", category: "Window Management", default: { key: "m", ctrl: false, shift: false, alt: true, meta: false } },
+  { id: "show_desktop", name: "Show / Hide Desktop", category: "Window Management", default: { key: "d", ctrl: false, shift: false, alt: true, meta: false } },
   
-  { id: "next_window", name: "Focus Next Window", category: "Window Navigation", default: { key: "tab", ctrl: false, shift: false, alt: false, meta: true } },
-  { id: "prev_window", name: "Focus Previous Window", category: "Window Navigation", default: { key: "tab", ctrl: false, shift: true, alt: false, meta: true } },
+  // Window Navigation
+  { id: "next_window", name: "Focus Next Window (Cycle)", category: "Window Navigation", default: { key: "tab", ctrl: false, shift: false, alt: true, meta: false } },
+  { id: "prev_window", name: "Focus Previous Window (Reverse Cycle)", category: "Window Navigation", default: { key: "tab", ctrl: false, shift: true, alt: true, meta: false } },
   
-  { id: "snap_left", name: "Snap Window Left", category: "Window Snapping", default: { key: "arrowleft", ctrl: false, shift: false, alt: false, meta: true } },
-  { id: "snap_right", name: "Snap Window Right", category: "Window Snapping", default: { key: "arrowright", ctrl: false, shift: false, alt: false, meta: true } },
-  { id: "snap_up", name: "Snap Window Up (Maximize)", category: "Window Snapping", default: { key: "arrowup", ctrl: false, shift: false, alt: false, meta: true } },
-  { id: "snap_down", name: "Snap Window Down (Restore/Minimize)", category: "Window Snapping", default: { key: "arrowdown", ctrl: false, shift: false, alt: false, meta: true } },
+  // Window Snapping
+  { id: "snap_left", name: "Snap Window Left", category: "Window Snapping", default: { key: "arrowleft", ctrl: false, shift: false, alt: true, meta: false } },
+  { id: "snap_right", name: "Snap Window Right", category: "Window Snapping", default: { key: "arrowright", ctrl: false, shift: false, alt: true, meta: false } },
+  { id: "snap_up", name: "Snap Window Up (Maximize)", category: "Window Snapping", default: { key: "arrowup", ctrl: false, shift: false, alt: true, meta: false } },
+  { id: "snap_down", name: "Snap Window Down (Restore/Minimize)", category: "Window Snapping", default: { key: "arrowdown", ctrl: false, shift: false, alt: true, meta: false } },
   
-  { id: "move_left", name: "Move Window Left", category: "Window Movement", default: { key: "arrowleft", ctrl: false, shift: true, alt: false, meta: true } },
-  { id: "move_right", name: "Move Window Right", category: "Window Movement", default: { key: "arrowright", ctrl: false, shift: true, alt: false, meta: true } },
-  { id: "move_up", name: "Move Window Up", category: "Window Movement", default: { key: "arrowup", ctrl: false, shift: true, alt: false, meta: true } },
-  { id: "move_down", name: "Move Window Down", category: "Window Movement", default: { key: "arrowdown", ctrl: false, shift: true, alt: false, meta: true } },
+  // Window Movement
+  { id: "move_left", name: "Move Window Left", category: "Window Movement", default: { key: "arrowleft", ctrl: false, shift: true, alt: true, meta: false } },
+  { id: "move_right", name: "Move Window Right", category: "Window Movement", default: { key: "arrowright", ctrl: false, shift: true, alt: true, meta: false } },
+  { id: "move_up", name: "Move Window Up", category: "Window Movement", default: { key: "arrowup", ctrl: false, shift: true, alt: true, meta: false } },
+  { id: "move_down", name: "Move Window Down", category: "Window Movement", default: { key: "arrowdown", ctrl: false, shift: true, alt: true, meta: false } },
   
-  { id: "open_terminal", name: "Open Terminal", category: "Applications", default: { key: "enter", ctrl: false, shift: false, alt: false, meta: true } },
-  { id: "open_explorer", name: "Open File Explorer", category: "Applications", default: { key: "e", ctrl: false, shift: false, alt: false, meta: true } },
-  { id: "open_notes", name: "Open Notes", category: "Applications", default: { key: "n", ctrl: false, shift: false, alt: false, meta: true } },
-  { id: "open_settings", name: "Open Settings", category: "Applications", default: { key: "s", ctrl: false, shift: false, alt: false, meta: true } },
+  // Applications
+  { id: "open_terminal", name: "Open Terminal", category: "Applications", default: { key: "enter", ctrl: false, shift: false, alt: true, meta: false } },
+  { id: "open_explorer", name: "Open File Explorer", category: "Applications", default: { key: "e", ctrl: false, shift: false, alt: true, meta: false } },
+  { id: "open_notes", name: "Open Notes", category: "Applications", default: { key: "n", ctrl: false, shift: false, alt: true, meta: false } },
+  { id: "open_settings", name: "Open Settings", category: "Applications", default: { key: "s", ctrl: false, shift: false, alt: true, meta: false } },
   
   // Workspaces
-  { id: "workspace_1", name: "Switch to Workspace 1", category: "Workspaces", default: { key: "1", ctrl: false, shift: false, alt: false, meta: true } },
-  { id: "workspace_2", name: "Switch to Workspace 2", category: "Workspaces", default: { key: "2", ctrl: false, shift: false, alt: false, meta: true } },
-  { id: "workspace_3", name: "Switch to Workspace 3", category: "Workspaces", default: { key: "3", ctrl: false, shift: false, alt: false, meta: true } },
-  { id: "workspace_4", name: "Switch to Workspace 4", category: "Workspaces", default: { key: "4", ctrl: false, shift: false, alt: false, meta: true } },
-  { id: "workspace_5", name: "Switch to Workspace 5", category: "Workspaces", default: { key: "5", ctrl: false, shift: false, alt: false, meta: true } },
-  { id: "workspace_6", name: "Switch to Workspace 6", category: "Workspaces", default: { key: "6", ctrl: false, shift: false, alt: false, meta: true } },
-  { id: "workspace_7", name: "Switch to Workspace 7", category: "Workspaces", default: { key: "7", ctrl: false, shift: false, alt: false, meta: true } },
-  { id: "workspace_8", name: "Switch to Workspace 8", category: "Workspaces", default: { key: "8", ctrl: false, shift: false, alt: false, meta: true } },
-  { id: "workspace_9", name: "Switch to Workspace 9", category: "Workspaces", default: { key: "9", ctrl: false, shift: false, alt: false, meta: true } },
+  { id: "workspace_1", name: "Switch to Workspace 1", category: "Workspaces", default: { key: "1", ctrl: false, shift: false, alt: true, meta: false } },
+  { id: "workspace_2", name: "Switch to Workspace 2", category: "Workspaces", default: { key: "2", ctrl: false, shift: false, alt: true, meta: false } },
+  { id: "workspace_3", name: "Switch to Workspace 3", category: "Workspaces", default: { key: "3", ctrl: false, shift: false, alt: true, meta: false } },
+  { id: "workspace_4", name: "Switch to Workspace 4", category: "Workspaces", default: { key: "4", ctrl: false, shift: false, alt: true, meta: false } },
+  { id: "workspace_5", name: "Switch to Workspace 5", category: "Workspaces", default: { key: "5", ctrl: false, shift: false, alt: true, meta: false } },
+  { id: "workspace_6", name: "Switch to Workspace 6", category: "Workspaces", default: { key: "6", ctrl: false, shift: false, alt: true, meta: false } },
+  { id: "workspace_7", name: "Switch to Workspace 7", category: "Workspaces", default: { key: "7", ctrl: false, shift: false, alt: true, meta: false } },
+  { id: "workspace_8", name: "Switch to Workspace 8", category: "Workspaces", default: { key: "8", ctrl: false, shift: false, alt: true, meta: false } },
+  { id: "workspace_9", name: "Switch to Workspace 9", category: "Workspaces", default: { key: "9", ctrl: false, shift: false, alt: true, meta: false } },
   
-  { id: "move_workspace_1", name: "Move Window to Workspace 1", category: "Workspaces", default: { key: "1", ctrl: false, shift: true, alt: false, meta: true } },
-  { id: "move_workspace_2", name: "Move Window to Workspace 2", category: "Workspaces", default: { key: "2", ctrl: false, shift: true, alt: false, meta: true } },
-  { id: "move_workspace_3", name: "Move Window to Workspace 3", category: "Workspaces", default: { key: "3", ctrl: false, shift: true, alt: false, meta: true } },
-  { id: "move_workspace_4", name: "Move Window to Workspace 4", category: "Workspaces", default: { key: "4", ctrl: false, shift: true, alt: false, meta: true } },
-  { id: "move_workspace_5", name: "Move Window to Workspace 5", category: "Workspaces", default: { key: "5", ctrl: false, shift: true, alt: false, meta: true } },
-  { id: "move_workspace_6", name: "Move Window to Workspace 6", category: "Workspaces", default: { key: "6", ctrl: false, shift: true, alt: false, meta: true } },
-  { id: "move_workspace_7", name: "Move Window to Workspace 7", category: "Workspaces", default: { key: "7", ctrl: false, shift: true, alt: false, meta: true } },
-  { id: "move_workspace_8", name: "Move Window to Workspace 8", category: "Workspaces", default: { key: "8", ctrl: false, shift: true, alt: false, meta: true } },
-  { id: "move_workspace_9", name: "Move Window to Workspace 9", category: "Workspaces", default: { key: "9", ctrl: false, shift: true, alt: false, meta: true } },
+  { id: "move_workspace_1", name: "Move Window to Workspace 1", category: "Workspaces", default: { key: "1", ctrl: false, shift: true, alt: true, meta: false } },
+  { id: "move_workspace_2", name: "Move Window to Workspace 2", category: "Workspaces", default: { key: "2", ctrl: false, shift: true, alt: true, meta: false } },
+  { id: "move_workspace_3", name: "Move Window to Workspace 3", category: "Workspaces", default: { key: "3", ctrl: false, shift: true, alt: true, meta: false } },
+  { id: "move_workspace_4", name: "Move Window to Workspace 4", category: "Workspaces", default: { key: "4", ctrl: false, shift: true, alt: true, meta: false } },
+  { id: "move_workspace_5", name: "Move Window to Workspace 5", category: "Workspaces", default: { key: "5", ctrl: false, shift: true, alt: true, meta: false } },
+  { id: "move_workspace_6", name: "Move Window to Workspace 6", category: "Workspaces", default: { key: "6", ctrl: false, shift: true, alt: true, meta: false } },
+  { id: "move_workspace_7", name: "Move Window to Workspace 7", category: "Workspaces", default: { key: "7", ctrl: false, shift: true, alt: true, meta: false } },
+  { id: "move_workspace_8", name: "Move Window to Workspace 8", category: "Workspaces", default: { key: "8", ctrl: false, shift: true, alt: true, meta: false } },
+  { id: "move_workspace_9", name: "Move Window to Workspace 9", category: "Workspaces", default: { key: "9", ctrl: false, shift: true, alt: true, meta: false } },
 ];
 
 export type GlobalModifier = "meta" | "alt" | "ctrl" | "custom";
@@ -69,17 +75,22 @@ export interface ShortcutsConfig {
 
 export function loadShortcutsConfig(): ShortcutsConfig {
   if (typeof window === "undefined") {
-    return { globalModifier: "meta", customBinds: {} };
+    return { globalModifier: "alt", customBinds: {} };
   }
   const stored = localStorage.getItem("leviathan_shortcuts_config");
   if (stored) {
     try {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      // Migrate from old default 'meta' if needed
+      if (!parsed.globalModifier) {
+        parsed.globalModifier = "alt";
+      }
+      return parsed;
     } catch (e) {
       console.error("Failed to parse shortcuts config", e);
     }
   }
-  return { globalModifier: "meta", customBinds: {} };
+  return { globalModifier: "alt", customBinds: {} };
 }
 
 export function saveShortcutsConfig(config: ShortcutsConfig) {
@@ -101,18 +112,24 @@ export function getShortcutCombination(actionId: string, config: ShortcutsConfig
     return { key: "", ctrl: false, shift: false, alt: false, meta: false };
   }
 
-  // If the global modifier is not custom, map metaKey to the chosen modifier
+  // If the global modifier is not custom, map the base default modifier
   if (config.globalModifier !== "custom") {
     const isMeta = config.globalModifier === "meta";
     const isAlt = config.globalModifier === "alt";
     const isCtrl = config.globalModifier === "ctrl";
 
     const base = { ...def.default };
-    if (base.meta) {
-      base.meta = isMeta;
-      base.alt = base.alt || isAlt;
-      base.ctrl = base.ctrl || isCtrl;
-    }
+    // Find whichever modifier was 'true' in default, and remap it
+    const defaultHasMeta = def.default.meta;
+    const defaultHasAlt = def.default.alt;
+    const defaultHasCtrl = def.default.ctrl;
+
+    // Apply the configured global modifier
+    base.meta = isMeta ? (defaultHasMeta || defaultHasAlt || defaultHasCtrl) : false;
+    base.alt = isAlt ? (defaultHasMeta || defaultHasAlt || defaultHasCtrl) : false;
+    base.ctrl = isCtrl ? (defaultHasMeta || defaultHasAlt || defaultHasCtrl) : false;
+    base.shift = def.default.shift;
+
     return base;
   }
 

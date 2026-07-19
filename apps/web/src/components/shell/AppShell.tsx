@@ -33,6 +33,7 @@ function KeyboardManager({ setOpenPalette }: { setOpenPalette: (open: boolean) =
       // Load configurations
       const closeCombo = getShortcutCombination("close_window", config);
       const maximizeCombo = getShortcutCombination("toggle_maximize", config);
+      const minimizeCombo = getShortcutCombination("minimize_window", config);
       const showDesktopCombo = getShortcutCombination("show_desktop", config);
       
       const nextWindowCombo = getShortcutCombination("next_window", config);
@@ -70,6 +71,11 @@ function KeyboardManager({ setOpenPalette }: { setOpenPalette: (open: boolean) =
           } else {
             manager.maximize(focusedWindow.id);
           }
+        }
+      } else if (matchesEvent(minimizeCombo, e)) {
+        e.preventDefault();
+        if (focusedWindow) {
+          manager.minimize(focusedWindow.id);
         }
       } else if (matchesEvent(showDesktopCombo, e)) {
         e.preventDefault();

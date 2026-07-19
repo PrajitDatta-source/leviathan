@@ -1,13 +1,187 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { Folder, FileText, Terminal, Settings, Trash2, Sun, MessageSquare, CloudRain } from "lucide-react";
+import { Folder, FileText, Terminal, Settings, Trash2, Sun, MessageSquare } from "lucide-react";
+import { useTheme } from "@/modules/theme/ThemeContext";
+import { themePresets } from "@/modules/theme/presets";
 
-export type IconTheme = "windows11" | "windows7" | "kde" | "macos" | "papirus";
+export interface IconPack {
+  id: string;
+  name: string;
+  renderIcon(appId: string, size: number, className: string): React.ReactNode;
+}
+
+export const iconPackRegistry = new Map<string, IconPack>();
+
+export type IconTheme = string;
+
+// 1. Flat Icon Pack (Default Leviathan style)
+iconPackRegistry.set("flat", {
+  id: "flat",
+  name: "Leviathan Flat",
+  renderIcon(appId, size, className) {
+    const sClass = `w-1/2 h-1/2 text-zinc-100 select-none pointer-events-none`;
+    let bg = "from-violet-500 to-indigo-600";
+    let icon = <Folder className={sClass} />;
+
+    if (appId === "explorer") {
+      bg = "from-amber-400 to-orange-500";
+      icon = <Folder className={sClass} />;
+    } else if (appId === "notes") {
+      bg = "from-blue-400 to-indigo-500";
+      icon = <FileText className={sClass} />;
+    } else if (appId === "terminal") {
+      bg = "from-zinc-700 to-zinc-900";
+      icon = <Terminal className={sClass} />;
+    } else if (appId === "settings") {
+      bg = "from-purple-500 to-pink-500";
+      icon = <Settings className={sClass} />;
+    } else if (appId === "weather") {
+      bg = "from-yellow-400 to-amber-500";
+      icon = <Sun className={sClass} />;
+    } else if (appId === "telegram") {
+      bg = "from-sky-400 to-blue-500";
+      icon = <MessageSquare className={sClass} />;
+    } else if (appId === "trash") {
+      bg = "from-red-500 to-rose-600";
+      icon = <Trash2 className={sClass} />;
+    }
+
+    return (
+      <div
+        className={`rounded-xl bg-gradient-to-br ${bg} border border-white/10 flex items-center justify-center shrink-0 shadow-md ${className}`}
+        style={{ width: size * 2.2, height: size * 2.2 }}
+      >
+        {icon}
+      </div>
+    );
+  }
+});
+
+// 2. Fluent / Glass Icon Pack
+iconPackRegistry.set("fluent", {
+  id: "fluent",
+  name: "Glass Fluent",
+  renderIcon(appId, size, className) {
+    const sClass = `w-1/2 h-1/2 select-none pointer-events-none`;
+    let color = "text-violet-400";
+    let icon = <Folder className={`${sClass} ${color}`} />;
+
+    if (appId === "explorer") {
+      color = "text-amber-400";
+      icon = <Folder className={`${sClass} ${color}`} />;
+    } else if (appId === "notes") {
+      color = "text-blue-400";
+      icon = <FileText className={`${sClass} ${color}`} />;
+    } else if (appId === "terminal") {
+      color = "text-emerald-400";
+      icon = <Terminal className={`${sClass} ${color}`} />;
+    } else if (appId === "settings") {
+      color = "text-fuchsia-400";
+      icon = <Settings className={`${sClass} ${color}`} />;
+    } else if (appId === "weather") {
+      color = "text-yellow-400";
+      icon = <Sun className={`${sClass} ${color}`} />;
+    } else if (appId === "telegram") {
+      color = "text-sky-400";
+      icon = <MessageSquare className={`${sClass} ${color}`} />;
+    } else if (appId === "trash") {
+      color = "text-rose-400";
+      icon = <Trash2 className={`${sClass} ${color}`} />;
+    }
+
+    return (
+      <div
+        className={`rounded-xl bg-white/5 border border-white/10 backdrop-blur-md flex items-center justify-center shrink-0 shadow-lg ${className}`}
+        style={{ width: size * 2.2, height: size * 2.2 }}
+      >
+        {icon}
+      </div>
+    );
+  }
+});
+
+// 3. Classic / Retro System Pack
+iconPackRegistry.set("classic", {
+  id: "classic",
+  name: "Retro Macintosh",
+  renderIcon(appId, size, className) {
+    const sClass = `w-1/2 h-1/2 text-black select-none pointer-events-none`;
+    let icon = <Folder className={sClass} />;
+
+    if (appId === "explorer") {
+      icon = <Folder className={sClass} />;
+    } else if (appId === "notes") {
+      icon = <FileText className={sClass} />;
+    } else if (appId === "terminal") {
+      icon = <Terminal className={sClass} />;
+    } else if (appId === "settings") {
+      icon = <Settings className={sClass} />;
+    } else if (appId === "weather") {
+      icon = <Sun className={sClass} />;
+    } else if (appId === "telegram") {
+      icon = <MessageSquare className={sClass} />;
+    } else if (appId === "trash") {
+      icon = <Trash2 className={sClass} />;
+    }
+
+    return (
+      <div
+        className={`bg-zinc-300 border-2 border-t-white border-l-white border-b-zinc-600 border-r-zinc-600 flex items-center justify-center shrink-0 shadow-sm ${className}`}
+        style={{ width: size * 2.2, height: size * 2.2 }}
+      >
+        {icon}
+      </div>
+    );
+  }
+});
+
+// 4. Material Pack
+iconPackRegistry.set("material", {
+  id: "material",
+  name: "Material Design",
+  renderIcon(appId, size, className) {
+    const sClass = `w-1/2 h-1/2 text-white select-none pointer-events-none`;
+    let bg = "bg-blue-600";
+    let icon = <Folder className={sClass} />;
+
+    if (appId === "explorer") {
+      bg = "bg-amber-600";
+      icon = <Folder className={sClass} />;
+    } else if (appId === "notes") {
+      bg = "bg-indigo-600";
+      icon = <FileText className={sClass} />;
+    } else if (appId === "terminal") {
+      bg = "bg-zinc-800";
+      icon = <Terminal className={sClass} />;
+    } else if (appId === "settings") {
+      bg = "bg-teal-600";
+      icon = <Settings className={sClass} />;
+    } else if (appId === "weather") {
+      bg = "bg-orange-500";
+      icon = <Sun className={sClass} />;
+    } else if (appId === "telegram") {
+      bg = "bg-sky-500";
+      icon = <MessageSquare className={sClass} />;
+    } else if (appId === "trash") {
+      bg = "bg-red-500";
+      icon = <Trash2 className={sClass} />;
+    }
+
+    return (
+      <div
+        className={`rounded-full ${bg} flex items-center justify-center shrink-0 shadow-md ${className}`}
+        style={{ width: size * 2.2, height: size * 2.2 }}
+      >
+        {icon}
+      </div>
+    );
+  }
+});
 
 interface IconThemeContextValue {
-  iconTheme: IconTheme;
-  setIconTheme: (theme: IconTheme) => void;
+  iconTheme: string;
+  setIconTheme: (theme: string) => void;
 }
 
 const IconThemeContext = createContext<IconThemeContextValue | null>(null);
@@ -21,18 +195,18 @@ export function useIconTheme() {
 }
 
 export function IconThemeProvider({ children }: { children: React.ReactNode }) {
-  const [iconTheme, setIconThemeState] = useState<IconTheme>("windows11");
+  const { theme } = useTheme();
+  const [iconTheme, setIconThemeState] = useState<string>("flat");
 
+  // Sync iconTheme automatically with theme presets unless customized
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("leviathan_icon_theme") as IconTheme;
-      if (stored) {
-        setIconThemeState(stored);
-      }
+    const activePreset = themePresets[theme];
+    if (activePreset && activePreset.iconPack) {
+      setIconThemeState(activePreset.iconPack);
     }
-  }, []);
+  }, [theme]);
 
-  const setIconTheme = (newTheme: IconTheme) => {
+  const setIconTheme = (newTheme: string) => {
     setIconThemeState(newTheme);
     if (typeof window !== "undefined") {
       localStorage.setItem("leviathan_icon_theme", newTheme);
@@ -54,90 +228,18 @@ interface AppIconProps {
 
 export function AppIcon({ appId, size = 20, className = "" }: AppIconProps) {
   const { iconTheme } = useIconTheme();
-
-  // Get glyph icon component
-  const getGlyph = (id: string) => {
-    const sClass = `w-1/2 h-1/2 select-none pointer-events-none`;
-    switch (id) {
-      case "explorer":
-        return <Folder className={`${sClass} text-yellow-500`} />;
-      case "notes":
-        return <FileText className={`${sClass} text-blue-500`} />;
-      case "terminal":
-        return <Terminal className={`${sClass} text-zinc-300`} />;
-      case "settings":
-        return <Settings className={`${sClass} text-violet-500`} />;
-      case "weather":
-        return <Sun className={`${sClass} text-amber-500`} />;
-      case "telegram":
-        return <MessageSquare className={`${sClass} text-sky-400`} />;
-      default:
-        return <Folder className={sClass} />;
-    }
-  };
-
-  // Switch wrapper rendering styling according to IconTheme
-  switch (iconTheme) {
-    case "windows11":
-      // Modern Fluent 3D JPG Icon previews (or custom fluent style for telegram)
-      const isRegisteredFluent = ["explorer", "notes", "settings", "terminal", "weather", "trash"].includes(appId);
-      if (isRegisteredFluent) {
-        return (
-          <div className={`relative overflow-hidden rounded-xl bg-zinc-900 border border-white/10 shadow-md shrink-0 flex items-center justify-center ${className}`} style={{ width: size * 2.2, height: size * 2.2 }}>
-            <img
-              src={`/assets/icons/${appId}.jpg`}
-              alt={appId}
-              className="w-full h-full object-cover select-none pointer-events-none"
-              draggable={false}
-            />
-          </div>
-        );
-      }
-      return (
-        <div className={`rounded-xl bg-gradient-to-br from-violet-500/20 to-indigo-500/20 border border-violet-500/30 flex items-center justify-center shrink-0 shadow-sm ${className}`} style={{ width: size * 2.2, height: size * 2.2 }}>
-          {getGlyph(appId)}
-        </div>
-      );
-
-    case "windows7":
-      // High-Gloss Aero Glass style wrappers
-      return (
-        <div className={`relative overflow-hidden rounded-lg border flex items-center justify-center shrink-0 shadow-cyan-500/40 shadow-sm bg-gradient-to-b from-cyan-400/80 via-blue-500/40 to-blue-600/80 border-cyan-300/60 ${className}`} style={{ width: size * 2.2, height: size * 2.2 }}>
-          {/* Aero Glass top highlights reflection overlay */}
-          <div className="absolute top-0 left-0 right-0 h-1/2 bg-white/20 rounded-t-lg select-none pointer-events-none" />
-          {getGlyph(appId)}
-        </div>
-      );
-
-    case "kde":
-      // KDE Breeze flat sharp geometry style wrappers
-      return (
-        <div className={`rounded-lg bg-gradient-to-br from-cyan-500/90 to-blue-500/90 border border-cyan-400/40 flex items-center justify-center shrink-0 shadow-md ${className}`} style={{ width: size * 2.2, height: size * 2.2 }}>
-          {getGlyph(appId)}
-        </div>
-      );
-
-    case "macos":
-      // macOS Big Sur rounded layered squircles with drop shadow
-      return (
-        <div className={`rounded-2xl bg-gradient-to-b from-zinc-800 to-zinc-950 border border-zinc-700/50 flex items-center justify-center shrink-0 shadow-2xl ${className}`} style={{ width: size * 2.2, height: size * 2.2 }}>
-          {getGlyph(appId)}
-        </div>
-      );
-
-    case "papirus":
-      // Circular bold flat geometric icons
-      return (
-        <div className={`rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 border border-indigo-400/30 flex items-center justify-center shrink-0 shadow-sm ${className}`} style={{ width: size * 2.2, height: size * 2.2 }}>
-          {getGlyph(appId)}
-        </div>
-      );
-
-    default:
-      return (
-        <div className={`rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center shrink-0 ${className}`} style={{ width: size * 2.2, height: size * 2.2 }}>
-          {getGlyph(appId)}
-        </div>
-      );
+  const pack = iconPackRegistry.get(iconTheme) || iconPackRegistry.get("flat");
+  if (pack) {
+    return pack.renderIcon(appId, size, className) as React.ReactElement;
   }
+  
+  // Safe Fallback
+  return (
+    <div
+      className={`rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center shrink-0 ${className}`}
+      style={{ width: size * 2.2, height: size * 2.2 }}
+    >
+      <Folder className="w-1/2 h-1/2 text-zinc-100" />
+    </div>
+  );
 }

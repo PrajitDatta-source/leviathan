@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Folder, FileText, Terminal, Settings, Trash2, Sun } from "lucide-react";
+import { Folder, FileText, Terminal, Settings, Trash2, Sun, MessageSquare } from "lucide-react";
 import { useWindowManager } from "@/core/window/hooks";
 import { appRegistry } from "@/core/app";
 import { AppIcon } from "@/modules/icons/IconThemeContext";
@@ -44,7 +44,8 @@ export function DesktopIcons() {
     { id: "terminal", label: "Terminal", appId: "terminal", icon: Terminal, x: 20, y: 212 },
     { id: "settings", label: "Settings", appId: "settings", icon: Settings, x: 20, y: 308 },
     { id: "weather", label: "Weather", appId: "weather", icon: Sun, x: 20, y: 404 },
-    { id: "trash", label: "Trash", appId: "trash", icon: Trash2, x: 20, y: 500 },
+    { id: "telegram", label: "Telegram", appId: "telegram", icon: MessageSquare, x: 20, y: 500 },
+    { id: "trash", label: "Trash", appId: "trash", icon: Trash2, x: 20, y: 596 },
   ]);
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -352,7 +353,7 @@ export function DesktopIcons() {
                 className="w-full bg-[var(--surface)] text-zinc-100 text-[10px] text-center border border-violet-500 rounded px-0.5 outline-none select-text pointer-events-auto"
               />
             ) : (
-              <span className="text-[11px] font-medium text-zinc-100 text-center tracking-wide drop-shadow-md truncate max-w-full px-0.5">
+              <span className="text-[11px] font-semibold text-white text-center tracking-wide drop-shadow-[0_1.5px_1.5px_rgba(0,0,0,0.95)] truncate max-w-full px-0.5 mt-1 select-none">
                 {icon.label}
               </span>
             )}

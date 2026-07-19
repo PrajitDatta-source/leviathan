@@ -227,20 +227,20 @@ export function SettingsWindow() {
 
             <div className="grid grid-cols-2 gap-4">
               {([
-                { id: "dark", label: "Dark Mode", desc: "Sleek carbon style" },
-                { id: "light", label: "Light Mode", desc: "Clean & high contrast" },
-                { id: "oled", label: "OLED Black", desc: "Pure deep blacks" },
-                { id: "glass", label: "Glassmorphism", desc: "Translucent frosted sheets" },
-                { id: "nord", label: "Nord", desc: "Cool arctic frost colors" },
-                { id: "catppuccin", label: "Catppuccin Mocha", desc: "Soothing pastel tones" },
-                { id: "tokyonight", label: "Tokyo Night", desc: "Vibrant neon cyberpunk" },
-                { id: "dracula", label: "Dracula", desc: "Classic dark vampire palette" },
-                { id: "gruvbox", label: "Gruvbox Dark", desc: "Retro warm sand & rust" },
+                { id: "leviathan-dark", label: "Leviathan Dark (Default)", desc: "Modern flat icons, synthetic click sounds, and dark walls" },
+                { id: "leviathan-light", label: "Leviathan Light", desc: "Clean bright look with modern flat icons & click sounds" },
+                { id: "fluent-glass", label: "Glass Fluent", desc: "Frosted glass-morphism panels and glowing neon fluent icons" },
+                { id: "retro-mac", label: "Retro Macintosh", desc: "Monochrome gray style with pixel icons and pixel crosshair cursor" },
+                { id: "material-design", label: "Material Design", desc: "Material theme with circular solid icons & flat dark card styling" },
+                { id: "dark", label: "Legacy Dark", desc: "Sleek dark carbon style fallback" },
+                { id: "light", label: "Legacy Light", desc: "Standard light contrast fallback" },
+                { id: "oled", label: "OLED Black", desc: "Pure deep blacks fallback" },
+                { id: "glass", label: "Frosted Glass", desc: "Standard frosted sheet fallback" },
               ] as { id: Theme; label: string; desc: string }[]).map((t) => (
                 <button
                   key={t.id}
                   onClick={() => setTheme(t.id)}
-                  className={`relative p-4 rounded-xl border text-left transition ${
+                  className={`relative p-4 rounded-xl border text-left transition cursor-pointer ${
                     theme === t.id
                       ? "border-violet-500 bg-violet-500/5"
                       : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border)]/80"
@@ -497,7 +497,7 @@ export function SettingsWindow() {
               <h3 className="text-lg font-medium">Keyboard Shortcuts</h3>
               <button
                 onClick={() => {
-                  const defaultConfig = { globalModifier: "meta" as const, customBinds: {} };
+                  const defaultConfig = { globalModifier: "alt" as const, customBinds: {} };
                   setShortcutsConfig(defaultConfig);
                   saveShortcutsConfig(defaultConfig);
                 }}
@@ -511,6 +511,39 @@ export function SettingsWindow() {
             <p className="text-xs text-[var(--muted)] mb-6">
               Customize the keyboard shortcuts to manage windows, navigation, workspaces, and launch applications.
             </p>
+
+            {/* Quick Reference Cheat Sheet */}
+            <div className="mb-6">
+              <h4 className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider pl-1 mb-2">
+                Quick Cheat Sheet (OS Defaults)
+              </h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 text-xs">
+                <div className="flex justify-between items-center bg-[var(--background)] px-3 py-2 rounded-lg border border-[var(--border)]/65">
+                  <span className="text-zinc-400">Close Window</span>
+                  <kbd className="font-mono bg-[var(--border)] px-1.5 py-0.5 rounded text-violet-400 font-semibold">Alt + Q</kbd>
+                </div>
+                <div className="flex justify-between items-center bg-[var(--background)] px-3 py-2 rounded-lg border border-[var(--border)]/65">
+                  <span className="text-zinc-400">Max / Restore</span>
+                  <kbd className="font-mono bg-[var(--border)] px-1.5 py-0.5 rounded text-violet-400 font-semibold">Alt + F</kbd>
+                </div>
+                <div className="flex justify-between items-center bg-[var(--background)] px-3 py-2 rounded-lg border border-[var(--border)]/65">
+                  <span className="text-zinc-400">Minimize</span>
+                  <kbd className="font-mono bg-[var(--border)] px-1.5 py-0.5 rounded text-violet-400 font-semibold">Alt + M</kbd>
+                </div>
+                <div className="flex justify-between items-center bg-[var(--background)] px-3 py-2 rounded-lg border border-[var(--border)]/65">
+                  <span className="text-zinc-400">Show Desktop</span>
+                  <kbd className="font-mono bg-[var(--border)] px-1.5 py-0.5 rounded text-violet-400 font-semibold">Alt + D</kbd>
+                </div>
+                <div className="flex justify-between items-center bg-[var(--background)] px-3 py-2 rounded-lg border border-[var(--border)]/65">
+                  <span className="text-zinc-400">Cycle Windows</span>
+                  <kbd className="font-mono bg-[var(--border)] px-1.5 py-0.5 rounded text-violet-400 font-semibold">Alt + Tab</kbd>
+                </div>
+                <div className="flex justify-between items-center bg-[var(--background)] px-3 py-2 rounded-lg border border-[var(--border)]/65">
+                  <span className="text-zinc-400">Workspaces</span>
+                  <kbd className="font-mono bg-[var(--border)] px-1.5 py-0.5 rounded text-violet-400 font-semibold">Alt + 1-9</kbd>
+                </div>
+              </div>
+            </div>
 
             {/* Global Modifier Selector */}
             <div className="mb-6 p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-xs">

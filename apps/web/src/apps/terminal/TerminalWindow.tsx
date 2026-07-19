@@ -4,344 +4,428 @@ import React, { useState, useEffect, useRef } from "react";
 import { vfs } from "@/modules/filesystem/vfs";
 import { useTheme } from "@/modules/theme/ThemeContext";
 import { useWindowManager } from "@/core/window/hooks";
-
-interface LogLine {
-  text: string;
-  type: "input" | "output" | "error" | "success";
-}
+import type { Terminal as XTermTerminal } from "xterm";
 
 export function TerminalWindow() {
   const { theme, setTheme } = useTheme();
   const manager = useWindowManager();
   const [currentDirId, setCurrentDirId] = useState<string | null>(null);
-  const [history, setHistory] = useState<LogLine[]>([
-    { text: "Leviathan Shell v1.0.0", type: "success" },
-    { text: "Type 'help' to see available commands.", type: "output" },
-  ]);
-  const [input, setInput] = useState("");
-  const [cmdHistory, setCmdHistory] = useState<string[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-  const terminalEndRef = useRef<HTMLDivElement>(null);
 
-  // Initialize directory node pointer to "Home" if found
+  const terminalRef = useRef<HTMLDivElement>(null);
+  const xtermInstance = useRef<XTermTerminal | null>(null);
+
+  // Sync ref with React state to let dynamic callbacks read the current dir synchronously
+  const currentDirRef = useRef<string | null>(null);
+  const cmdHistoryRef = useRef<string[]>([]);
+  const historyIndexRef = useRef<number>(-1);
+  const themeRef = useRef<any>(theme);
+  const setThemeRef = useRef<any>(setTheme);
+
+  useEffect(() => {
+    themeRef.current = theme;
+  }, [theme]);
+
+  useEffect(() => {
+    setThemeRef.current = setTheme;
+  }, [setTheme]);
+
+  // Set initial home directory pointer
   useEffect(() => {
     const rootFolders = vfs.getChildren(null);
     const homeFolder = rootFolders.find((n) => n.name === "Home");
     if (homeFolder) {
       setCurrentDirId(homeFolder.id);
+      currentDirRef.current = homeFolder.id;
     }
   }, []);
 
-  useEffect(() => {
-    terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [history]);
-
   const getPromptPath = () => {
-    if (!currentDirId) return "/";
-    const pathNodes = vfs.getPath(currentDirId);
+    const dirId = currentDirRef.current;
+    if (!dirId) return "/";
+    const pathNodes = vfs.getPath(dirId);
     return "/" + pathNodes.map((n) => n.name).join("/");
   };
 
-  const handleCommand = (e: React.FormEvent) => {
-    e.preventDefault();
-    const command = input.trim();
-    if (!command) return;
+  const writePrompt = (t: XTermTerminal) => {
+    t.write(`\r\n\x1b[1;36mleviathan ➜ ${getPromptPath()} $\x1b[0m `);
+  };
 
-    setHistory((prev) => [...prev, { text: `leviathan ➜ ${getPromptPath()} $ ${command}`, type: "input" }]);
-    setCmdHistory((prev) => [...prev, command]);
-    setHistoryIndex(-1);
-    setInput("");
+  const clearCurrentLineAndRedraw = (t: XTermTerminal, input: string) => {
+    t.write("\r\x1b[2K");
+    t.write(`\x1b[1;36mleviathan ➜ ${getPromptPath()} $\x1b[0m `);
+    t.write(input);
+  };
+
+  const handleExecCommand = (commandLine: string, t: XTermTerminal) => {
+    const command = commandLine.trim();
+    if (!command) {
+      writePrompt(t);
+      return;
+    }
+
+    cmdHistoryRef.current.push(command);
 
     const parts = command.split(/\s+/);
     let cmd = parts[0].toLowerCase();
     const args = parts.slice(1);
 
-    // Command Aliases
     if (cmd === "dir") cmd = "ls";
     if (cmd === "cls") cmd = "clear";
     if (cmd === "md") cmd = "mkdir";
 
     switch (cmd) {
       case "help":
-        setHistory((prev) => [
-          ...prev,
-          { text: "Available commands:", type: "success" },
-          { text: "  ls            - List contents of current directory", type: "output" },
-          { text: "  cd [dir]      - Change directory (e.g. 'cd Documents', 'cd ..')", type: "output" },
-          { text: "  mkdir [name]  - Create new directory", type: "output" },
-          { text: "  rm [name]     - Delete file or directory", type: "output" },
-          { text: "  cat [file]    - Display file contents", type: "output" },
-          { text: "  theme [name]  - Set theme (light, dark, oled, glass)", type: "output" },
-          { text: "  weather       - Fetch weather information", type: "output" },
-          { text: "  neofetch      - Display system details", type: "output" },
-          { text: "  clear         - Clear terminal screen", type: "output" },
-        ]);
+        t.writeln("\r\n\x1b[1;32mAvailable commands:\x1b[0m");
+        t.writeln("  ls            - List contents of current directory");
+        t.writeln("  cd [dir]      - Change directory (e.g. 'cd Documents', 'cd ..')");
+        t.writeln("  mkdir [name]  - Create new directory");
+        t.writeln("  rm [name]     - Delete file or directory");
+        t.writeln("  cat [file]    - Display file contents");
+        t.writeln("  theme [name]  - Set theme (light, dark, oled, glass)");
+        t.writeln("  weather       - Fetch weather information");
+        t.writeln("  neofetch      - Display system details");
+        t.writeln("  clear         - Clear terminal screen");
+        writePrompt(t);
         break;
 
       case "clear":
-        setHistory([]);
+        t.clear();
+        writePrompt(t);
         break;
 
       case "ls":
-        const nodes = vfs.getChildren(currentDirId);
+        t.writeln("");
+        const nodes = vfs.getChildren(currentDirRef.current);
         if (nodes.length === 0) {
-          setHistory((prev) => [...prev, { text: "(empty directory)", type: "output" }]);
+          t.writeln("(empty directory)");
         } else {
           nodes.forEach((n) => {
             const prefix = n.type === "folder" ? "📁 " : "📄 ";
-            setHistory((prev) => [...prev, { text: `${prefix}${n.name}`, type: "output" }]);
+            t.writeln(`${prefix}${n.name}`);
           });
         }
+        writePrompt(t);
         break;
 
       case "cd":
+        t.writeln("");
         const target = args.join(" ");
         if (!target) {
-          // Go to Root folder Home
           const rootFolders = vfs.getChildren(null);
           const home = rootFolders.find((n) => n.name === "Home");
-          if (home) setCurrentDirId(home.id);
+          if (home) {
+            currentDirRef.current = home.id;
+            setCurrentDirId(home.id);
+          }
         } else if (target === "..") {
-          if (currentDirId) {
-            const node = vfs.getNode(currentDirId);
-            if (node) setCurrentDirId(node.parentId);
+          if (currentDirRef.current) {
+            const node = vfs.getNode(currentDirRef.current);
+            if (node && node.parentId) {
+              currentDirRef.current = node.parentId;
+              setCurrentDirId(node.parentId);
+            }
           }
         } else {
-          const children = vfs.getChildren(currentDirId);
+          const children = vfs.getChildren(currentDirRef.current);
           const folder = children.find((n) => n.name === target && n.type === "folder");
           if (folder) {
+            currentDirRef.current = folder.id;
             setCurrentDirId(folder.id);
           } else {
-            setHistory((prev) => [...prev, { text: `cd: no such directory: ${target}`, type: "error" }]);
+            t.writeln(`cd: no such directory: ${target}`);
           }
         }
+        writePrompt(t);
         break;
 
       case "mkdir":
+        t.writeln("");
         const folderName = args.join(" ");
         if (!folderName) {
-          setHistory((prev) => [...prev, { text: "mkdir: missing directory name", type: "error" }]);
+          t.writeln("mkdir: missing directory name");
         } else {
-          vfs.createFolder(folderName, currentDirId);
-          setHistory((prev) => [...prev, { text: `Directory '${folderName}' created successfully.`, type: "success" }]);
+          vfs.createFolder(folderName, currentDirRef.current);
+          t.writeln(`Directory '${folderName}' created successfully.`);
         }
+        writePrompt(t);
         break;
 
       case "rm":
+        t.writeln("");
         const removeName = args.join(" ");
         if (!removeName) {
-          setHistory((prev) => [...prev, { text: "rm: missing node name", type: "error" }]);
+          t.writeln("rm: missing node name");
         } else {
-          const children = vfs.getChildren(currentDirId);
+          const children = vfs.getChildren(currentDirRef.current);
           const node = children.find((n) => n.name === removeName);
           if (node) {
             vfs.deleteNode(node.id);
-            setHistory((prev) => [...prev, { text: `'${removeName}' removed successfully.`, type: "success" }]);
+            t.writeln(`'${removeName}' removed successfully.`);
           } else {
-            setHistory((prev) => [...prev, { text: `rm: no such file or directory: ${removeName}`, type: "error" }]);
+            t.writeln(`rm: no such file or directory: ${removeName}`);
           }
         }
+        writePrompt(t);
         break;
 
       case "cat":
+        t.writeln("");
         const fileName = args.join(" ");
         if (!fileName) {
-          setHistory((prev) => [...prev, { text: "cat: missing file name", type: "error" }]);
+          t.writeln("cat: missing file name");
         } else {
-          const children = vfs.getChildren(currentDirId);
+          const children = vfs.getChildren(currentDirRef.current);
           const file = children.find((n) => n.name === fileName && n.type === "file");
           if (file) {
-            setHistory((prev) => [...prev, { text: file.content || "(empty file)", type: "output" }]);
+            const cleanContent = (file.content || "(empty file)").replace(/\n/g, "\r\n");
+            t.writeln(cleanContent);
           } else {
-            setHistory((prev) => [...prev, { text: `cat: no such file: ${fileName}`, type: "error" }]);
+            t.writeln(`cat: no such file: ${fileName}`);
           }
         }
+        writePrompt(t);
         break;
 
       case "theme":
+        t.writeln("");
         const targetTheme = args[0]?.toLowerCase();
         if (["light", "dark", "oled", "glass"].includes(targetTheme)) {
-          setTheme(targetTheme as any);
-          setHistory((prev) => [...prev, { text: `Theme switched to '${targetTheme}'`, type: "success" }]);
+          setThemeRef.current(targetTheme as any);
+          t.writeln(`Theme switched to '${targetTheme}'`);
         } else {
-          setHistory((prev) => [
-            ...prev,
-            { text: `theme: theme '${targetTheme || ""}' not found. Try: light, dark, oled, glass`, type: "error" },
-          ]);
+          t.writeln(`theme: theme '${targetTheme || ""}' not found. Try: light, dark, oled, glass`);
         }
+        writePrompt(t);
         break;
 
       case "weather":
-        setHistory((prev) => [...prev, { text: "Fetching live meteorological forecast...", type: "output" }]);
+        t.writeln("\r\nFetching Forecast...");
         (async () => {
           try {
             let lat = 51.5074;
             let lon = -0.1278;
             let locName = "London (Default)";
-            
-            if (typeof navigator !== "undefined" && navigator.geolocation) {
-              await new Promise<void>((resolve) => {
-                navigator.geolocation.getCurrentPosition(
-                  (pos) => {
-                    lat = pos.coords.latitude;
-                    lon = pos.coords.longitude;
-                    locName = "Your Coordinates";
-                    resolve();
-                  },
-                  () => resolve()
-                );
-              });
-            }
-
             const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
             const data = await res.json();
             if (data && data.current_weather) {
               const temp = Math.round(data.current_weather.temperature);
               const wind = data.current_weather.windspeed;
               const code = data.current_weather.weathercode;
-              
               let text = "Clear Sky";
               if (code >= 1 && code <= 3) text = "Partly Cloudy";
               else if (code >= 51 && code <= 67) text = "Rainy Showers";
               else if (code >= 71 && code <= 77) text = "Snowy Flurries";
-              else if (code >= 80 && code <= 82) text = "Heavy Rain";
-              else if (code >= 95) text = "Thunderstorm";
-
-              setHistory((prev) => [
-                ...prev,
-                { text: `🌤️  Weather Forecast (${locName}):`, type: "success" },
-                { text: `   Conditions: ${text}`, type: "output" },
-                { text: `   Temperature: ${temp}°C`, type: "output" },
-                { text: `   Wind Speed: ${wind} km/h`, type: "output" },
-              ]);
+              t.writeln(`🌤️  Forecast (${locName}): ${text}, ${temp}°C, Wind ${wind} km/h`);
             }
           } catch (e) {
-            setHistory((prev) => [...prev, { text: "weather: failed to reach Open-Meteo services.", type: "error" }]);
+            t.writeln("weather: failed to reach weather API.");
           }
+          writePrompt(t);
         })();
         break;
 
       case "neofetch": {
-        let browserName = "Chrome";
-        if (typeof navigator !== "undefined") {
-          const ua = navigator.userAgent;
-          if (ua.includes("Firefox")) browserName = "Firefox";
-          else if (ua.includes("Safari") && !ua.includes("Chrome")) browserName = "Safari";
-          else if (ua.includes("Edge")) browserName = "Edge";
-        }
-        
         const res = typeof window !== "undefined" ? `${window.innerWidth}x${window.innerHeight}` : "1920x1080";
         const uptime = Math.round(performance.now() / 1000);
         const openWinCount = manager.windows.length;
         const vfsCount = vfs.getAllNodes().length;
-
-        setHistory((prev) => [
-          ...prev,
-          {
-            text: `
-    /\\_/\\      user@leviathan
-   ( o.o )     --------------
-    > ^ <      OS: Leviathan Web OS v1.0.0
-   /  |  \\     Browser: ${browserName}
-  ( |_|_| )    Resolution: ${res}
-               Uptime: ${uptime}s
-               Active Workspace: Workspace ${manager.activeWorkspace}
-               Open Windows: ${openWinCount}
-               Theme: ${theme.toUpperCase()}
-               VFS Nodes: ${vfsCount} files/folders
-               Connected Services: Telegram API, Open-Meteo Weather
-`,
-            type: "success",
-          },
-        ]);
+        
+        t.writeln("");
+        t.writeln("    /\\_/\\      user@leviathan");
+        t.writeln("   ( o.o )     --------------");
+        t.writeln("    > ^ <      OS: Leviathan Web OS v1.0.0");
+        t.writeln("   /  |  \\     Resolution: " + res);
+        t.writeln("  ( |_|_| )    Uptime: " + uptime + "s");
+        t.writeln("               Active Workspace: Workspace " + manager.activeWorkspace);
+        t.writeln("               Theme: " + themeRef.current.toUpperCase());
+        t.writeln("               VFS Nodes: " + vfsCount + " files/folders");
+        writePrompt(t);
         break;
       }
 
       default:
-        setHistory((prev) => [
-          ...prev,
-          { text: `bash: command not found: ${cmd}`, type: "error" },
-        ]);
+        t.writeln(`\r\nbash: command not found: ${cmd}`);
+        writePrompt(t);
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowUp") {
-      e.preventDefault();
-      if (cmdHistory.length === 0) return;
-      const nextIndex = historyIndex === -1 ? cmdHistory.length - 1 : Math.max(0, historyIndex - 1);
-      setHistoryIndex(nextIndex);
-      setInput(cmdHistory[nextIndex]);
-    } else if (e.key === "ArrowDown") {
-      e.preventDefault();
-      if (historyIndex === -1) return;
-      const nextIndex = historyIndex + 1;
-      if (nextIndex >= cmdHistory.length) {
-        setHistoryIndex(-1);
-        setInput("");
-      } else {
-        setHistoryIndex(nextIndex);
-        setInput(cmdHistory[nextIndex]);
-      }
-    } else if (e.key === "Tab") {
-      e.preventDefault();
-      const trimmed = input.trim();
-      const tokens = trimmed.split(/\s+/);
-      const currentToken = tokens[tokens.length - 1] || "";
+  useEffect(() => {
+    if (typeof window === "undefined" || !terminalRef.current) return;
+
+    // Load xterm stylesheet dynamically
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css";
+    document.head.appendChild(link);
+
+    let isMounted = true;
+    let terminal: XTermTerminal;
+
+    // Load xterm dynamically
+    import("xterm").then(({ Terminal }) => {
+      if (!isMounted) return;
+
+      terminal = new Terminal({
+        cursorBlink: true,
+        fontSize: 12,
+        fontFamily: 'SFMono-Regular, Consolas, "Liberation Mono", Menlo, Courier, monospace',
+        theme: {
+          background: "#09090b",
+          foreground: "#f4f4f5",
+          cursor: "#a78bfa",
+          selectionBackground: "rgba(167, 139, 250, 0.3)",
+        },
+      });
+
+      if (!terminalRef.current) return;
+      xtermInstance.current = terminal;
+      terminal.open(terminalRef.current);
       
-      if (tokens.length <= 1) {
-        const commands = ["ls", "cd", "mkdir", "rm", "cat", "theme", "weather", "neofetch", "clear", "help", "dir", "md", "cls"];
-        const matches = commands.filter(c => c.startsWith(currentToken.toLowerCase()));
-        if (matches.length === 1) {
-          setInput(matches[0] + " ");
-        } else if (matches.length > 1) {
-          setHistory(prev => [...prev, { text: matches.join("   "), type: "output" }]);
+      // Compute initial fit size
+      const containerWidth = terminalRef.current.clientWidth;
+      const containerHeight = terminalRef.current.clientHeight;
+      const cols = Math.max(40, Math.floor(containerWidth / 7.5));
+      const rows = Math.max(10, Math.floor(containerHeight / 17));
+      terminal.resize(cols, rows);
+
+      // Welcome header
+      terminal.writeln("Leviathan Shell v1.0.0 (xterm.js)");
+      terminal.writeln("Type 'help' to see available commands.");
+      terminal.write(`\x1b[1;36mleviathan ➜ ${getPromptPath()} $\x1b[0m `);
+
+      // Handle raw key presses and line buffer
+      let inputBuffer = "";
+      terminal.onData((data) => {
+        // Up Arrow
+        if (data === "\x1b[A") {
+          const cmdHistory = cmdHistoryRef.current;
+          if (cmdHistory.length === 0) return;
+          const nextIndex = historyIndexRef.current === -1 ? cmdHistory.length - 1 : Math.max(0, historyIndexRef.current - 1);
+          historyIndexRef.current = nextIndex;
+          inputBuffer = cmdHistory[nextIndex];
+          clearCurrentLineAndRedraw(terminal, inputBuffer);
+          return;
         }
-      } else {
-        const children = vfs.getChildren(currentDirId);
-        const matches = children
-          .map(c => c.name)
-          .filter(name => name.toLowerCase().startsWith(currentToken.toLowerCase()));
-        
-        if (matches.length === 1) {
-          const isDir = children.find(c => c.name === matches[0])?.type === "folder";
-          tokens[tokens.length - 1] = matches[0];
-          setInput(tokens.join(" ") + (isDir ? "/" : " "));
-        } else if (matches.length > 1) {
-          setHistory(prev => [...prev, { text: matches.join("   "), type: "output" }]);
+
+        // Down Arrow
+        if (data === "\x1b[B") {
+          const cmdHistory = cmdHistoryRef.current;
+          if (historyIndexRef.current === -1) return;
+          const nextIndex = historyIndexRef.current + 1;
+          if (nextIndex >= cmdHistory.length) {
+            historyIndexRef.current = -1;
+            inputBuffer = "";
+          } else {
+            historyIndexRef.current = nextIndex;
+            inputBuffer = cmdHistory[nextIndex];
+          }
+          clearCurrentLineAndRedraw(terminal, inputBuffer);
+          return;
         }
-      }
+
+        // Left / Right Arrow block (for simple inline edits)
+        if (data === "\x1b[C" || data === "\x1b[D") {
+          return;
+        }
+
+        // Enter key
+        if (data === "\r") {
+          handleExecCommand(inputBuffer, terminal);
+          inputBuffer = "";
+          historyIndexRef.current = -1;
+          return;
+        }
+
+        // Backspace key
+        if (data === "\x7f" || data === "\x08") {
+          if (inputBuffer.length > 0) {
+            inputBuffer = inputBuffer.slice(0, -1);
+            terminal.write("\b \b");
+          }
+          return;
+        }
+
+        // Ctrl+C cancellation
+        if (data === "\x03") {
+          terminal.write("^C");
+          inputBuffer = "";
+          writePrompt(terminal);
+          return;
+        }
+
+        // Tab completion
+        if (data === "\t") {
+          const trimmed = inputBuffer.trim();
+          const tokens = trimmed.split(/\s+/);
+          const currentToken = tokens[tokens.length - 1] || "";
+          
+          if (tokens.length <= 1) {
+            const commands = ["ls", "cd", "mkdir", "rm", "cat", "theme", "weather", "neofetch", "clear", "help"];
+            const matches = commands.filter(c => c.startsWith(currentToken.toLowerCase()));
+            if (matches.length === 1) {
+              inputBuffer = matches[0] + " ";
+              clearCurrentLineAndRedraw(terminal, inputBuffer);
+            } else if (matches.length > 1) {
+              terminal.write("\r\n" + matches.join("   "));
+              clearCurrentLineAndRedraw(terminal, inputBuffer);
+            }
+          } else {
+            const children = vfs.getChildren(currentDirRef.current);
+            const matches = children
+              .map(c => c.name)
+              .filter(name => name.toLowerCase().startsWith(currentToken.toLowerCase()));
+            
+            if (matches.length === 1) {
+              const isDir = children.find(c => c.name === matches[0])?.type === "folder";
+              tokens[tokens.length - 1] = matches[0];
+              inputBuffer = tokens.join(" ") + (isDir ? "/" : " ");
+              clearCurrentLineAndRedraw(terminal, inputBuffer);
+            } else if (matches.length > 1) {
+              terminal.write("\r\n" + matches.join("   "));
+              clearCurrentLineAndRedraw(terminal, inputBuffer);
+            }
+          }
+          return;
+        }
+
+        // Append text
+        inputBuffer += data;
+        terminal.write(data);
+      });
+    });
+
+    // Resize observer to handle dynamic fit sizing
+    const resizeObserver = new ResizeObserver(() => {
+      if (!xtermInstance.current || !terminalRef.current) return;
+      const t = xtermInstance.current;
+      const containerWidth = terminalRef.current.clientWidth;
+      const containerHeight = terminalRef.current.clientHeight;
+      const cols = Math.max(40, Math.floor(containerWidth / 7.5));
+      const rows = Math.max(10, Math.floor(containerHeight / 17));
+      t.resize(cols, rows);
+    });
+
+    if (terminalRef.current) {
+      resizeObserver.observe(terminalRef.current);
     }
-  };
+
+    return () => {
+      isMounted = false;
+      if (terminal) {
+        terminal.dispose();
+      }
+      document.head.removeChild(link);
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   return (
-    <div className="flex h-full flex-col bg-black p-4 font-mono text-xs select-text overflow-hidden">
-      <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-thin scrollbar-thumb-zinc-800">
-        {history.map((line, idx) => {
-          let color = "text-zinc-200";
-          if (line.type === "input") color = "text-violet-400 font-semibold";
-          if (line.type === "error") color = "text-rose-400";
-          if (line.type === "success") color = "text-emerald-400";
-
-          return (
-            <div key={idx} className={`${color} whitespace-pre-wrap`}>
-              {line.text}
-            </div>
-          );
-        })}
-        <div ref={terminalEndRef} />
-      </div>
-
-      <form onSubmit={handleCommand} className="flex gap-2 border-t border-zinc-900 pt-3 mt-2 shrink-0">
-        <span className="text-violet-400 font-semibold shrink-0">leviathan ➜ {getPromptPath()} $</span>
-        <input
-          autoFocus
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          className="flex-1 bg-transparent text-zinc-100 outline-none select-text"
-        />
-      </form>
+    <div className="flex h-full w-full bg-[#09090b] overflow-hidden p-2 text-zinc-100">
+      <div 
+        ref={terminalRef} 
+        className="h-full w-full select-text" 
+        style={{ outline: "none" }}
+      />
     </div>
   );
 }

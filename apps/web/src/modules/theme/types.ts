@@ -1,4 +1,18 @@
-export type Theme = "light" | "dark" | "oled" | "glass" | "nord" | "catppuccin" | "tokyonight" | "dracula" | "gruvbox" | "custom";
+export type Theme = 
+  | "leviathan-dark"
+  | "leviathan-light"
+  | "fluent-glass"
+  | "retro-mac"
+  | "material-design"
+  | "light"
+  | "dark"
+  | "oled"
+  | "glass"
+  | "nord"
+  | "catppuccin"
+  | "tokyonight"
+  | "dracula"
+  | "gruvbox";
 
 export interface ThemeConfig {
   name: Theme;
@@ -13,9 +27,8 @@ export interface ThemeConfig {
     border: string;
     card: string;
   };
-}
-
-export interface CustomTheme extends ThemeConfig {
-  name: "custom";
-  id: string;
+  iconPack: string; // e.g. "flat", "fluent", "classic", "material"
+  cursor?: string;   // e.g. "default", "crosshair", "text"
+  wallpaper: string; // Default background color or gradient
+  soundPack?: "synthetic" | "none";
 }

@@ -122,14 +122,22 @@ export function WindowManagerProvider({
     const close = useCallback((id: string) => {
         console.log(`[PIPELINE] WindowManager close API called for: ${id}`);
         setWindows(current => {
+            const wasFocused = current.find(w => w.id === id)?.focused;
             const updated = current.filter(window => window.id !== id);
+            
+            if (wasFocused && updated.length > 0) {
+                const activeWorkspaceWindows = updated.filter(w => w.workspace === activeWorkspace && !w.minimized);
+                if (activeWorkspaceWindows.length > 0) {
+                    const highest = activeWorkspaceWindows.reduce((max, w) => w.zIndex > max.zIndex ? w : max, activeWorkspaceWindows[0]);
+                    return updated.map(w => w.id === highest.id ? { ...w, focused: true } : w);
+                }
+            }
             console.log(`[PIPELINE] WindowManager close state update. Remaining windows: ${updated.map(w => w.id).join(", ")}`);
             return updated;
         });
-    }, []);
+    }, [activeWorkspace]);
 
     const focus = useCallback((id: string) => {
-
         setWindows(current =>
             current.map(window => ({
                 ...window,
@@ -141,32 +149,43 @@ export function WindowManagerProvider({
                         : window.zIndex,
             }))
         );
-
     }, []);
 
     const minimize = useCallback((id: string) => {
         console.log(`[PIPELINE] WindowManager minimize API called for: ${id}`);
         setWindows(current => {
+            const wasFocused = current.find(w => w.id === id)?.focused;
             const updated = current.map(window => ({
                 ...window,
                 minimized: window.id === id ? true : window.minimized,
-                focused: false,
+                focused: window.id === id ? false : window.focused,
             }));
+            
+            if (wasFocused) {
+                const activeWorkspaceWindows = updated.filter(w => w.workspace === activeWorkspace && !w.minimized);
+                if (activeWorkspaceWindows.length > 0) {
+                    const highest = activeWorkspaceWindows.reduce((max, w) => w.zIndex > max.zIndex ? w : max, activeWorkspaceWindows[0]);
+                    return updated.map(w => w.id === highest.id ? { ...w, focused: true } : w);
+                }
+            }
             console.log(`[PIPELINE] WindowManager minimize state update completed.`);
             return updated;
         });
-    }, []);
+    }, [activeWorkspace]);
 
     const maximize = useCallback((id: string) => {
         console.log(`[PIPELINE] WindowManager maximize API called for: ${id}`);
         setWindows(current => {
             const updated = current.map(window => {
-                if (window.id !== id) return window;
+                if (window.id !== id) {
+                    return { ...window, focused: false };
+                }
 
                 return {
                     ...window,
                     maximized: true,
                     minimized: false,
+                    focused: true,
                     previousState: {
                         x: window.x,
                         y: window.y,
@@ -187,7 +206,9 @@ export function WindowManagerProvider({
     const restore = useCallback((id: string) => {
         setWindows(current =>
             current.map(window => {
-                if (window.id !== id) return window;
+                if (window.id !== id) {
+                    return { ...window, focused: false };
+                }
 
                 return {
                     ...window,
