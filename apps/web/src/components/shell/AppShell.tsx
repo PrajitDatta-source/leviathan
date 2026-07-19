@@ -53,9 +53,10 @@ function KeyboardManager({ setOpenPalette }: { setOpenPalette: (open: boolean) =
       const notesCombo = getShortcutCombination("open_notes", config);
       const settingsCombo = getShortcutCombination("open_settings", config);
 
-      const focusedWindow = Object.values(windows).find(
-        (w) => w.isFocused && windowWorkspaces[w.id] === activeWorkspace
-      );
+      const activeWindowId = useWindowStore.getState().activeWindowId;
+      const focusedWindow = activeWindowId && windows[activeWindowId] && windowWorkspaces[activeWindowId] === activeWorkspace && !windows[activeWindowId].isMinimized
+        ? windows[activeWindowId]
+        : undefined;
 
       if (matchesEvent(closeCombo, e)) {
         e.preventDefault();
@@ -182,8 +183,8 @@ function KeyboardManager({ setOpenPalette }: { setOpenPalette: (open: boolean) =
         e.preventDefault();
         openWindow("settings");
       } else {
-        // Match dynamic workspace combinations (workspace 1-9)
-        for (let wNum = 1; wNum <= 9; wNum++) {
+        // Match dynamic workspace combinations (workspace 1-5)
+        for (let wNum = 1; wNum <= 5; wNum++) {
           const switchCombo = getShortcutCombination(`workspace_${wNum}`, config);
           const moveCombo = getShortcutCombination(`move_workspace_${wNum}`, config);
           

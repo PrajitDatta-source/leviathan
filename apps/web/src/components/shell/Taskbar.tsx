@@ -242,7 +242,7 @@ export function Taskbar() {
 
           {/* Compact workspace switcher */}
           <div className="flex items-center bg-[var(--background)]/35 border border-[var(--border)]/55 rounded-xl p-0.5 font-mono text-[9px]">
-            {([1, 2, 3, 4, 5, 6, 7, 8, 9]).map((num) => {
+            {([1, 2, 3, 4, 5]).map((num) => {
               const isActive = activeWorkspace === num;
               const hasWindows = runningWindows.some(w => windowWorkspaces[w.id] === num);
               return (

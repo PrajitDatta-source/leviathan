@@ -12,23 +12,27 @@ export const useWindowStore = create<WindowState>((set, get) => ({
     const id = `${appId}-${Date.now()}`;
     globalZIndex += 1;
     
-    set((state) => ({
-      windows: {
-        ...state.windows,
-        [id]: {
-          id,
-          appId,
-          title,
-          position: { x: 100, y: 100 }, 
-          size: { width: 800, height: 600 },
-          zIndex: globalZIndex,
-          isFocused: true,
-          isMinimized: false,
-          isMaximized: false,
-        }
-      },
-      activeWindowId: id,
-    }));
+    set((state) => {
+      const updated = { ...state.windows };
+      Object.keys(updated).forEach(k => {
+        updated[k] = { ...updated[k], isFocused: false };
+      });
+      updated[id] = {
+        id,
+        appId,
+        title,
+        position: { x: 100, y: 100 }, 
+        size: { width: 800, height: 600 },
+        zIndex: globalZIndex,
+        isFocused: true,
+        isMinimized: false,
+        isMaximized: false,
+      };
+      return {
+        windows: updated,
+        activeWindowId: id,
+      };
+    });
   },
 
   closeWindow: (id) => {
@@ -46,11 +50,14 @@ export const useWindowStore = create<WindowState>((set, get) => ({
     globalZIndex += 1;
     set((state) => {
       if (!state.windows[id]) return state;
+      const updated = { ...state.windows };
+      Object.keys(updated).forEach(k => {
+        updated[k] = { ...updated[k], isFocused: k === id };
+      });
+      updated[id].zIndex = globalZIndex;
+      updated[id].isMinimized = false;
       return {
-        windows: {
-          ...state.windows,
-          [id]: { ...state.windows[id], zIndex: globalZIndex, isFocused: true }
-        },
+        windows: updated,
         activeWindowId: id,
       };
     });
@@ -154,11 +161,14 @@ export const minimizeWindow = (id: string) => {
 export const maximizeWindow = (id: string) => {
   useWindowStore.setState((state) => {
     if (!state.windows[id]) return state;
+    const updated = { ...state.windows };
+    Object.keys(updated).forEach(k => {
+      updated[k] = { ...updated[k], isFocused: k === id };
+    });
+    updated[id].isMaximized = true;
+    updated[id].isMinimized = false;
     return {
-      windows: {
-        ...state.windows,
-        [id]: { ...state.windows[id], isMaximized: true, isMinimized: false, isFocused: true }
-      },
+      windows: updated,
       activeWindowId: id
     };
   });
@@ -167,11 +177,14 @@ export const maximizeWindow = (id: string) => {
 export const restoreWindow = (id: string) => {
   useWindowStore.setState((state) => {
     if (!state.windows[id]) return state;
+    const updated = { ...state.windows };
+    Object.keys(updated).forEach(k => {
+      updated[k] = { ...updated[k], isFocused: k === id };
+    });
+    updated[id].isMaximized = false;
+    updated[id].isMinimized = false;
     return {
-      windows: {
-        ...state.windows,
-        [id]: { ...state.windows[id], isMaximized: false, isMinimized: false, isFocused: true }
-      },
+      windows: updated,
       activeWindowId: id
     };
   });

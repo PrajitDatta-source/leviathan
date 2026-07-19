@@ -8,7 +8,8 @@ import {
   minimizeWindow, 
   maximizeWindow, 
   restoreWindow, 
-  closeWindow 
+  closeWindow,
+  useWorkspaceStore
 } from "@/core/window/manager";
 import { useState, useRef, useEffect, createElement } from "react";
 import { Z_INDEX } from "@/core/window/zIndex";
@@ -20,6 +21,9 @@ type Props = {
 
 export function Window({ window: initialWindow }: Props) {
     const window = useWindowStore((state) => state.windows[initialWindow.id]) || initialWindow;
+    const windowWorkspaces = useWorkspaceStore((state) => state.windowWorkspaces);
+    const activeWorkspace = useWorkspaceStore((state) => state.activeWorkspace);
+    const belongsToActiveWorkspace = (windowWorkspaces[window.id] || 1) === activeWorkspace;
 
     console.log(`[PIPELINE] React Render for Window: ${window.id}`, {
         focused: window.isFocused,
@@ -292,7 +296,7 @@ export function Window({ window: initialWindow }: Props) {
                 transition-shadow
                 duration-150
                 ${window.isFocused ? 'border-violet-500/50 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.65)] ring-1 ring-violet-500/20' : 'border-[var(--border)] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)]'}
-                ${window.isMinimized ? 'hidden pointer-events-none' : 'opacity-100 scale-100'}
+                ${(window.isMinimized || !belongsToActiveWorkspace) ? 'hidden pointer-events-none' : 'opacity-100 scale-100'}
                 ${(isDragging || isResizing) ? '' : 'transition-all duration-200 ease-out'}
             `}
             style={{

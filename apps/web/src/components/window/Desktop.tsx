@@ -9,11 +9,6 @@ export function Desktop() {
     const activeWorkspace = useWorkspaceStore(state => state.activeWorkspace);
     const preview = useSnapPreviewStore(state => state.snapPreview);
     
-    // Filter windows to render only the ones belonging to the current workspace
-    const workspaceWindows = Object.values(windows).filter(
-        w => windowWorkspaces[w.id] === activeWorkspace
-    );
-
     return (
         <>
             {preview && (
@@ -28,7 +23,7 @@ export function Desktop() {
                 />
             )}
 
-            {workspaceWindows.map(window => (
+            {Object.values(windows).map(window => (
                 <Window
                     key={window.id}
                     window={window}
