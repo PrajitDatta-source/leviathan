@@ -1,17 +1,17 @@
 "use client";
 
-import { useWindowManager } from "@/core/window/hooks";
-
+import { useWindowStore, useWorkspaceStore, useSnapPreviewStore } from "@/core/window/manager";
 import { Window } from "./Window";
 
 export function Desktop() {
-
-    const manager = useWindowManager();
-    const preview = manager.snapPreview;
+    const windows = useWindowStore(state => state.windows);
+    const windowWorkspaces = useWorkspaceStore(state => state.windowWorkspaces);
+    const activeWorkspace = useWorkspaceStore(state => state.activeWorkspace);
+    const preview = useSnapPreviewStore(state => state.snapPreview);
     
     // Filter windows to render only the ones belonging to the current workspace
-    const workspaceWindows = manager.windows.filter(
-        w => w.workspace === manager.activeWorkspace
+    const workspaceWindows = Object.values(windows).filter(
+        w => windowWorkspaces[w.id] === activeWorkspace
     );
 
     return (
@@ -29,14 +29,11 @@ export function Desktop() {
             )}
 
             {workspaceWindows.map(window => (
-
                 <Window
                     key={window.id}
                     window={window}
                 />
-
             ))}
-
         </>
     );
 }

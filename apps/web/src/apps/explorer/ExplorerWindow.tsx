@@ -2,14 +2,13 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { vfs, VFSNode } from "@/modules/filesystem/vfs";
-import { useWindowManager } from "@/core/window/hooks";
+import { openWindow } from "@/core/window/manager";
 import { Folder, File, ArrowUp, Plus, Upload, Download, Trash, Edit, Grid, List, Search } from "lucide-react";
 import { NotesWindow } from "../notes/NotesWindow";
 
 type ViewMode = "grid" | "list";
 
 export function ExplorerWindow() {
-  const manager = useWindowManager();
   const [currentDirId, setCurrentDirId] = useState<string | null>(null);
   const [children, setChildren] = useState<VFSNode[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -55,13 +54,7 @@ export function ExplorerWindow() {
     } else {
       // File double-click: if markdown, open in Notes app!
       if (node.name.endsWith(".md")) {
-        manager.open({
-          id: "notes",
-          title: "Notes",
-          content: React.createElement(NotesWindow),
-          width: 800,
-          height: 550,
-        });
+        openWindow("notes");
       } else {
         alert(`Opening file: ${node.name}\nSize: ${node.content?.length || 0} bytes`);
       }

@@ -3,16 +3,12 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { commandRegistry } from "@/core/command";
 import { useState, useMemo } from "react";
-import { useWindowManager } from "@/core/window/hooks";
+import { openWindow } from "@/core/window/manager";
 import { useTheme } from "@/modules/theme/ThemeContext";
 import { Z_INDEX } from "@/core/window/zIndex";
 
 import { appRegistry } from "@/core/app";
 import { vfs } from "@/modules/filesystem/vfs";
-import { createElement } from "react";
-import { NotesWindow } from "@/apps/notes/NotesWindow";
-import { ExplorerWindow } from "@/apps/explorer/ExplorerWindow";
-import { SettingsWindow } from "@/apps/settings/SettingsWindow";
 
 // Safe fuzzy search implementation
 function fuzzyMatch(text: string, query: string): boolean {
@@ -85,7 +81,6 @@ export function CommandPalette({
   open,
   onOpenChange,
 }: CommandPaletteProps) {
-  const windowManager = useWindowManager();
   const themeContext = useTheme();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -113,14 +108,8 @@ export function CommandPalette({
         description: `Launch ${app.title} Application`,
         category: "Applications",
         keywords: [app.id, app.title, "open", "launch"],
-        run: (ctx: any) => {
-          ctx.windowManager.open({
-            id: app.id,
-            title: app.title,
-            content: createElement(app.component),
-            width: app.width || 700,
-            height: app.height || 500,
-          });
+        run: () => {
+          openWindow(app.id);
         },
       });
     });
@@ -133,23 +122,11 @@ export function CommandPalette({
         description: `${node.type === "folder" ? "Directory folder" : "Markdown text file"} in virtual workspace`,
         category: "Files & Folders",
         keywords: [node.name, node.type],
-        run: (ctx: any) => {
+        run: () => {
           if (node.name.endsWith(".md")) {
-            ctx.windowManager.open({
-              id: "notes",
-              title: "Notes",
-              content: createElement(NotesWindow),
-              width: 800,
-              height: 550,
-            });
+            openWindow("notes");
           } else {
-            ctx.windowManager.open({
-              id: "explorer",
-              title: "File Explorer",
-              content: createElement(ExplorerWindow),
-              width: 800,
-              height: 550,
-            });
+            openWindow("explorer");
           }
         },
       });
@@ -168,14 +145,8 @@ export function CommandPalette({
         description: panel.desc,
         category: "Settings Shortcuts",
         keywords: ["settings", panel.tab, "themes", "color", "wallpaper", "background"],
-        run: (ctx: any) => {
-          ctx.windowManager.open({
-            id: "settings",
-            title: "Settings",
-            content: createElement(SettingsWindow),
-            width: 700,
-            height: 500,
-          });
+        run: () => {
+          openWindow("settings");
         },
       });
     });
@@ -244,14 +215,14 @@ export function CommandPalette({
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (finalCommands[selectedIndex]) {
-        finalCommands[selectedIndex].run({ windowManager, themeContext });
+        finalCommands[selectedIndex].run({ themeContext });
         onOpenChange(false);
       }
     }
   };
 
-  const handleCommandClick = (command: any, index: number) => {
-    command.run({ windowManager, themeContext });
+  const handleCommandClick = (command: any) => {
+    command.run({ themeContext });
     onOpenChange(false);
   };
 
@@ -301,7 +272,7 @@ export function CommandPalette({
               finalCommands.map((command, index) => (
                 <button
                   key={command.id}
-                  onClick={() => handleCommandClick(command, index)}
+                  onClick={() => handleCommandClick(command)}
                   className={`
                     flex w-full flex-col rounded-lg p-3 text-left transition
                     ${index === selectedIndex ? "bg-[var(--border)]" : "hover:bg-[var(--border)]/50"}

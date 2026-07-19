@@ -1,8 +1,16 @@
 "use client";
 
-import { useWindowManager } from "@/core/window/hooks";
+import { 
+  useWindowStore, 
+  useWorkspaceStore, 
+  focusWindow, 
+  minimizeWindow, 
+  restoreWindow, 
+  closeWindow, 
+  openWindow 
+} from "@/core/window/manager";
 import { appRegistry } from "@/core/app";
-import { useEffect, useState, createElement, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { 
   Volume2, 
   VolumeX, 
@@ -14,7 +22,6 @@ import {
   Search, 
   Pin, 
   PinOff,
-  SquareTerminal,
   Grid
 } from "lucide-react";
 import { AppIcon } from "@/modules/icons/IconThemeContext";
@@ -26,9 +33,9 @@ interface TaskbarContextMenuState {
 }
 
 export function Taskbar() {
-  const manager = useWindowManager();
-  const windows = manager.windows;
-  const activeWorkspace = manager.activeWorkspace;
+  const windows = useWindowStore((state) => state.windows);
+  const windowWorkspaces = useWorkspaceStore((state) => state.windowWorkspaces);
+  const activeWorkspace = useWorkspaceStore((state) => state.activeWorkspace);
   const [time, setTime] = useState(new Date());
 
   // Taskbar settings states
@@ -97,29 +104,21 @@ export function Taskbar() {
   };
 
   const handleAppClick = (appId: string) => {
-    const window = windows.find(w => w.id === appId);
+    const window = Object.values(windows).find(w => w.appId === appId || w.id === appId);
     if (window) {
-      if (window.workspace !== activeWorkspace) {
-        manager.setActiveWorkspace(window.workspace);
-        manager.focus(appId);
-      } else if (window.minimized) {
-        manager.restore(appId);
-      } else if (window.focused) {
-        manager.minimize(appId);
+      const workspace = windowWorkspaces[window.id] || 1;
+      if (workspace !== activeWorkspace) {
+        useWorkspaceStore.getState().setActiveWorkspace(workspace);
+        focusWindow(window.id);
+      } else if (window.isMinimized) {
+        restoreWindow(window.id);
+      } else if (window.isFocused) {
+        minimizeWindow(window.id);
       } else {
-        manager.focus(appId);
+        focusWindow(window.id);
       }
     } else {
-      const app = appRegistry.get(appId);
-      if (app) {
-        manager.open({
-          id: appId,
-          title: app.title,
-          content: createElement(app.component),
-          width: app.width || 700,
-          height: app.height || 500,
-        });
-      }
+      openWindow(appId);
     }
   };
 
@@ -137,10 +136,11 @@ export function Taskbar() {
     window.dispatchEvent(new CustomEvent("toggle-command-palette"));
   };
 
-  const runningAppIds = windows.map(w => w.id);
-  const runningNonPinned = runningAppIds.filter(id => !pinnedApps.includes(id));
-  // Combine pinned apps with running apps that aren't pinned
-  const taskbarAppIds = [...pinnedApps, ...runningNonPinned];
+  const runningWindows = Object.values(windows);
+  const runningAppIds = runningWindows.map(w => w.id);
+  const runningNonPinned = runningWindows.filter(w => !pinnedApps.includes(w.appId));
+  const uniqueRunningNonPinned = Array.from(new Set(runningNonPinned.map(w => w.appId)));
+  const taskbarAppIds = [...pinnedApps, ...uniqueRunningNonPinned];
 
   const isCollapsed = isAutohide && !isHovered;
 
@@ -180,10 +180,13 @@ export function Taskbar() {
             )}
           </button>
 
-          {runningAppIds.includes(contextMenu.appId) && (
+          {runningWindows.some(w => w.appId === contextMenu.appId) && (
             <button
               onClick={() => {
-                manager.close(contextMenu.appId);
+                const win = runningWindows.find(w => w.appId === contextMenu.appId);
+                if (win) {
+                  closeWindow(win.id);
+                }
                 setContextMenu(null);
               }}
               className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-rose-500/10 text-rose-400 hover:text-rose-300 transition flex items-center gap-2 mt-1"
@@ -241,11 +244,11 @@ export function Taskbar() {
           <div className="flex items-center bg-[var(--background)]/35 border border-[var(--border)]/55 rounded-xl p-0.5 font-mono text-[9px]">
             {([1, 2, 3, 4, 5, 6, 7, 8, 9]).map((num) => {
               const isActive = activeWorkspace === num;
-              const hasWindows = windows.some(w => w.workspace === num);
+              const hasWindows = runningWindows.some(w => windowWorkspaces[w.id] === num);
               return (
                 <button
                   key={num}
-                  onClick={() => manager.setActiveWorkspace(num)}
+                  onClick={() => useWorkspaceStore.getState().setActiveWorkspace(num)}
                   className={`w-5 h-5 rounded-lg flex items-center justify-center font-bold transition-all cursor-pointer ${
                     isActive
                       ? "bg-violet-600 text-white shadow-sm"
@@ -265,10 +268,11 @@ export function Taskbar() {
         {/* Center Section: App Icons Dock */}
         <div className="flex items-center gap-2 justify-center flex-1">
           {taskbarAppIds.map((appId) => {
-            const isRunning = runningAppIds.includes(appId);
-            const window = windows.find(w => w.id === appId);
-            const isFocused = window?.focused && window.workspace === activeWorkspace;
-            const isMinimized = window?.minimized;
+            const window = runningWindows.find(w => w.appId === appId);
+            const isRunning = !!window;
+            const workspace = window ? (windowWorkspaces[window.id] || 1) : 1;
+            const isFocused = window?.isFocused && workspace === activeWorkspace;
+            const isMinimized = window?.isMinimized;
             const appDef = appRegistry.get(appId);
 
             if (!appDef) return null;
@@ -294,7 +298,7 @@ export function Taskbar() {
                     : "hover:bg-[var(--border)]/50 hover:scale-105 active:scale-95"
                   }
                 `}
-                title={`${appDef.title} ${isRunning ? `(Workspace ${window?.workspace})` : ""}`}
+                title={`${appDef.title} ${isRunning ? `(Workspace ${workspace})` : ""}`}
               >
                 <AppIcon appId={appId} size={15} />
                 

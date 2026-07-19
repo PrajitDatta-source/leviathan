@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, createElement } from "react";
+import { useEffect, useState } from "react";
 
 import { Taskbar } from "./Taskbar";
 import { CommandPalette } from "@/components/command/CommandPalette";
@@ -9,15 +9,15 @@ import { ContextMenu } from "./ContextMenu";
 import { DesktopIcons } from "./DesktopIcons";
 
 import { bootstrap } from "@/core/bootstrap";
-import { WindowManagerProvider } from "@/core/window/manager";
-import { useWindowManager } from "@/core/window/hooks";
-import { appRegistry } from "@/core/app";
+import { WindowManagerProvider, useWindowStore, useWorkspaceStore, openWindow, closeWindow, focusWindow, minimizeWindow, maximizeWindow, restoreWindow, toggleShowDesktop } from "@/core/window/manager";
 import { useTheme } from "@/modules/theme/ThemeContext";
 import { loadShortcutsConfig, getShortcutCombination, matchesEvent } from "@/core/window/shortcuts";
 
 // KeyboardManager component handles i3-inspired keyboard shortcuts
 function KeyboardManager({ setOpenPalette }: { setOpenPalette: (open: boolean) => void }) {
-  const manager = useWindowManager();
+  const windows = useWindowStore((state) => state.windows);
+  const windowWorkspaces = useWorkspaceStore((state) => state.windowWorkspaces);
+  const activeWorkspace = useWorkspaceStore((state) => state.activeWorkspace);
   const [config, setConfig] = useState(() => loadShortcutsConfig());
 
   useEffect(() => {
@@ -30,7 +30,6 @@ function KeyboardManager({ setOpenPalette }: { setOpenPalette: (open: boolean) =
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Load configurations
       const closeCombo = getShortcutCombination("close_window", config);
       const maximizeCombo = getShortcutCombination("toggle_maximize", config);
       const minimizeCombo = getShortcutCombination("minimize_window", config);
@@ -54,51 +53,51 @@ function KeyboardManager({ setOpenPalette }: { setOpenPalette: (open: boolean) =
       const notesCombo = getShortcutCombination("open_notes", config);
       const settingsCombo = getShortcutCombination("open_settings", config);
 
-      const focusedWindow = manager.windows.find(
-        (w) => w.focused && w.workspace === manager.activeWorkspace
+      const focusedWindow = Object.values(windows).find(
+        (w) => w.isFocused && windowWorkspaces[w.id] === activeWorkspace
       );
 
       if (matchesEvent(closeCombo, e)) {
         e.preventDefault();
         if (focusedWindow) {
-          manager.close(focusedWindow.id);
+          closeWindow(focusedWindow.id);
         }
       } else if (matchesEvent(maximizeCombo, e)) {
         e.preventDefault();
         if (focusedWindow) {
-          if (focusedWindow.maximized) {
-            manager.restore(focusedWindow.id);
+          if (focusedWindow.isMaximized) {
+            restoreWindow(focusedWindow.id);
           } else {
-            manager.maximize(focusedWindow.id);
+            maximizeWindow(focusedWindow.id);
           }
         }
       } else if (matchesEvent(minimizeCombo, e)) {
         e.preventDefault();
         if (focusedWindow) {
-          manager.minimize(focusedWindow.id);
+          minimizeWindow(focusedWindow.id);
         }
       } else if (matchesEvent(showDesktopCombo, e)) {
         e.preventDefault();
-        manager.toggleShowDesktop();
+        toggleShowDesktop();
       } else if (matchesEvent(nextWindowCombo, e)) {
         e.preventDefault();
-        const activeWindows = manager.windows.filter(
-          (w) => w.workspace === manager.activeWorkspace && !w.minimized
+        const activeWindows = Object.values(windows).filter(
+          (w) => windowWorkspaces[w.id] === activeWorkspace && !w.isMinimized
         );
         if (activeWindows.length > 1) {
-          const currentIndex = activeWindows.findIndex((w) => w.focused);
+          const currentIndex = activeWindows.findIndex((w) => w.isFocused);
           const nextIndex = currentIndex < activeWindows.length - 1 ? currentIndex + 1 : 0;
-          manager.focus(activeWindows[nextIndex].id);
+          focusWindow(activeWindows[nextIndex].id);
         }
       } else if (matchesEvent(prevWindowCombo, e)) {
         e.preventDefault();
-        const activeWindows = manager.windows.filter(
-          (w) => w.workspace === manager.activeWorkspace && !w.minimized
+        const activeWindows = Object.values(windows).filter(
+          (w) => windowWorkspaces[w.id] === activeWorkspace && !w.isMinimized
         );
         if (activeWindows.length > 1) {
-          const currentIndex = activeWindows.findIndex((w) => w.focused);
+          const currentIndex = activeWindows.findIndex((w) => w.isFocused);
           const prevIndex = currentIndex > 0 ? currentIndex - 1 : activeWindows.length - 1;
-          manager.focus(activeWindows[prevIndex].id);
+          focusWindow(activeWindows[prevIndex].id);
         }
       } else if (matchesEvent(snapLeftCombo, e)) {
         e.preventDefault();
@@ -106,7 +105,8 @@ function KeyboardManager({ setOpenPalette }: { setOpenPalette: (open: boolean) =
           const sw = globalThis.innerWidth;
           const sh = globalThis.innerHeight;
           const taskbarHeight = 48;
-          manager.updatePositionAndSize(focusedWindow.id, 0, 0, sw / 2, sh - taskbarHeight);
+          useWindowStore.getState().updatePosition(focusedWindow.id, { x: 0, y: 0 });
+          useWindowStore.getState().updateSize(focusedWindow.id, { width: sw / 2, height: sh - taskbarHeight });
         }
       } else if (matchesEvent(snapRightCombo, e)) {
         e.preventDefault();
@@ -114,72 +114,73 @@ function KeyboardManager({ setOpenPalette }: { setOpenPalette: (open: boolean) =
           const sw = globalThis.innerWidth;
           const sh = globalThis.innerHeight;
           const taskbarHeight = 48;
-          manager.updatePositionAndSize(focusedWindow.id, sw / 2, 0, sw / 2, sh - taskbarHeight);
+          useWindowStore.getState().updatePosition(focusedWindow.id, { x: sw / 2, y: 0 });
+          useWindowStore.getState().updateSize(focusedWindow.id, { width: sw / 2, height: sh - taskbarHeight });
         }
       } else if (matchesEvent(snapUpCombo, e)) {
         e.preventDefault();
         if (focusedWindow) {
-          manager.maximize(focusedWindow.id);
+          maximizeWindow(focusedWindow.id);
         }
       } else if (matchesEvent(snapDownCombo, e)) {
         e.preventDefault();
         if (focusedWindow) {
-          if (focusedWindow.maximized) {
-            manager.restore(focusedWindow.id);
+          if (focusedWindow.isMaximized) {
+            restoreWindow(focusedWindow.id);
           } else {
-            manager.minimize(focusedWindow.id);
+            minimizeWindow(focusedWindow.id);
           }
         }
       } else if (matchesEvent(moveLeftCombo, e)) {
         e.preventDefault();
-        if (focusedWindow && !focusedWindow.maximized) {
+        if (focusedWindow && !focusedWindow.isMaximized) {
           const sw = globalThis.innerWidth;
           const moveStep = 40;
-          let newX = focusedWindow.x - moveStep;
-          newX = Math.max(60 - focusedWindow.width, Math.min(sw - 60, newX));
-          manager.updatePositionAndSize(focusedWindow.id, newX, focusedWindow.y, focusedWindow.width, focusedWindow.height);
+          let newX = focusedWindow.position.x - moveStep;
+          newX = Math.max(60 - focusedWindow.size.width, Math.min(sw - 60, newX));
+          useWindowStore.getState().updatePosition(focusedWindow.id, { x: newX, y: focusedWindow.position.y });
         }
       } else if (matchesEvent(moveRightCombo, e)) {
         e.preventDefault();
-        if (focusedWindow && !focusedWindow.maximized) {
+        if (focusedWindow && !focusedWindow.isMaximized) {
           const sw = globalThis.innerWidth;
           const moveStep = 40;
-          let newX = focusedWindow.x + moveStep;
-          newX = Math.max(60 - focusedWindow.width, Math.min(sw - 60, newX));
-          manager.updatePositionAndSize(focusedWindow.id, newX, focusedWindow.y, focusedWindow.width, focusedWindow.height);
+          let newX = focusedWindow.position.x + moveStep;
+          newX = Math.max(60 - focusedWindow.size.width, Math.min(sw - 60, newX));
+          useWindowStore.getState().updatePosition(focusedWindow.id, { x: newX, y: focusedWindow.position.y });
         }
       } else if (matchesEvent(moveUpCombo, e)) {
         e.preventDefault();
-        if (focusedWindow && !focusedWindow.maximized) {
+        if (focusedWindow && !focusedWindow.isMaximized) {
           const sh = globalThis.innerHeight;
           const taskbarHeight = 48;
           const moveStep = 40;
-          let newY = focusedWindow.y - moveStep;
+          let newY = focusedWindow.position.y - moveStep;
           newY = Math.max(0, Math.min(sh - taskbarHeight - 40, newY));
-          manager.updatePositionAndSize(focusedWindow.id, focusedWindow.x, newY, focusedWindow.width, focusedWindow.height);
+          useWindowStore.getState().updatePosition(focusedWindow.id, { x: focusedWindow.position.x, y: newY });
         }
       } else if (matchesEvent(moveDownCombo, e)) {
         e.preventDefault();
-        if (focusedWindow && !focusedWindow.maximized) {
+        if (focusedWindow && !focusedWindow.isMaximized) {
           const sh = globalThis.innerHeight;
           const taskbarHeight = 48;
           const moveStep = 40;
-          let newY = focusedWindow.y + moveStep;
+          let newY = focusedWindow.position.y + moveStep;
           newY = Math.max(0, Math.min(sh - taskbarHeight - 40, newY));
-          manager.updatePositionAndSize(focusedWindow.id, focusedWindow.x, newY, focusedWindow.width, focusedWindow.height);
+          useWindowStore.getState().updatePosition(focusedWindow.id, { x: focusedWindow.position.x, y: newY });
         }
       } else if (matchesEvent(terminalCombo, e)) {
         e.preventDefault();
-        openApp("terminal");
+        openWindow("terminal");
       } else if (matchesEvent(explorerCombo, e)) {
         e.preventDefault();
-        openApp("explorer");
+        openWindow("explorer");
       } else if (matchesEvent(notesCombo, e)) {
         e.preventDefault();
-        openApp("notes");
+        openWindow("notes");
       } else if (matchesEvent(settingsCombo, e)) {
         e.preventDefault();
-        openApp("settings");
+        openWindow("settings");
       } else {
         // Match dynamic workspace combinations (workspace 1-9)
         for (let wNum = 1; wNum <= 9; wNum++) {
@@ -188,13 +189,13 @@ function KeyboardManager({ setOpenPalette }: { setOpenPalette: (open: boolean) =
           
           if (matchesEvent(switchCombo, e)) {
             e.preventDefault();
-            manager.setActiveWorkspace(wNum);
+            useWorkspaceStore.getState().setActiveWorkspace(wNum);
             break;
           }
           if (matchesEvent(moveCombo, e)) {
             e.preventDefault();
             if (focusedWindow) {
-              manager.moveWindowToWorkspace(focusedWindow.id, wNum);
+              useWorkspaceStore.getState().moveWindowToWorkspace(focusedWindow.id, wNum);
             }
             break;
           }
@@ -202,24 +203,9 @@ function KeyboardManager({ setOpenPalette }: { setOpenPalette: (open: boolean) =
       }
     };
 
-    const openApp = (appId: string) => {
-      const app = appRegistry.get(appId);
-      if (app) {
-        manager.open({
-          id: appId,
-          title: app.title,
-          content: createElement(app.component),
-          x: 100 + manager.windows.length * 25,
-          y: 100 + manager.windows.length * 25,
-          width: app.width || 700,
-          height: app.height || 500,
-        });
-      }
-    };
-
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [manager, setOpenPalette, config]);
+  }, [windows, windowWorkspaces, activeWorkspace, setOpenPalette, config]);
 
   return null;
 }

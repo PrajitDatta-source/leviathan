@@ -3,12 +3,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { vfs } from "@/modules/filesystem/vfs";
 import { useTheme } from "@/modules/theme/ThemeContext";
-import { useWindowManager } from "@/core/window/hooks";
+import { useWindowStore, useWorkspaceStore } from "@/core/window/manager";
 import type { Terminal as XTermTerminal } from "xterm";
 
 export function TerminalWindow() {
   const { theme, setTheme } = useTheme();
-  const manager = useWindowManager();
   const [currentDirId, setCurrentDirId] = useState<string | null>(null);
 
   const terminalRef = useRef<HTMLDivElement>(null);
@@ -227,7 +226,7 @@ export function TerminalWindow() {
       case "neofetch": {
         const res = typeof window !== "undefined" ? `${window.innerWidth}x${window.innerHeight}` : "1920x1080";
         const uptime = Math.round(performance.now() / 1000);
-        const openWinCount = manager.windows.length;
+        const openWinCount = Object.keys(useWindowStore.getState().windows).length;
         const vfsCount = vfs.getAllNodes().length;
         
         t.writeln("");
@@ -236,7 +235,7 @@ export function TerminalWindow() {
         t.writeln("    > ^ <      OS: Leviathan Web OS v1.0.0");
         t.writeln("   /  |  \\     Resolution: " + res);
         t.writeln("  ( |_|_| )    Uptime: " + uptime + "s");
-        t.writeln("               Active Workspace: Workspace " + manager.activeWorkspace);
+        t.writeln("               Active Workspace: Workspace " + useWorkspaceStore.getState().activeWorkspace);
         t.writeln("               Theme: " + themeRef.current.toUpperCase());
         t.writeln("               VFS Nodes: " + vfsCount + " files/folders");
         writePrompt(t);

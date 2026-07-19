@@ -3,9 +3,7 @@
 import React, { useEffect, useRef } from "react";
 import { useTheme } from "@/modules/theme/ThemeContext";
 import { Theme } from "@/modules/theme/types";
-import { useWindowManager } from "@/core/window/hooks";
-import { appRegistry } from "@/core/app";
-import { createElement } from "react";
+import { useWindowStore, openWindow, closeWindow } from "@/core/window/manager";
 import { Z_INDEX } from "@/core/window/zIndex";
 
 interface ContextMenuProps {
@@ -16,7 +14,7 @@ interface ContextMenuProps {
 
 export function ContextMenu({ x, y, onClose }: ContextMenuProps) {
   const { setTheme, theme: currentTheme } = useTheme();
-  const manager = useWindowManager();
+  const windows = useWindowStore((state) => state.windows);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close when clicking outside
@@ -36,23 +34,12 @@ export function ContextMenu({ x, y, onClose }: ContextMenuProps) {
   };
 
   const handleOpenSettings = () => {
-    const app = appRegistry.get("settings");
-    if (app) {
-      manager.open({
-        id: "settings",
-        title: app.title,
-        content: createElement(app.component),
-        x: 150,
-        y: 150,
-        width: app.width || 700,
-        height: app.height || 500,
-      });
-    }
+    openWindow("settings");
     onClose();
   };
 
   const handleCloseAllWindows = () => {
-    manager.windows.forEach((win) => manager.close(win.id));
+    Object.keys(windows).forEach((winId) => closeWindow(winId));
     onClose();
   };
 

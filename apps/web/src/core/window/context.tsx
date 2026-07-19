@@ -1,8 +1,1 @@
-"use client";
-
-import { createContext } from "react";
-
-import { WindowManagerContextValue } from "./types";
-
-export const WindowManagerContext =
-    createContext<WindowManagerContextValue | null>(null);
+// Deprecated in favor of Zustand state management

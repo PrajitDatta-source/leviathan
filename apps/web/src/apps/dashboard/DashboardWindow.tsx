@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { vfs, VFSNode } from "@/modules/filesystem/vfs";
-import { useWindowManager } from "@/core/window/hooks";
-import { NotesWindow } from "../notes/NotesWindow";
+import { useWindowStore, useWorkspaceStore, openWindow } from "@/core/window/manager";
 import { Clock, Cpu, CheckSquare, FileText, Plus, Trash2 } from "lucide-react";
 
 interface TaskItem {
@@ -13,7 +12,8 @@ interface TaskItem {
 }
 
 export function DashboardWindow() {
-  const manager = useWindowManager();
+  const windows = useWindowStore((state) => state.windows);
+  const activeWorkspace = useWorkspaceStore((state) => state.activeWorkspace);
   const [time, setTime] = useState(new Date());
   
   // Real Resource states
@@ -184,13 +184,7 @@ export function DashboardWindow() {
   };
 
   const handleOpenNote = () => {
-    manager.open({
-      id: "notes",
-      title: "Notes",
-      content: React.createElement(NotesWindow),
-      width: 800,
-      height: 550,
-    });
+    openWindow("notes");
   };
 
   return (
@@ -207,10 +201,10 @@ export function DashboardWindow() {
           </p>
           <div className="flex gap-3.5 mt-2.5">
             <span className="text-[10px] px-2.5 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 font-medium">
-              Active Workspace: {manager.activeWorkspace}
+              Active Workspace: {activeWorkspace}
             </span>
             <span className="text-[10px] px-2.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-medium">
-              Open Windows: {manager.windows.length}
+              Open Windows: {Object.keys(windows).length}
             </span>
           </div>
         </div>

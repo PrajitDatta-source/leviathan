@@ -1,41 +1,27 @@
-import { ReactNode } from "react";
+export interface Position { x: number; y: number; }
+export interface Size { width: number; height: number; }
 
 export interface WindowInstance {
   id: string;
+  appId: string;
   title: string;
-  content: ReactNode;
-
-  x: number;
-  y: number;
-
-  width: number;
-  height: number;
-
+  position: Position;
+  size: Size;
   zIndex: number;
-  focused: boolean;
-  minimized: boolean;
-  maximized: boolean;
-  workspace: number;
-
-  // Store previous state for restore
-  previousState?: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  };
+  isFocused: boolean;
+  isMinimized: boolean;
+  isMaximized: boolean;
 }
 
-export interface OpenWindowOptions {
-  id: string;
-  title: string;
-  content: ReactNode;
-
-  x?: number;
-  y?: number;
-
-  width?: number;
-  height?: number;
+export interface WindowState {
+  windows: Record<string, WindowInstance>;
+  activeWindowId: string | null;
+  openWindow: (appId: string, title: string) => void;
+  closeWindow: (id: string) => void;
+  focusWindow: (id: string) => void;
+  updatePosition: (id: string, position: Position) => void;
+  updateSize: (id: string, size: Size) => void;
+  serializeLayout: () => string;
 }
 
 export interface SnapPreview {
@@ -43,28 +29,4 @@ export interface SnapPreview {
   y: number;
   width: number;
   height: number;
-}
-
-export interface WindowManagerContextValue {
-  windows: WindowInstance[];
-  activeWorkspace: number;
-  snapPreview: SnapPreview | null;
-  setSnapPreview(preview: SnapPreview | null): void;
-  setActiveWorkspace(ws: number): void;
-  moveWindowToWorkspace(id: string, ws: number): void;
-
-  open(window: OpenWindowOptions): void;
-  close(id: string): void;
-  focus(id: string): void;
-  minimize(id: string): void;
-  maximize(id: string): void;
-  restore(id: string): void;
-  toggleShowDesktop(): void;
-  updatePositionAndSize(
-    id: string,
-    x: number,
-    y: number,
-    width: number,
-    height: number
-  ): void;
 }

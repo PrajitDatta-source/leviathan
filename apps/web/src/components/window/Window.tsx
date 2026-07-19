@@ -1,9 +1,18 @@
 "use client";
 
 import { WindowInstance } from "@/core/window/types";
-import { useWindowManager } from "@/core/window/hooks";
-import { useState, useRef, useEffect } from "react";
+import { 
+  useWindowStore, 
+  useSnapPreviewStore,
+  focusWindow, 
+  minimizeWindow, 
+  maximizeWindow, 
+  restoreWindow, 
+  closeWindow 
+} from "@/core/window/manager";
+import { useState, useRef, useEffect, createElement } from "react";
 import { Z_INDEX } from "@/core/window/zIndex";
+import { appRegistry } from "@/core/app";
 
 type Props = {
     window: WindowInstance;
@@ -11,16 +20,15 @@ type Props = {
 
 export function Window({ window }: Props) {
     console.log(`[PIPELINE] React Render for Window: ${window.id}`, {
-        focused: window.focused,
-        minimized: window.minimized,
-        maximized: window.maximized,
-        x: window.x,
-        y: window.y,
-        width: window.width,
-        height: window.height
+        focused: window.isFocused,
+        minimized: window.isMinimized,
+        maximized: window.isMaximized,
+        x: window.position.x,
+        y: window.position.y,
+        width: window.size.width,
+        height: window.size.height
     });
 
-    const manager = useWindowManager();
     const [isDragging, setIsDragging] = useState(false);
     const [isResizing, setIsResizing] = useState(false);
     const [resizeDirection, setResizeDirection] = useState<'se' | 'sw' | 'ne' | 'nw' | 'n' | 's' | 'e' | 'w' | null>(null);
@@ -47,12 +55,12 @@ export function Window({ window }: Props) {
     }, []);
 
     const position = {
-        x: isMobile ? 0 : window.x,
-        y: isMobile ? 0 : window.y,
+        x: isMobile ? 0 : window.position.x,
+        y: isMobile ? 0 : window.position.y,
     };
     const size = {
-        width: isMobile ? (typeof globalThis !== "undefined" ? globalThis.innerWidth : 400) : window.width,
-        height: isMobile ? (typeof globalThis !== "undefined" ? globalThis.innerHeight - 48 : 600) : window.height,
+        width: isMobile ? (typeof globalThis !== "undefined" ? globalThis.innerWidth : 400) : window.size.width,
+        height: isMobile ? (typeof globalThis !== "undefined" ? globalThis.innerHeight - 48 : 600) : window.size.height,
     };
 
     const handlePointerDown = (e: React.PointerEvent) => {
@@ -63,10 +71,10 @@ export function Window({ window }: Props) {
         
         setIsDragging(true);
         setDragOffset({
-            x: e.clientX - window.x,
-            y: e.clientY - window.y,
+            x: e.clientX - window.position.x,
+            y: e.clientY - window.position.y,
         });
-        manager.focus(window.id);
+        focusWindow(window.id);
     };
 
     const handleResizePointerDown = (e: React.PointerEvent, direction: 'se' | 'sw' | 'ne' | 'nw' | 'n' | 's' | 'e' | 'w') => {
@@ -78,13 +86,13 @@ export function Window({ window }: Props) {
         resizeStart.current = {
             pointerX: e.clientX,
             pointerY: e.clientY,
-            winX: window.x,
-            winY: window.y,
-            winWidth: window.width,
-            winHeight: window.height,
+            winX: window.position.x,
+            winY: window.position.y,
+            winWidth: window.size.width,
+            winHeight: window.size.height,
         };
 
-        manager.focus(window.id);
+        focusWindow(window.id);
     };
 
     const handlePointerMove = (e: PointerEvent) => {
@@ -97,11 +105,11 @@ export function Window({ window }: Props) {
             const newY = e.clientY - dragOffset.y;
             
             // Constrain newX so at least 60px of the window width remains visible inside screen boundaries
-            const boundedX = Math.max(60 - window.width, Math.min(sw - 60, newX));
+            const boundedX = Math.max(60 - window.size.width, Math.min(sw - 60, newX));
             // Constrain newY so the title bar (approx 40px) stays visible underneath the top viewport and above the taskbar
             const boundedY = Math.max(0, Math.min(sh - taskbarHeight - 40, newY));
 
-            manager.updatePositionAndSize(window.id, boundedX, boundedY, window.width, window.height);
+            useWindowStore.getState().updatePosition(window.id, { x: boundedX, y: boundedY });
 
             // Snapping preview calculations
             const edgeThreshold = 30;
@@ -131,7 +139,7 @@ export function Window({ window }: Props) {
                 preview = { x: sw / 2, y: 0, width: sw / 2, height: sh - taskbarHeight };
             }
 
-            manager.setSnapPreview(preview);
+            useSnapPreviewStore.getState().setSnapPreview(preview);
         }
 
         if (isResizing && resizeDirection) {
@@ -170,7 +178,8 @@ export function Window({ window }: Props) {
                 newY = startY + startHeight - newHeight;
             }
 
-            manager.updatePositionAndSize(window.id, newX, newY, newWidth, newHeight);
+            useWindowStore.getState().updatePosition(window.id, { x: newX, y: newY });
+            useWindowStore.getState().updateSize(window.id, { width: newWidth, height: newHeight });
         }
     };
 
@@ -207,9 +216,10 @@ export function Window({ window }: Props) {
             }
 
             if (finalSnap) {
-                manager.updatePositionAndSize(window.id, finalSnap.x, finalSnap.y, finalSnap.width, finalSnap.height);
+                useWindowStore.getState().updatePosition(window.id, { x: finalSnap.x, y: finalSnap.y });
+                useWindowStore.getState().updateSize(window.id, { width: finalSnap.width, height: finalSnap.height });
             }
-            manager.setSnapPreview(null);
+            useSnapPreviewStore.getState().setSnapPreview(null);
         }
 
         setIsDragging(false);
@@ -230,7 +240,7 @@ export function Window({ window }: Props) {
             globalThis.removeEventListener('pointermove', handlePointerMove);
             globalThis.removeEventListener('pointerup', handlePointerUp);
         };
-    }, [isDragging, isResizing, dragOffset, resizeDirection, window.x, window.y, window.width, window.height]);
+    }, [isDragging, isResizing, dragOffset, resizeDirection, window.position.x, window.position.y, window.size.width, window.size.height]);
 
     // Apply global body cursor overlays during drag/resize to prevent cursor flickering
     useEffect(() => {
@@ -260,6 +270,9 @@ export function Window({ window }: Props) {
         };
     }, [isDragging, isResizing, resizeDirection]);
 
+    const appDef = appRegistry.get(window.appId);
+    const content = appDef ? createElement(appDef.component) : null;
+
     return (
         <div
             ref={windowRef}
@@ -276,16 +289,16 @@ export function Window({ window }: Props) {
                 backdrop-blur-md
                 transition-shadow
                 duration-150
-                ${window.focused ? 'border-violet-500/50 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.65)] ring-1 ring-violet-500/20' : 'border-[var(--border)] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)]'}
-                ${window.minimized ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'}
+                ${window.isFocused ? 'border-violet-500/50 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.65)] ring-1 ring-violet-500/20' : 'border-[var(--border)] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)]'}
+                ${window.isMinimized ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'}
                 ${(isDragging || isResizing) ? '' : 'transition-all duration-200 ease-out'}
             `}
             style={{
-                left: position.x,
-                top: position.y,
-                width: size.width,
-                height: size.height,
-                zIndex: window.focused
+                left: window.isMaximized ? 0 : position.x,
+                top: window.isMaximized ? 0 : position.y,
+                width: window.isMaximized ? '100vw' : size.width,
+                height: window.isMaximized ? 'calc(100vh - 48px)' : size.height,
+                zIndex: window.isFocused
                     ? Z_INDEX.ACTIVE_WINDOW_BASE + window.zIndex
                     : Z_INDEX.WINDOWS_BASE + window.zIndex,
             }}
@@ -293,7 +306,7 @@ export function Window({ window }: Props) {
                 if (e.target instanceof HTMLElement && e.target.closest('button')) {
                     return;
                 }
-                manager.focus(window.id);
+                focusWindow(window.id);
             }}
         >
 
@@ -325,7 +338,7 @@ export function Window({ window }: Props) {
                         onClick={(e) => {
                             console.log("[PIPELINE] Minimize Button Click triggered for window: " + window.id);
                             e.stopPropagation();
-                            manager.minimize(window.id);
+                            minimizeWindow(window.id);
                         }}
                         className="
                             rounded
@@ -343,10 +356,10 @@ export function Window({ window }: Props) {
                         onClick={(e) => {
                             console.log("[PIPELINE] Maximize Button Click triggered for window: " + window.id);
                             e.stopPropagation();
-                            if (window.maximized) {
-                                manager.restore(window.id);
+                            if (window.isMaximized) {
+                                restoreWindow(window.id);
                             } else {
-                                manager.maximize(window.id);
+                                maximizeWindow(window.id);
                             }
                         }}
                         className="
@@ -355,9 +368,9 @@ export function Window({ window }: Props) {
                             transition
                             hover:bg-[var(--border)]
                         "
-                        title={window.maximized ? "Restore" : "Maximize"}
+                        title={window.isMaximized ? "Restore" : "Maximize"}
                     >
-                        {window.maximized ? "❐" : "□"}
+                        {window.isMaximized ? "❐" : "□"}
                     </button>
 
                     <button
@@ -365,7 +378,7 @@ export function Window({ window }: Props) {
                         onClick={(e) => {
                             console.log("[PIPELINE] Close Button Click triggered for window: " + window.id);
                             e.stopPropagation();
-                            manager.close(window.id);
+                            closeWindow(window.id);
                         }}
                         className="
                             rounded
@@ -385,11 +398,11 @@ export function Window({ window }: Props) {
             <div
                 className="h-[calc(100%-52px)] overflow-auto"
             >
-                {window.content}
+                {content}
             </div>
 
             {/* Resize handles */}
-            {!window.maximized && !isMobile && (
+            {!window.isMaximized && !isMobile && (
                 <>
                     {/* Corners */}
                     <div

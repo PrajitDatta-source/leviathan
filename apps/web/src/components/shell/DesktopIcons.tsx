@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Folder, FileText, Terminal, Settings, Trash2, Sun, MessageSquare, Mail } from "lucide-react";
-import { useWindowManager } from "@/core/window/hooks";
+import { useWindowStore, useWorkspaceStore, openWindow } from "@/core/window/manager";
 import { appRegistry } from "@/core/app";
 import { AppIcon } from "@/modules/icons/IconThemeContext";
 import { Z_INDEX } from "@/core/window/zIndex";
@@ -16,28 +16,29 @@ interface DesktopIcon {
   y: number;
 }
 
-
-
 export function DesktopIcons() {
-  const manager = useWindowManager();
+  const windows = useWindowStore((state) => state.windows);
+  const windowWorkspaces = useWorkspaceStore((state) => state.windowWorkspaces);
+  const activeWorkspace = useWorkspaceStore((state) => state.activeWorkspace);
 
   const isOverlapped = (icon: DesktopIcon) => {
-    const activeWindows = manager.windows.filter(
-      (w) => w.workspace === manager.activeWorkspace && !w.minimized
+    const activeWindows = Object.values(windows).filter(
+      (w) => windowWorkspaces[w.id] === activeWorkspace && !w.isMinimized
     );
     const iconWidth = 80;
     const iconHeight = 96;
 
     return activeWindows.some((w) => {
-      if (w.maximized) return true;
+      if (w.isMaximized) return true;
       return !(
-        icon.x + iconWidth <= w.x ||
-        icon.x >= w.x + w.width ||
-        icon.y + iconHeight <= w.y ||
-        icon.y >= w.y + w.height
+        icon.x + iconWidth <= w.position.x ||
+        icon.x >= w.position.x + w.size.width ||
+        icon.y + iconHeight <= w.position.y ||
+        icon.y >= w.position.y + w.size.height
       );
     });
   };
+
   const [icons, setIcons] = useState<DesktopIcon[]>([
     { id: "files", label: "Files", appId: "explorer", icon: Folder, x: 20, y: 20 },
     { id: "notes", label: "Notes", appId: "notes", icon: FileText, x: 20, y: 116 },
@@ -66,7 +67,6 @@ export function DesktopIcons() {
   // Handle Drag Selection Box & Click Outside
   useEffect(() => {
     const handleGlobalMouseDown = (e: MouseEvent) => {
-      // Ignore click if it lands inside windows, taskbars, inputs, buttons, or custom icons
       if (e.target instanceof HTMLElement) {
         if (
           e.target.closest(".window-instance") ||
@@ -98,7 +98,6 @@ export function DesktopIcons() {
       const currentY = e.clientY;
       setSelectionBox((prev) => (prev ? { ...prev, currentX, currentY } : null));
 
-      // Calculate Box Intersection boundaries
       const x1 = Math.min(selectionBox.startX, currentX);
       const y1 = Math.min(selectionBox.startY, currentY);
       const x2 = Math.max(selectionBox.startX, currentX);
@@ -133,7 +132,7 @@ export function DesktopIcons() {
   // Handle key shortcuts for Delete (removing) and F2 (renaming)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (editingIconId) return; // Don't interrupt while renaming
+      if (editingIconId) return;
 
       if (e.key === "Delete" && selectedIconIds.length > 0) {
         setIcons((prev) => prev.filter((icon) => !selectedIconIds.includes(icon.id)));
@@ -159,7 +158,6 @@ export function DesktopIcons() {
     setActiveDragId(id);
     setEditingIconId(null);
 
-    // Toggle multi-select with Ctrl or Meta key
     if (e.ctrlKey || e.metaKey) {
       setSelectedIconIds((prev) =>
         prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
@@ -190,7 +188,6 @@ export function DesktopIcons() {
     const boundedX = Math.max(8, Math.min(maxX, newX));
     const boundedY = Math.max(8, Math.min(maxY, newY));
 
-    // Move all selected icons relatively if we are dragging one
     setIcons((prev) =>
       prev.map((icon) =>
         selectedIconIds.includes(icon.id) && icon.id === activeDragId
@@ -267,17 +264,7 @@ export function DesktopIcons() {
       alert("Trash is currently empty.");
       return;
     }
-
-    const app = appRegistry.get(appId);
-    if (app) {
-      manager.open({
-        id: appId,
-        title: app.title,
-        content: React.createElement(app.component),
-        width: app.width || 700,
-        height: app.height || 500,
-      });
-    }
+    openWindow(appId);
   };
 
   const handleRenameSubmit = (id: string) => {
@@ -294,7 +281,6 @@ export function DesktopIcons() {
       className="absolute inset-0 pointer-events-none select-none overflow-hidden"
       style={{ zIndex: Z_INDEX.DESKTOP_ICONS }}
     >
-      {/* Drag Selection Box overlay */}
       {selectionBox && (
         <div
           className="absolute border border-violet-500/50 bg-violet-500/10 pointer-events-none rounded"
@@ -333,14 +319,12 @@ export function DesktopIcons() {
               visibility: overlapped ? "hidden" : "visible",
             }}
           >
-            {/* Customizable Application Icon Pack */}
             <AppIcon
               appId={icon.appId}
               size={22}
               className="group-hover:scale-105 transition-transform duration-100 shadow-md shrink-0 animate-window-open"
             />
 
-            {/* Label / Input for Renaming */}
             {isEditing ? (
               <input
                 autoFocus
