@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useTheme } from "@/modules/theme/ThemeContext";
 import { Theme } from "@/modules/theme/types";
 import { Plus, Trash2, Keyboard, RotateCcw, Edit2 } from "lucide-react";
-import { useIconTheme, IconTheme } from "@/modules/icons/IconThemeContext";
+import { useIconTheme, type IconTheme } from "@/modules/icons/IconThemeContext";
 import {
   SHORTCUT_DEFS,
   loadShortcutsConfig,
@@ -46,10 +46,17 @@ const WALLPAPER_PRESETS = [
 ];
 
 export function SettingsWindow() {
-  const { theme, setTheme, wallpaper, setWallpaper } = useTheme();
+  const { 
+    theme, 
+    setTheme, 
+    wallpaper, 
+    setWallpaper, 
+    customWallpapers, 
+    addCustomWallpaper, 
+    deleteCustomWallpaper 
+  } = useTheme();
   const { iconTheme, setIconTheme } = useIconTheme();
   const [activeTab, setActiveTab] = useState<Tab>("appearance");
-  const [customWallpapers, setCustomWallpapers] = useState<string[]>([]);
   
   const [shortcutsConfig, setShortcutsConfig] = useState(() => loadShortcutsConfig());
   const [recordingId, setRecordingId] = useState<string | null>(null);
@@ -104,40 +111,15 @@ export function SettingsWindow() {
     return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [recordingId, shortcutsConfig]);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("leviathan_custom_wallpapers");
-      if (stored) {
-        setCustomWallpapers(JSON.parse(stored));
-      }
-    }
-  }, []);
-
   const handleCustomWallpaperUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onload = (event) => {
         const dataUri = event.target?.result as string;
-        const updated = [...customWallpapers, dataUri];
-        setCustomWallpapers(updated);
-        if (typeof window !== "undefined") {
-          localStorage.setItem("leviathan_custom_wallpapers", JSON.stringify(updated));
-        }
-        setWallpaper(dataUri);
+        addCustomWallpaper(dataUri);
       };
       reader.readAsDataURL(file);
-    }
-  };
-
-  const deleteCustomWallpaper = (wpVal: string) => {
-    const updated = customWallpapers.filter((w) => w !== wpVal);
-    setCustomWallpapers(updated);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("leviathan_custom_wallpapers", JSON.stringify(updated));
-    }
-    if (wallpaper === wpVal) {
-      setWallpaper(WALLPAPER_PRESETS[0].value);
     }
   };
 

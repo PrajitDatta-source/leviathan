@@ -267,14 +267,16 @@ export function Window({ window }: Props) {
                 window-instance
                 absolute
                 overflow-hidden
-                rounded-xl
+                rounded-2xl
                 border
                 text-[var(--text)]
-                shadow-2xl
                 select-none
                 animate-window-open
-                bg-[var(--surface)]
-                ${window.focused ? 'border-violet-500/70 shadow-xl shadow-violet-500/5' : 'border-[var(--border)]'}
+                bg-[var(--surface)]/95
+                backdrop-blur-md
+                transition-shadow
+                duration-150
+                ${window.focused ? 'border-violet-500/50 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.65)] ring-1 ring-violet-500/20' : 'border-[var(--border)] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)]'}
                 ${window.minimized ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'}
                 ${(isDragging || isResizing) ? '' : 'transition-all duration-200 ease-out'}
             `}
@@ -319,8 +321,9 @@ export function Window({ window }: Props) {
 
                 <div className="flex gap-2">
                     <button
-                        onPointerDown={(e) => {
-                            console.log("[PIPELINE] Minimize Button PointerDown triggered for window: " + window.id);
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                            console.log("[PIPELINE] Minimize Button Click triggered for window: " + window.id);
                             e.stopPropagation();
                             manager.minimize(window.id);
                         }}
@@ -330,14 +333,15 @@ export function Window({ window }: Props) {
                             transition
                             hover:bg-[var(--border)]
                         "
-                        title={window.minimized ? "Restore" : "Minimize"}
+                        title="Minimize"
                     >
-                        {window.minimized ? "□" : "−"}
+                        −
                     </button>
 
                     <button
-                        onPointerDown={(e) => {
-                            console.log("[PIPELINE] Maximize Button PointerDown triggered for window: " + window.id);
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                            console.log("[PIPELINE] Maximize Button Click triggered for window: " + window.id);
                             e.stopPropagation();
                             if (window.maximized) {
                                 manager.restore(window.id);
@@ -357,8 +361,9 @@ export function Window({ window }: Props) {
                     </button>
 
                     <button
-                        onPointerDown={(e) => {
-                            console.log("[PIPELINE] Close Button PointerDown triggered for window: " + window.id);
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                            console.log("[PIPELINE] Close Button Click triggered for window: " + window.id);
                             e.stopPropagation();
                             manager.close(window.id);
                         }}

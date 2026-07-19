@@ -7,6 +7,7 @@ import { TerminalWindow } from "./terminal/TerminalWindow";
 import { DashboardWindow } from "./dashboard/DashboardWindow";
 import { TelegramWindow } from "./telegram/TelegramWindow";
 import { WeatherWindow } from "./weather/WeatherWindow";
+import { GmailWindow } from "./gmail/GmailWindow";
 
 export function registerApps() {
   appRegistry.register({
@@ -75,6 +76,16 @@ export function registerApps() {
     component: WeatherWindow,
     width: 350,
     height: 480,
+    resizable: true,
+    multiple: false,
+  });
+
+  appRegistry.register({
+    id: "gmail",
+    title: "Gmail",
+    component: GmailWindow,
+    width: 850,
+    height: 580,
     resizable: true,
     multiple: false,
   });

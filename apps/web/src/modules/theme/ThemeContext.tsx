@@ -59,6 +59,9 @@ interface ThemeContextValue {
   setTheme: (theme: Theme) => void;
   wallpaper: string;
   setWallpaper: (wallpaper: string) => void;
+  customWallpapers: string[];
+  addCustomWallpaper: (wp: string) => void;
+  deleteCustomWallpaper: (wp: string) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -68,8 +71,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [wallpaper, setWallpaperState] = useState<string>(
     "linear-gradient(135deg, #09090b 0%, #020205 100%)"
   );
+  const [customWallpapers, setCustomWallpapers] = useState<string[]>([]);
 
-  // Load initial theme and wallpaper from preferences on mount and sync with API
+  // Load initial theme, wallpaper and custom wallpapers from backend DB on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
       const prefs = profileManager.getPreferences();
@@ -85,6 +89,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           if (data) {
             if (data.theme) setThemeState(data.theme as Theme);
             if (data.wallpaper) setWallpaperState(data.wallpaper);
+            if (data.customWallpapers) setCustomWallpapers(data.customWallpapers);
             profileManager.updatePreferences(data);
           }
         })
@@ -92,12 +97,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const pushSettingsToBackend = async (newTheme: Theme, newWp: string) => {
+  const pushSettingsToBackend = async (newTheme: Theme, newWp: string, newCustomWps: string[]) => {
     try {
       await fetch("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ theme: newTheme, wallpaper: newWp }),
+        body: JSON.stringify({ 
+          theme: newTheme, 
+          wallpaper: newWp,
+          customWallpapers: newCustomWps 
+        }),
       });
     } catch (e) {
       console.error("Failed to push settings to backend:", e);
@@ -123,14 +132,34 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       playThemeSound("startup");
     }
 
-    pushSettingsToBackend(newTheme, nextWp);
+    pushSettingsToBackend(newTheme, nextWp, customWallpapers);
   };
 
   // Sync wallpaper to profileManager preferences
   const setWallpaper = (newWallpaper: string) => {
     setWallpaperState(newWallpaper);
     profileManager.updatePreferences({ wallpaper: newWallpaper });
-    pushSettingsToBackend(theme, newWallpaper);
+    pushSettingsToBackend(theme, newWallpaper, customWallpapers);
+  };
+
+  const addCustomWallpaper = (wp: string) => {
+    const updated = [...customWallpapers, wp];
+    setCustomWallpapers(updated);
+    pushSettingsToBackend(theme, wp, updated);
+  };
+
+  const deleteCustomWallpaper = (wp: string) => {
+    const updated = customWallpapers.filter(w => w !== wp);
+    setCustomWallpapers(updated);
+    
+    let nextWp = wallpaper;
+    if (wallpaper === wp) {
+      nextWp = themePresets[theme]?.wallpaper || "linear-gradient(135deg, #09090b 0%, #020205 100%)";
+      setWallpaperState(nextWp);
+      profileManager.updatePreferences({ wallpaper: nextWp });
+    }
+    
+    pushSettingsToBackend(theme, nextWp, updated);
   };
 
   useEffect(() => {
@@ -179,7 +208,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [theme]);
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, wallpaper, setWallpaper }}>
+    <ThemeContext.Provider value={{ 
+      theme, 
+      setTheme, 
+      wallpaper, 
+      setWallpaper,
+      customWallpapers,
+      addCustomWallpaper,
+      deleteCustomWallpaper
+    }}>
       {children}
     </ThemeContext.Provider>
   );
