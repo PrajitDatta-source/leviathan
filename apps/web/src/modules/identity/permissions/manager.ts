@@ -5,7 +5,7 @@ class PermissionManager {
     appPermissions: new Map(),
   };
 
-  private storageKey = "leviathan_permissions";
+  private storageKey = "iris_permissions";
 
   constructor() {
     this.loadFromStorage();

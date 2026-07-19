@@ -8,8 +8,8 @@ class ProfileManager {
     autoSync: true,
   };
 
-  private profileStorageKey = "leviathan_profile";
-  private preferencesStorageKey = "leviathan_preferences";
+  private profileStorageKey = "iris_profile";
+  private preferencesStorageKey = "iris_preferences";
 
   constructor() {
     this.loadFromStorage();

@@ -47,7 +47,7 @@ export function Taskbar() {
 
   // Notifications state mock
   const [notifications] = useState([
-    { id: 1, title: "System Booted", body: "Leviathan Web OS kernel loaded successfully.", time: "Just now" },
+    { id: 1, title: "System Booted", body: "Iris Web OS kernel loaded successfully.", time: "Just now" },
     { id: 2, title: "Virtual File System", body: "VFS node mapping initialized.", time: "1m ago" },
     { id: 3, title: "Theme Manager", body: "Zero-dependency sound synthesizer compiled.", time: "3m ago" },
     { id: 4, title: "Virtual WAN Network", body: "Connected to virtual router gate 192.168.1.1.", time: "5m ago" }
@@ -56,7 +56,7 @@ export function Taskbar() {
   // Pinned apps state
   const [pinnedApps, setPinnedApps] = useState<string[]>(() => {
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("leviathan_pinned_apps");
+      const stored = localStorage.getItem("iris_pinned_apps");
       if (stored) return JSON.parse(stored);
     }
     return ["explorer", "terminal", "notes", "settings"];
@@ -67,7 +67,7 @@ export function Taskbar() {
     
     // Load autohide setting
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("leviathan_taskbar_autohide");
+      const stored = localStorage.getItem("iris_taskbar_autohide");
       if (stored === "true") {
         setIsAutohide(true);
       }
@@ -89,7 +89,7 @@ export function Taskbar() {
     const nextVal = !isAutohide;
     setIsAutohide(nextVal);
     if (typeof window !== "undefined") {
-      localStorage.setItem("leviathan_taskbar_autohide", String(nextVal));
+      localStorage.setItem("iris_taskbar_autohide", String(nextVal));
     }
   };
 
@@ -99,7 +99,7 @@ export function Taskbar() {
       : [...pinnedApps, appId];
     setPinnedApps(updated);
     if (typeof window !== "undefined") {
-      localStorage.setItem("leviathan_pinned_apps", JSON.stringify(updated));
+      localStorage.setItem("iris_pinned_apps", JSON.stringify(updated));
     }
   };
 

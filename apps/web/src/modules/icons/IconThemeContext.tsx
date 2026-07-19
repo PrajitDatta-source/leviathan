@@ -277,7 +277,7 @@ export function IconThemeProvider({ children }: { children: React.ReactNode }) {
   const setIconTheme = (newTheme: string) => {
     setIconThemeState(newTheme);
     if (typeof window !== "undefined") {
-      localStorage.setItem("leviathan_icon_theme", newTheme);
+      localStorage.setItem("iris_icon_theme", newTheme);
     }
   };
 

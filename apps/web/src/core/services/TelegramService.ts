@@ -29,7 +29,7 @@ export interface MTProtoUpdateDeleteMessages {
   type: "UpdateDeleteMessages";
   chatId: string;
   messageIds: string[];
-  isUnsent?: boolean; // Can be flagged as unsent/recalled
+  isUnsent?: boolean;
 }
 
 export interface MTProtoMessageEdit {
@@ -46,7 +46,7 @@ const initialChats: TelegramChat[] = [
     id: "tg_bot",
     name: "Telegram Bot",
     avatar: "TB",
-    lastMessage: "Welcome to Leviathan OS Telegram integration! Secure connection established.",
+    lastMessage: "Welcome to Iris OS Telegram integration! Secure connection established.",
     timestamp: new Date(Date.now() - 600000).toISOString(),
     unreadCount: 1,
     isOnline: true,
@@ -55,7 +55,7 @@ const initialChats: TelegramChat[] = [
       {
         id: "msg_1",
         sender: "Telegram Bot",
-        text: "Welcome to Leviathan OS Telegram integration! Secure connection established.",
+        text: "Welcome to Iris OS Telegram integration! Secure connection established.",
         timestamp: new Date(Date.now() - 600000).toISOString(),
         isBot: true,
       }
@@ -101,8 +101,8 @@ const initialChats: TelegramChat[] = [
   },
   {
     id: "dev_group",
-    name: "Leviathan Core Devs",
-    avatar: "LD",
+    name: "Iris Core Devs",
+    avatar: "ID",
     lastMessage: "Let's test the MTProto connection",
     timestamp: new Date(Date.now() - 3600000 * 3).toISOString(),
     unreadCount: 2,
@@ -132,7 +132,7 @@ class TelegramServiceImpl {
 
   constructor() {
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("leviathan_telegram_chats");
+      const stored = localStorage.getItem("iris_telegram_chats");
       if (stored) {
         this.chats = JSON.parse(stored);
       } else {
@@ -146,7 +146,7 @@ class TelegramServiceImpl {
 
   private save() {
     if (typeof window !== "undefined") {
-      localStorage.setItem("leviathan_telegram_chats", JSON.stringify(this.chats));
+      localStorage.setItem("iris_telegram_chats", JSON.stringify(this.chats));
     }
   }
 
@@ -230,7 +230,6 @@ class TelegramServiceImpl {
     this.save();
   }
 
-  // Intercept MTProto updates and flag instead of deleting
   async handleMTProtoEvent(event: MTProtoEvent): Promise<void> {
     this.chats = this.chats.map(chat => {
       if (chat.id === event.chatId) {
@@ -260,7 +259,6 @@ class TelegramServiceImpl {
           });
         }
 
-        // Determine correct lastMessage content mapping
         const visibleMsgs = updatedMessages.filter(m => !m.isDeleted && !m.isUnsent);
         const lastMsgObj = visibleMsgs[visibleMsgs.length - 1] || updatedMessages[updatedMessages.length - 1];
         

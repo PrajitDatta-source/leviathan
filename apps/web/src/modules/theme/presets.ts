@@ -1,9 +1,9 @@
 import { ThemeConfig } from "./types";
 
 export const themePresets: Record<string, ThemeConfig> = {
-  "leviathan-dark": {
-    name: "leviathan-dark",
-    displayName: "Leviathan Dark (Default)",
+  "iris-dark": {
+    name: "iris-dark",
+    displayName: "Iris Dark (Default)",
     colors: {
       background: "#09090b",
       foreground: "#fafafa",
@@ -19,9 +19,9 @@ export const themePresets: Record<string, ThemeConfig> = {
     wallpaper: "linear-gradient(135deg, #09090b 0%, #020205 100%)",
     soundPack: "synthetic",
   },
-  "leviathan-light": {
-    name: "leviathan-light",
-    displayName: "Leviathan Light",
+  "iris-light": {
+    name: "iris-light",
+    displayName: "Iris Light",
     colors: {
       background: "#ffffff",
       foreground: "#0a0a0a",

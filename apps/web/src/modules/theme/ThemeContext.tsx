@@ -67,7 +67,7 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("leviathan-dark");
+  const [theme, setThemeState] = useState<Theme>("iris-dark");
   const [wallpaper, setWallpaperState] = useState<string>(
     "linear-gradient(135deg, #09090b 0%, #020205 100%)"
   );
@@ -166,7 +166,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (typeof window === "undefined") return;
 
     const root = document.documentElement;
-    const activeTheme = themePresets[theme] || themePresets["leviathan-dark"];
+    const activeTheme = themePresets[theme] || themePresets["iris-dark"];
     const colors = activeTheme.colors;
 
     // Apply color values to CSS custom variables

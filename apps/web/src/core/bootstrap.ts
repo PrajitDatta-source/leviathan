@@ -11,5 +11,5 @@ export function bootstrap() {
   registerBuiltinCommands();
   registerApps();
 
-  console.log("✅ Leviathan Core Bootstrapped");
+  console.log("✅ Iris Core Bootstrapped");
 }

@@ -123,7 +123,7 @@ export function DashboardWindow() {
 
     // Load tasks list from storage
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("leviathan_dashboard_tasks");
+      const stored = localStorage.getItem("iris_dashboard_tasks");
       if (stored) {
         setTasks(JSON.parse(stored));
       } else {
@@ -144,7 +144,7 @@ export function DashboardWindow() {
   const saveTasks = (newTasks: TaskItem[]) => {
     setTasks(newTasks);
     if (typeof window !== "undefined") {
-      localStorage.setItem("leviathan_dashboard_tasks", JSON.stringify(newTasks));
+      localStorage.setItem("iris_dashboard_tasks", JSON.stringify(newTasks));
     }
   };
 
@@ -185,7 +185,7 @@ export function DashboardWindow() {
         {/* Welcome Section */}
         <div className="flex flex-col gap-1">
           <h2 className="text-2xl font-light tracking-wide text-zinc-100">
-            Welcome to <span className="font-semibold text-violet-400">Leviathan Desktop</span>
+            Welcome to <span className="font-semibold text-violet-400">Iris Desktop</span>
           </h2>
           <p className="text-xs text-[var(--muted)]">
             Everything in your digital workspace, organized in one central dashboard.

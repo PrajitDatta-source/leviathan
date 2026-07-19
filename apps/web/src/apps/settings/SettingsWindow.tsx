@@ -204,13 +204,13 @@ export function SettingsWindow() {
           <div>
             <h3 className="text-lg font-medium mb-1">Color Theme</h3>
             <p className="text-xs text-[var(--muted)] mb-6">
-              Customize the system coloring of Leviathan windows and overlays.
+              Customize the system coloring of Iris windows and overlays.
             </p>
 
             <div className="grid grid-cols-2 gap-4">
               {([
-                { id: "leviathan-dark", label: "Leviathan Dark (Default)", desc: "Modern flat icons, synthetic click sounds, and dark walls" },
-                { id: "leviathan-light", label: "Leviathan Light", desc: "Clean bright look with modern flat icons & click sounds" },
+                { id: "iris-dark", label: "Iris Dark (Default)", desc: "Modern flat icons, synthetic click sounds, and dark walls" },
+                { id: "iris-light", label: "Iris Light", desc: "Clean bright look with modern flat icons & click sounds" },
                 { id: "fluent-glass", label: "Glass Fluent", desc: "Frosted glass-morphism panels and glowing neon fluent icons" },
                 { id: "retro-mac", label: "Retro Macintosh", desc: "Monochrome gray style with pixel icons and pixel crosshair cursor" },
                 { id: "material-design", label: "Material Design", desc: "Material theme with circular solid icons & flat dark card styling" },
@@ -380,7 +380,7 @@ export function SettingsWindow() {
             <div className="space-y-4">
               {([
                 { provider: "Google Calendar & Mail", desc: "Access inbox messages and calendar schedules", linked: true, user: "Prajit Datta (OAuth Active)" },
-                { provider: "Telegram Connector", desc: "Interact with Leviathan secure chat nodes", linked: true, user: "@prajit_leviathan" },
+                { provider: "Telegram Connector", desc: "Interact with Iris secure chat nodes", linked: true, user: "@prajit_iris" },
                 { provider: "GitHub Integration", desc: "Monitor active issue milestones and commits", linked: false, user: null },
                 { provider: "Spotify Web Playback", desc: "Stream media details directly to taskbar tray", linked: false, user: null }
               ]).map((acc, index) => (
@@ -455,7 +455,7 @@ export function SettingsWindow() {
             <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] divide-y divide-[var(--border)] text-sm">
               <div className="flex justify-between p-3.5">
                 <span className="text-[var(--muted)]">OS Name</span>
-                <span className="font-medium">Leviathan OS</span>
+                <span className="font-medium">Iris OS</span>
               </div>
               <div className="flex justify-between p-3.5">
                 <span className="text-[var(--muted)]">Core Kernel</span>

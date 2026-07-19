@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-const DB_FILE = path.join(process.cwd(), "leviathan_db.json");
+const DB_FILE = path.join(process.cwd(), "iris_db.json");
 
 export interface DBData {
   vfsNodes: any[];
@@ -26,7 +26,7 @@ const DEFAULT_DB: DBData = {
     {
       id: "tg_1",
       sender: "Telegram Bot",
-      text: "Welcome to Leviathan OS Telegram integration! Secure connection established.",
+      text: "Welcome to Iris OS Telegram integration! Secure connection established.",
       timestamp: new Date().toISOString(),
     },
     {

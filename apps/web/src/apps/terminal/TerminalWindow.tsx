@@ -42,12 +42,12 @@ export function TerminalWindow() {
   };
 
   const writePrompt = (t: XTermTerminal) => {
-    t.write(`\r\n\x1b[1;36mleviathan ➜ ${getPromptPath()} $\x1b[0m `);
+    t.write(`\r\n\x1b[1;36miris ➜ ${getPromptPath()} $\x1b[0m `);
   };
 
   const clearCurrentLineAndRedraw = (t: XTermTerminal, input: string) => {
     t.write("\r\x1b[2K");
-    t.write(`\x1b[1;36mleviathan ➜ ${getPromptPath()} $\x1b[0m `);
+    t.write(`\x1b[1;36miris ➜ ${getPromptPath()} $\x1b[0m `);
     t.write(input);
   };
 
@@ -222,9 +222,9 @@ export function TerminalWindow() {
         const vfsCount = vfs.getAllNodes().length;
         
         t.writeln("");
-        t.writeln("    /\\_/\\      user@leviathan");
+        t.writeln("    /\\_/\\      user@iris");
         t.writeln("   ( o.o )     --------------");
-        t.writeln("    > ^ <      OS: Leviathan Web OS v1.0.0");
+        t.writeln("    > ^ <      OS: Iris Web OS v1.0.0");
         t.writeln("   /  |  \\     Resolution: " + res);
         t.writeln("  ( |_|_| )    Uptime: " + uptime + "s");
         t.writeln("               Active Workspace: Workspace " + useWorkspaceStore.getState().activeWorkspace);
@@ -280,9 +280,9 @@ export function TerminalWindow() {
       terminal.resize(cols, rows);
 
       // Welcome header
-      terminal.writeln("Leviathan Shell v1.0.0 (xterm.js)");
+      terminal.writeln("Iris Shell v1.0.0 (xterm.js)");
       terminal.writeln("Type 'help' to see available commands.");
-      terminal.write(`\x1b[1;36mleviathan ➜ ${getPromptPath()} $\x1b[0m `);
+      terminal.write(`\x1b[1;36miris ➜ ${getPromptPath()} $\x1b[0m `);
 
       // Handle raw key presses and line buffer
       let inputBuffer = "";

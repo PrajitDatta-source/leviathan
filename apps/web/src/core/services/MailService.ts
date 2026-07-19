@@ -35,7 +35,7 @@ export const LABEL_MAPPING: Record<string, string> = {
   "Label_2": "Starred",
   "Label_3": "Sent",
   "Label_4": "Work",
-  "Label_5": "Leviathan",
+  "Label_5": "Iris",
   "Label_6": "Security",
   "Label_7": "Personal",
   "Label_8": "Drafts",
@@ -49,18 +49,18 @@ export function resolveLabels(labels: string[]): string[] {
 const initialThreads: MailThread[] = [
   {
     id: "thread_1",
-    subject: "Leviathan Project Milestones",
+    subject: "Iris Project Milestones",
     isRead: false,
     isStarred: true,
-    labels: ["Label_4", "Label_5"], // Work, Leviathan
+    labels: ["Label_4", "Label_5"], // Work, Iris
     lastMessageTimestamp: new Date(Date.now() - 3600000 * 2).toISOString(), // 2 hours ago
     messages: [
       {
         id: "msg_1",
         threadId: "thread_1",
-        from: "Prajit Datta <prajit@leviathan.sh>",
-        to: "team@leviathan.sh",
-        subject: "Leviathan Project Milestones",
+        from: "Prajit Datta <prajit@iris.sh>",
+        to: "team@iris.sh",
+        subject: "Iris Project Milestones",
         body: "Hi team,\n\nWe need to make sure the desktop z-index layering, window manager keyboard shortcuts, and resizing are 100% complete by tomorrow.\n\nLet me know your status.\n\nBest,\nPrajit",
         timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
         isRead: false,
@@ -82,9 +82,9 @@ const initialThreads: MailThread[] = [
         id: "msg_2",
         threadId: "thread_2",
         from: "Security Gate <compliance@secgate.io>",
-        to: "prajit@leviathan.sh",
+        to: "prajit@iris.sh",
         subject: "Security Audit Compliance Report",
-        body: "Dear Administrator,\n\nThe weekly automated vulnerability scan of the Leviathan Web OS sandbox has completed with 0 high-severity threats found.\n\nReview the detailed report attached.\n\nSincerely,\nSecGate Automation",
+        body: "Dear Administrator,\n\nThe weekly automated vulnerability scan of the Iris Web OS sandbox has completed with 0 high-severity threats found.\n\nReview the detailed report attached.\n\nSincerely,\nSecGate Automation",
         timestamp: new Date(Date.now() - 3600000 * 24).toISOString(),
         isRead: true,
         isStarred: false,
@@ -104,10 +104,10 @@ const initialThreads: MailThread[] = [
       {
         id: "msg_3",
         threadId: "thread_3",
-        from: "You <prajit@leviathan.sh>",
+        from: "You <prajit@iris.sh>",
         to: "",
         subject: "Draft: Google Apps Script Integration Notes",
-        body: "Ideas for connecting Google Apps Script:\n- Expose doPost web apps for webhook handlers\n- Store OAuth tokens securely in Leviathan encrypted cred storage\n- Map Gmail messages dynamically to threads using threadId...",
+        body: "Ideas for connecting Google Apps Script:\n- Expose doPost web apps for webhook handlers\n- Store OAuth tokens securely in Iris encrypted cred storage\n- Map Gmail messages dynamically to threads using threadId...",
         timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
         isRead: true,
         isStarred: false,
@@ -128,7 +128,7 @@ const initialThreads: MailThread[] = [
         id: "msg_4",
         threadId: "thread_4",
         from: "Spam Bot <offer@spambot.io>",
-        to: "prajit@leviathan.sh",
+        to: "prajit@iris.sh",
         subject: "Urgent: Direct Transfer Offer",
         body: "Congratulations! You have been selected to receive a direct transfer of $10,000,000. Click here to claim your reward immediately.",
         timestamp: new Date(Date.now() - 3600000 * 12).toISOString(),
@@ -151,7 +151,7 @@ const initialThreads: MailThread[] = [
         id: "msg_5",
         threadId: "thread_5",
         from: "Sarah Jenkins <sarah@family.com>",
-        to: "prajit@leviathan.sh",
+        to: "prajit@iris.sh",
         subject: "Weekend BBQ plans",
         body: "Hey! Are we still on for the BBQ this Saturday? Let me know what I should bring. I was thinking of making some potato salad.",
         timestamp: new Date(Date.now() - 3600000 * 36).toISOString(),
@@ -169,7 +169,7 @@ class MailServiceImpl {
 
   constructor() {
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("leviathan_mail_threads");
+      const stored = localStorage.getItem("iris_mail_threads");
       if (stored) {
         this.threads = JSON.parse(stored);
       } else {
@@ -183,7 +183,7 @@ class MailServiceImpl {
 
   private save() {
     if (typeof window !== "undefined") {
-      localStorage.setItem("leviathan_mail_threads", JSON.stringify(this.threads));
+      localStorage.setItem("iris_mail_threads", JSON.stringify(this.threads));
     }
   }
 
@@ -282,7 +282,7 @@ class MailServiceImpl {
     const newMsg: MailMessage = {
       id: newMsgId,
       threadId: newThreadId,
-      from: "You <prajit@leviathan.sh>",
+      from: "You <prajit@iris.sh>",
       to,
       subject,
       body,

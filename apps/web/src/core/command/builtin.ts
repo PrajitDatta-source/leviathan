@@ -6,7 +6,7 @@ export function registerBuiltinCommands() {
   commandRegistry.register({
     id: "settings",
     title: "Open Settings",
-    description: "Open Leviathan settings",
+    description: "Open Iris settings",
     category: "System",
     keywords: ["preferences", "config"],
 

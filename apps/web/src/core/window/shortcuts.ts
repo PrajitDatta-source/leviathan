@@ -1,4 +1,4 @@
-// central keyboard shortcuts management for Leviathan
+// central keyboard shortcuts management for Iris
 
 export interface KeyCombination {
   key: string; // e.g. "q", "d", "tab", "arrowleft", "1", "enter"
@@ -77,7 +77,7 @@ export function loadShortcutsConfig(): ShortcutsConfig {
   if (typeof window === "undefined") {
     return { globalModifier: "alt", customBinds: {} };
   }
-  const stored = localStorage.getItem("leviathan_shortcuts_config");
+  const stored = localStorage.getItem("iris_shortcuts_config");
   if (stored) {
     try {
       const parsed = JSON.parse(stored);
@@ -95,7 +95,7 @@ export function loadShortcutsConfig(): ShortcutsConfig {
 
 export function saveShortcutsConfig(config: ShortcutsConfig) {
   if (typeof window !== "undefined") {
-    localStorage.setItem("leviathan_shortcuts_config", JSON.stringify(config));
+    localStorage.setItem("iris_shortcuts_config", JSON.stringify(config));
     window.dispatchEvent(new Event("shortcuts-changed"));
   }
 }

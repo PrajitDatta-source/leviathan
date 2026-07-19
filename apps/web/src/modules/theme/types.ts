@@ -1,6 +1,6 @@
 export type Theme = 
-  | "leviathan-dark"
-  | "leviathan-light"
+  | "iris-dark"
+  | "iris-light"
   | "fluent-glass"
   | "retro-mac"
   | "material-design"

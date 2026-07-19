@@ -6,7 +6,7 @@ class AccountManager {
     accounts: new Map(),
   };
 
-  private storageKey = "leviathan_accounts";
+  private storageKey = "iris_accounts";
 
   constructor() {
     this.loadFromStorage();

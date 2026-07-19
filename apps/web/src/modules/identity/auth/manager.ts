@@ -6,7 +6,7 @@ class AuthManager {
     tokens: new Map(),
   };
 
-  private storageKey = "leviathan_auth_tokens";
+  private storageKey = "iris_auth_tokens";
 
   constructor() {
     this.loadFromStorage();

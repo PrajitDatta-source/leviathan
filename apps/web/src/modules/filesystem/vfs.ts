@@ -12,7 +12,7 @@ export interface VFSNode {
 }
 
 class VFSManager {
-  private storageKey = "leviathan_vfs_nodes";
+  private storageKey = "iris_vfs_nodes";
   private nodes: Map<string, VFSNode> = new Map();
 
   constructor() {
@@ -122,7 +122,7 @@ class VFSManager {
         name: "welcome.md",
         type: "file",
         parentId: null,
-        content: `# Welcome to Leviathan OS! 👋\n\nThis is a browser-based personal operating system designed to manage your digital workspace.\n\n### Core Features in Alpha:\n- **File Explorer**: Browse folders, upload/download, create files.\n- **Notes App**: Markdown editor with auto-save and tag indexing.\n- **Terminal**: Run system commands (\`ls\`, \`cd\`, \`cat\`, \`neofetch\`).\n- **Command Palette** (\`Super + D\` / \`Alt + D\`): Run calculation operations, toggle themes, and find files.\n\nEnjoy customizing your new desktop environment!`,
+        content: `# Welcome to Iris OS! 👋\n\nThis is a browser-based personal operating system designed to manage your digital workspace.\n\n### Core Features in Alpha:\n- **File Explorer**: Browse folders, upload/download, create files.\n- **Notes App**: Markdown editor with auto-save and tag indexing.\n- **Terminal**: Run system commands (\`ls\`, \`cd\`, \`cat\`, \`neofetch\`).\n- **Command Palette** (\`Super + D\` / \`Alt + D\`): Run calculation operations, toggle themes, and find files.\n\nEnjoy customizing your new desktop environment!`,
         createdAt: now,
         updatedAt: now
       });

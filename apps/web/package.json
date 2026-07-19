@@ -1,6 +1,7 @@
 {
-  "name": "web",
+  "name": "iris",
   "version": "0.1.0",
+  "description": "Iris - A web-based operating environment.",
   "private": true,
   "scripts": {
     "dev": "next dev",

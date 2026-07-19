@@ -1,0 +1,67 @@
+{
+  "vfsNodes": [
+    {
+      "id": "documents_folder",
+      "name": "Documents",
+      "type": "folder",
+      "parentId": null,
+      "createdAt": "2026-07-19T12:12:51.620Z",
+      "updatedAt": "2026-07-19T12:12:51.620Z"
+    },
+    {
+      "id": "downloads_folder",
+      "name": "Downloads",
+      "type": "folder",
+      "parentId": null,
+      "createdAt": "2026-07-19T12:12:51.620Z",
+      "updatedAt": "2026-07-19T12:12:51.620Z"
+    },
+    {
+      "id": "notes_folder",
+      "name": "Notes",
+      "type": "folder",
+      "parentId": null,
+      "createdAt": "2026-07-19T12:12:51.620Z",
+      "updatedAt": "2026-07-19T12:12:51.620Z"
+    },
+    {
+      "id": "welcome_file",
+      "name": "welcome.md",
+      "type": "file",
+      "parentId": null,
+      "content": "# Welcome to Iris OS! 👋\n\nThis is a browser-based personal operating system designed to manage your digital workspace.\n\n### Core Features in Alpha:\n- **File Explorer**: Browse folders, upload/download, create files.\n- **Notes App**: Markdown editor with auto-save and tag indexing.\n- **Terminal**: Run system commands (`ls`, `cd`, `cat`, `neofetch`).\n- **Command Palette** (`Super + D` / `Alt + D`): Run calculation operations, toggle themes, and find files.\n\nEnjoy customizing your new desktop environment!",
+      "createdAt": "2026-07-19T12:12:51.620Z",
+      "updatedAt": "2026-07-19T12:12:51.620Z"
+    },
+    {
+      "id": "project_plan_file",
+      "name": "Project Plan.md",
+      "type": "file",
+      "parentId": "notes_folder",
+      "content": "# Project Plan: Phase 2 Goals\n\n- [x] Snapping layouts & snapping preview\n- [x] Custom context menu\n- [x] Mobile full-screen constraints\n- [ ] Expand desktop wallpaper settings\n- [ ] Configure full virtual workspace switching",
+      "createdAt": "2026-07-19T12:12:51.620Z",
+      "updatedAt": "2026-07-19T12:12:51.620Z"
+    }
+  ],
+  "preferences": {
+    "theme": "iris-dark",
+    "wallpaper": "linear-gradient(135deg, #09090b 0%, #020205 100%)",
+    "notifications": true,
+    "autoSync": true,
+    "customWallpapers": []
+  },
+  "telegramChats": [
+    {
+      "id": "tg_1",
+      "sender": "Telegram Bot",
+      "text": "Welcome to Iris OS Telegram integration! Secure connection established.",
+      "timestamp": "2026-07-18T12:47:06.969Z"
+    },
+    {
+      "id": "tg_2",
+      "sender": "Prajit (Owner)",
+      "text": "Is the server-side filesystem sync working?",
+      "timestamp": "2026-07-18T12:47:06.969Z"
+    }
+  ]
+}

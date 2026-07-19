@@ -1,6 +1,6 @@
 /**
  * zIndex.ts
- * Centralized z-index layers for the Leviathan Web OS.
+ * Centralized z-index layers for the Iris Web OS.
  * Prevents z-index conflicts by defining layers in a single source of truth.
  */
 export const Z_INDEX = {

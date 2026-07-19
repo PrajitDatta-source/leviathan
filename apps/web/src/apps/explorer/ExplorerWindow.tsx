@@ -128,7 +128,7 @@ export function ExplorerWindow() {
           className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--border)]/40 hover:text-[var(--text)] text-left transition cursor-pointer ${currentDirId === null ? "bg-[var(--border)] text-[var(--text)]" : ""}`}
         >
           <Folder className="w-3.5 h-3.5 text-violet-400" />
-          <span>Root</span>
+          <span>Home</span>
         </button>
 
         <button
@@ -167,7 +167,7 @@ export function ExplorerWindow() {
                 onClick={() => setCurrentDirId(null)}
                 className="hover:underline cursor-pointer"
               >
-                Root
+                Home
               </span>
               {getBreadcrumbs().map((b) => (
                 <React.Fragment key={b.id}>
