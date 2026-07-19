@@ -3,9 +3,30 @@
 import React, { useState, useEffect, useRef } from "react";
 import { vfs, VFSNode } from "@/modules/filesystem/vfs";
 import { openWindow } from "@/core/window/manager";
-import { Folder, File, ArrowUp, Plus, Upload, Download, Trash, Edit, Grid, List, Search } from "lucide-react";
+import { 
+  Folder, 
+  File, 
+  ArrowUp, 
+  Plus, 
+  Upload, 
+  Download, 
+  Trash, 
+  Edit, 
+  Grid, 
+  List, 
+  Search, 
+  Copy, 
+  Scissors, 
+  Clipboard 
+} from "lucide-react";
 
 type ViewMode = "grid" | "list";
+
+interface ContextMenuState {
+  x: number;
+  y: number;
+  node: VFSNode | null;
+}
 
 export function ExplorerWindow() {
   const [currentDirId, setCurrentDirId] = useState<string | null>(null);
@@ -13,6 +34,14 @@ export function ExplorerWindow() {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+
+  // Inline rename state
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadDirectory = () => {
@@ -23,7 +52,11 @@ export function ExplorerWindow() {
   useEffect(() => {
     loadDirectory();
     window.addEventListener("vfs-synced", loadDirectory);
-    return () => window.removeEventListener("vfs-synced", loadDirectory);
+    window.addEventListener("vfs-updated", loadDirectory);
+    return () => {
+      window.removeEventListener("vfs-synced", loadDirectory);
+      window.removeEventListener("vfs-updated", loadDirectory);
+    };
   }, [currentDirId]);
 
   useEffect(() => {
@@ -37,11 +70,25 @@ export function ExplorerWindow() {
     return () => window.removeEventListener("explorer-navigate", handleNavigate);
   }, []);
 
+  // Dismiss context menu on click
+  useEffect(() => {
+    const handleDismiss = () => setContextMenu(null);
+    window.addEventListener("click", handleDismiss);
+    return () => window.removeEventListener("click", handleDismiss);
+  }, []);
+
   const handleDoubleClick = (node: VFSNode) => {
     if (node.type === "folder") {
       setCurrentDirId(node.id);
     } else {
-      if (node.name.endsWith(".md")) {
+      const isTextFile = 
+        node.name.endsWith(".md") || 
+        node.name.endsWith(".txt") || 
+        node.name.endsWith(".json") || 
+        node.name.endsWith(".js") || 
+        node.name.endsWith(".ts");
+      if (isTextFile) {
+        window.dispatchEvent(new CustomEvent("notes-open-file", { detail: { fileId: node.id } }));
         openWindow("notes");
       } else {
         alert(`Opening file: ${node.name}\nSize: ${node.content?.length || 0} bytes`);
@@ -92,15 +139,23 @@ export function ExplorerWindow() {
     URL.revokeObjectURL(url);
   };
 
-  const handleRename = (node: VFSNode) => {
-    const newName = prompt(`Rename '${node.name}' to:`, node.name.replace(/\.md$/, ""));
-    if (newName && newName.trim()) {
-      const finalName = node.type === "file" && node.name.endsWith(".md") && !newName.endsWith(".md") 
-        ? `${newName.trim()}.md`
-        : newName.trim();
-      vfs.renameNode(node.id, finalName);
+  const startRenameInline = (node: VFSNode) => {
+    setEditingNodeId(node.id);
+    setEditingName(node.name);
+  };
+
+  const finishRename = () => {
+    if (!editingNodeId) return;
+    const name = editingName.trim();
+    if (name) {
+      vfs.renameNode(editingNodeId, name);
       loadDirectory();
     }
+    setEditingNodeId(null);
+  };
+
+  const handleRename = (node: VFSNode) => {
+    startRenameInline(node);
   };
 
   const handleDelete = (node: VFSNode) => {
@@ -119,6 +174,38 @@ export function ExplorerWindow() {
     }
   };
 
+  const handleNodeContextMenu = (e: React.MouseEvent, node: VFSNode) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      node
+    });
+  };
+
+  const handleEmptySpaceContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      node: null
+    });
+  };
+
+  const handlePaste = () => {
+    const clipboard = vfs.getClipboard();
+    if (!clipboard) return;
+
+    if (clipboard.type === "copy") {
+      vfs.copyNode(clipboard.nodeId, currentDirId);
+    } else if (clipboard.type === "cut") {
+      vfs.moveNode(clipboard.nodeId, currentDirId);
+      vfs.clearClipboard();
+    }
+    loadDirectory();
+  };
+
   const getBreadcrumbs = () => {
     if (!currentDirId) return [];
     return vfs.getPath(currentDirId);
@@ -129,11 +216,82 @@ export function ExplorerWindow() {
   );
 
   return (
-    <div className="flex h-full w-full bg-[var(--background)] text-[var(--text)] select-none overflow-hidden">
-      {/* Sidebar Links */}
-      <div className="w-[160px] border-r border-[var(--border)] bg-[var(--surface)] p-3.5 flex flex-col gap-1.5 shrink-0 text-xs text-[var(--muted)]">
-        <h2 className="font-bold uppercase tracking-wider text-[var(--muted)] px-2 mb-2">Places</h2>
-        
+    <div className="flex h-full bg-[var(--background)] text-[var(--text)] select-none text-xs relative">
+      
+      {/* Absolute context menu overlay */}
+      {contextMenu && (
+        <div
+          style={{ top: contextMenu.y - 40, left: contextMenu.x - 60 }}
+          className="absolute z-50 bg-[var(--surface)] border border-[var(--border)] rounded-xl py-1.5 w-40 text-xs shadow-2xl backdrop-blur-md text-zinc-300 font-semibold"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {contextMenu.node ? (
+            <>
+              <button
+                onClick={() => { startRenameInline(contextMenu.node!); setContextMenu(null); }}
+                className="w-full text-left px-4 py-2 hover:bg-[var(--border)]/40 hover:text-zinc-100 flex items-center gap-2 cursor-pointer"
+              >
+                <Edit className="w-3.5 h-3.5 text-violet-400" />
+                <span>Rename</span>
+              </button>
+              <button
+                onClick={() => { vfs.setClipboard("copy", contextMenu.node!.id); setContextMenu(null); }}
+                className="w-full text-left px-4 py-2 hover:bg-[var(--border)]/40 hover:text-zinc-100 flex items-center gap-2 cursor-pointer"
+              >
+                <Copy className="w-3.5 h-3.5 text-violet-400" />
+                <span>Copy</span>
+              </button>
+              <button
+                onClick={() => { vfs.setClipboard("cut", contextMenu.node!.id); setContextMenu(null); }}
+                className="w-full text-left px-4 py-2 hover:bg-[var(--border)]/40 hover:text-zinc-100 flex items-center gap-2 cursor-pointer"
+              >
+                <Scissors className="w-3.5 h-3.5 text-violet-400" />
+                <span>Cut</span>
+              </button>
+              <button
+                onClick={() => { handleDelete(contextMenu.node!); setContextMenu(null); }}
+                className="w-full text-left px-4 py-2 hover:bg-[var(--border)]/40 text-rose-400 flex items-center gap-2 cursor-pointer"
+              >
+                <Trash className="w-3.5 h-3.5 text-rose-500" />
+                <span>Delete</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => { handlePaste(); setContextMenu(null); }}
+                disabled={!vfs.getClipboard()}
+                className="w-full text-left px-4 py-2 hover:bg-[var(--border)]/40 hover:text-zinc-100 flex items-center gap-2 cursor-pointer disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-zinc-300"
+              >
+                <Clipboard className="w-3.5 h-3.5 text-violet-400" />
+                <span>Paste</span>
+              </button>
+              <div className="h-[1px] bg-[var(--border)] my-1" />
+              <button
+                onClick={() => { handleCreateFolder(); setContextMenu(null); }}
+                className="w-full text-left px-4 py-2 hover:bg-[var(--border)]/40 hover:text-zinc-100 flex items-center gap-2 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 text-violet-400" />
+                <span>New Folder</span>
+              </button>
+              <button
+                onClick={() => { handleCreateFile(); setContextMenu(null); }}
+                className="w-full text-left px-4 py-2 hover:bg-[var(--border)]/40 hover:text-zinc-100 flex items-center gap-2 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 text-violet-400" />
+                <span>New File</span>
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Explorer Sidebar */}
+      <div className="w-44 border-r border-[var(--border)] bg-[var(--surface)]/10 p-3 flex flex-col gap-1.5 shrink-0">
+        <div className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted)] mb-2 px-2.5">
+          Navigation
+        </div>
+
         <button
           onClick={() => setCurrentDirId(null)}
           className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--border)]/40 hover:text-[var(--text)] text-left transition cursor-pointer ${currentDirId === null ? "bg-[var(--border)] text-[var(--text)]" : ""}`}
@@ -194,7 +352,7 @@ export function ExplorerWindow() {
             </div>
           </div>
 
-          {/* Search bar inside toolbar */}
+          {/* Search bar */}
           <div className="flex items-center gap-2 border border-[var(--border)] bg-[var(--background)] px-2.5 py-1.5 rounded-xl w-40 shrink-0">
             <Search className="w-3.5 h-3.5 text-[var(--muted)]" />
             <input
@@ -251,7 +409,10 @@ export function ExplorerWindow() {
         </div>
 
         {/* Directory Listing */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div 
+          className="flex-1 overflow-y-auto p-4"
+          onContextMenu={handleEmptySpaceContextMenu}
+        >
           {filteredChildren.length === 0 ? (
             <div className="h-full flex items-center justify-center text-xs text-[var(--muted)]">
               This folder is empty.
@@ -260,11 +421,13 @@ export function ExplorerWindow() {
             <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-4">
               {filteredChildren.map((node) => {
                 const isSelected = node.id === selectedNodeId;
+                const isEditing = node.id === editingNodeId;
                 return (
                   <div
                     key={node.id}
-                    onClick={() => setSelectedNodeId(node.id)}
+                    onClick={(e) => { e.stopPropagation(); setSelectedNodeId(node.id); }}
                     onDoubleClick={() => handleDoubleClick(node)}
+                    onContextMenu={(e) => handleNodeContextMenu(e, node)}
                     className={`flex flex-col items-center p-2 rounded-xl text-center cursor-pointer group transition border ${
                       isSelected ? "bg-violet-500/10 border-violet-500/30" : "hover:bg-[var(--border)]/30 border-transparent"
                     }`}
@@ -274,7 +437,24 @@ export function ExplorerWindow() {
                     ) : (
                       <File className="w-8 h-8 text-indigo-400 group-hover:scale-105 transition" />
                     )}
-                    <span className="text-[11px] font-medium mt-2 truncate w-full px-1">{node.name}</span>
+
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onBlur={finishRename}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") finishRename();
+                          if (e.key === "Escape") setEditingNodeId(null);
+                        }}
+                        className="bg-[var(--surface)] text-[var(--text)] border border-violet-500 rounded px-1 mt-1 text-[10px] outline-none w-full text-center"
+                        autoFocus
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <span className="text-[11px] font-medium mt-2 truncate w-full px-1">{node.name}</span>
+                    )}
                   </div>
                 );
               })}
@@ -290,12 +470,14 @@ export function ExplorerWindow() {
               {/* Rows */}
               {filteredChildren.map((node) => {
                 const isSelected = node.id === selectedNodeId;
+                const isEditing = node.id === editingNodeId;
                 return (
                   <div
                     key={node.id}
-                    onClick={() => setSelectedNodeId(node.id)}
+                    onClick={(e) => { e.stopPropagation(); setSelectedNodeId(node.id); }}
                     onDoubleClick={() => handleDoubleClick(node)}
-                    className={`flex py-2 px-2 rounded-lg cursor-pointer transition ${
+                    onContextMenu={(e) => handleNodeContextMenu(e, node)}
+                    className={`flex py-2 px-2 rounded-lg cursor-pointer transition items-center ${
                       isSelected ? "bg-violet-500/10" : "hover:bg-[var(--border)]/20"
                     }`}
                   >
@@ -305,7 +487,24 @@ export function ExplorerWindow() {
                       ) : (
                         <File className="w-3.5 h-3.5 text-indigo-400" />
                       )}
-                      <span>{node.name}</span>
+                      
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          onBlur={finishRename}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") finishRename();
+                            if (e.key === "Escape") setEditingNodeId(null);
+                          }}
+                          className="bg-[var(--surface)] text-[var(--text)] border border-violet-500 rounded px-1.5 py-0.5 text-xs outline-none w-48"
+                          autoFocus
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : (
+                        <span>{node.name}</span>
+                      )}
                     </span>
                     <span className="w-20 text-[var(--muted)] capitalize">{node.type}</span>
                     <span className="w-28 text-right text-[var(--muted)]">

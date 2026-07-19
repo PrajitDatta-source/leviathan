@@ -68,12 +68,28 @@ class VFSManager {
     }
   }
 
+  private clipboard: { type: "copy" | "cut"; nodeId: string } | null = null;
+
+  setClipboard(type: "copy" | "cut", nodeId: string): void {
+    this.clipboard = { type, nodeId };
+  }
+
+  getClipboard(): { type: "copy" | "cut"; nodeId: string } | null {
+    return this.clipboard;
+  }
+
+  clearClipboard(): void {
+    this.clipboard = null;
+  }
+
   private saveToStorage() {
     if (typeof window === "undefined") return;
     try {
       const array = Array.from(this.nodes.values());
       localStorage.setItem(this.storageKey, JSON.stringify(array));
       this.pushToBackend();
+      window.dispatchEvent(new CustomEvent("vfs-synced"));
+      window.dispatchEvent(new CustomEvent("vfs-updated"));
     } catch (e) {
       console.error("VFS save failed:", e);
     }
