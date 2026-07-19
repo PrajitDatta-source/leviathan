@@ -218,6 +218,43 @@ class VFSManager {
     this.saveToStorage();
   }
 
+  moveNode(id: string, newParentId: string | null): void {
+    const node = this.nodes.get(id);
+    if (node) {
+      node.parentId = newParentId;
+      node.updatedAt = new Date().toISOString();
+      this.saveToStorage();
+    }
+  }
+
+  copyNode(id: string, newParentId: string | null): string | null {
+    const original = this.nodes.get(id);
+    if (!original) return null;
+
+    const now = new Date().toISOString();
+    const newId = crypto.randomUUID();
+    const copy: VFSNode = {
+      id: newId,
+      name: original.name,
+      type: original.type,
+      parentId: newParentId,
+      content: original.content,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.nodes.set(newId, copy);
+
+    if (original.type === "folder") {
+      const children = this.getChildren(id);
+      children.forEach((child) => {
+        this.copyNode(child.id, newId);
+      });
+    }
+
+    this.saveToStorage();
+    return newId;
+  }
+
   getAllNodes(): VFSNode[] {
     return Array.from(this.nodes.values());
   }

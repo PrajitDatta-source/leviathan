@@ -41,6 +41,14 @@
       "content": "# Project Plan: Phase 2 Goals\n\n- [x] Snapping layouts & snapping preview\n- [x] Custom context menu\n- [x] Mobile full-screen constraints\n- [ ] Expand desktop wallpaper settings\n- [ ] Configure full virtual workspace switching",
       "createdAt": "2026-07-19T12:12:51.620Z",
       "updatedAt": "2026-07-19T12:12:51.620Z"
+    },
+    {
+      "id": "0d624300-aa67-4793-a066-1912f2d0a46f",
+      "name": "iris",
+      "type": "folder",
+      "parentId": null,
+      "createdAt": "2026-07-19T12:17:56.980Z",
+      "updatedAt": "2026-07-19T12:17:56.980Z"
     }
   ],
   "preferences": {

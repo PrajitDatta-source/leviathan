@@ -26,6 +26,17 @@ export function ExplorerWindow() {
     return () => window.removeEventListener("vfs-synced", loadDirectory);
   }, [currentDirId]);
 
+  useEffect(() => {
+    const handleNavigate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ dirId: string | null }>;
+      if (customEvent.detail && customEvent.detail.dirId !== undefined) {
+        setCurrentDirId(customEvent.detail.dirId);
+      }
+    };
+    window.addEventListener("explorer-navigate", handleNavigate);
+    return () => window.removeEventListener("explorer-navigate", handleNavigate);
+  }, []);
+
   const handleDoubleClick = (node: VFSNode) => {
     if (node.type === "folder") {
       setCurrentDirId(node.id);

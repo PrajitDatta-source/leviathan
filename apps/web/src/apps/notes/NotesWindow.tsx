@@ -66,6 +66,20 @@ export function NotesWindow() {
     return () => window.removeEventListener("vfs-synced", loadNotesList);
   }, []);
 
+  useEffect(() => {
+    const handleOpenFile = (e: Event) => {
+      const customEvent = e as CustomEvent<{ fileId: string }>;
+      if (customEvent.detail && customEvent.detail.fileId) {
+        const fileNode = vfs.getNode(customEvent.detail.fileId);
+        if (fileNode) {
+          handleSelectNote(fileNode);
+        }
+      }
+    };
+    window.addEventListener("notes-open-file", handleOpenFile);
+    return () => window.removeEventListener("notes-open-file", handleOpenFile);
+  }, [notes]);
+
   const handleSelectNote = (note: VFSNode) => {
     setSelectedNoteId(note.id);
     setNoteTitle(note.name.replace(/\.md$/, ""));
