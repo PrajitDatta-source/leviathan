@@ -65,20 +65,22 @@ export function TerminalWindow() {
       setInputVal("");
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      if (history.length === 0) return;
-      const newIdx = historyIndex === -1 ? history.length - 1 : Math.max(0, historyIndex - 1);
+      const globalHistory = CommandService.getHistory();
+      if (globalHistory.length === 0) return;
+      const newIdx = historyIndex === -1 ? globalHistory.length - 1 : Math.max(0, historyIndex - 1);
       setHistoryIndex(newIdx);
-      setInputVal(history[newIdx]);
+      setInputVal(globalHistory[newIdx]);
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
+      const globalHistory = CommandService.getHistory();
       if (historyIndex === -1) return;
       const newIdx = historyIndex + 1;
-      if (newIdx >= history.length) {
+      if (newIdx >= globalHistory.length) {
         setHistoryIndex(-1);
         setInputVal("");
       } else {
         setHistoryIndex(newIdx);
-        setInputVal(history[newIdx]);
+        setInputVal(globalHistory[newIdx]);
       }
     } else if (e.key === "Tab") {
       e.preventDefault();

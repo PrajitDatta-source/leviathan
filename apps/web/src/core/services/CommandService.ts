@@ -490,11 +490,19 @@ class CommandServiceClass {
         }
 
         const children = vfs.getChildren(this.currentDirId);
-        let file = children.find((c) => c.name === fileName && c.type === "file");
-        if (!file) {
-          file = vfs.createFile(fileName, this.currentDirId, "");
+        const existingNode = children.find((c) => c.name === fileName);
+        if (existingNode) {
+          if (existingNode.type === "folder") {
+            return { output: `bash: ${fileName}: Is a directory`, error: true };
+          }
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("notes-open-file", { detail: { fileId: existingNode.id } }));
+            openWindow("notes");
+          }
+          return { output: `Opening '${fileName}' in Notes/Text Editor...` };
         }
 
+        const file = vfs.createFile(fileName, this.currentDirId, "");
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("notes-open-file", { detail: { fileId: file.id } }));
           openWindow("notes");

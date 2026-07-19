@@ -84,7 +84,7 @@ export function NotesWindow() {
     };
     window.addEventListener("notes-open-file", handleOpenFile);
     return () => window.removeEventListener("notes-open-file", handleOpenFile);
-  }, [notes]);
+  }, []);
 
   const handleSelectNote = (note: VFSNode) => {
     setActiveNode(note);
