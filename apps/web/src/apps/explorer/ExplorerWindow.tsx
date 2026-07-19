@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { vfs, VFSNode } from "@/modules/filesystem/vfs";
 import { openWindow } from "@/core/window/manager";
 import { Folder, File, ArrowUp, Plus, Upload, Download, Trash, Edit, Grid, List, Search } from "lucide-react";
-import { NotesWindow } from "../notes/NotesWindow";
 
 type ViewMode = "grid" | "list";
 
@@ -16,28 +15,7 @@ export function ExplorerWindow() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const getNotesFolderId = (): string | null => {
-    const rootNodes = vfs.getChildren(null);
-    const home = rootNodes.find((n) => n.name === "Home");
-    if (home) {
-      const homeChildren = vfs.getChildren(home.id);
-      const notesFolder = homeChildren.find((n) => n.name === "Notes" && n.type === "folder");
-      return notesFolder ? notesFolder.id : home.id;
-    }
-    return null;
-  };
-
   const loadDirectory = () => {
-    // Default to Home folder on load
-    if (currentDirId === null) {
-      const rootFolders = vfs.getChildren(null);
-      const home = rootFolders.find((n) => n.name === "Home");
-      if (home) {
-        setCurrentDirId(home.id);
-        setChildren(vfs.getChildren(home.id));
-        return;
-      }
-    }
     setChildren(vfs.getChildren(currentDirId));
     setSelectedNodeId(null);
   };
@@ -52,7 +30,6 @@ export function ExplorerWindow() {
     if (node.type === "folder") {
       setCurrentDirId(node.id);
     } else {
-      // File double-click: if markdown, open in Notes app!
       if (node.name.endsWith(".md")) {
         openWindow("notes");
       } else {
@@ -141,44 +118,45 @@ export function ExplorerWindow() {
   );
 
   return (
-    <div className="flex h-full bg-[var(--background)] text-[var(--text)] select-none">
+    <div className="flex h-full w-full bg-[var(--background)] text-[var(--text)] select-none overflow-hidden">
       {/* Sidebar Links */}
       <div className="w-[160px] border-r border-[var(--border)] bg-[var(--surface)] p-3.5 flex flex-col gap-1.5 shrink-0 text-xs text-[var(--muted)]">
         <h2 className="font-bold uppercase tracking-wider text-[var(--muted)] px-2 mb-2">Places</h2>
         
         <button
-          onClick={() => {
-            const rootFolders = vfs.getChildren(null);
-            const home = rootFolders.find((n) => n.name === "Home");
-            if (home) setCurrentDirId(home.id);
-          }}
-          className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--border)]/40 hover:text-[var(--text)] text-left transition"
+          onClick={() => setCurrentDirId(null)}
+          className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--border)]/40 hover:text-[var(--text)] text-left transition cursor-pointer ${currentDirId === null ? "bg-[var(--border)] text-[var(--text)]" : ""}`}
         >
           <Folder className="w-3.5 h-3.5 text-violet-400" />
-          <span>Home</span>
+          <span>Root</span>
         </button>
 
         <button
-          onClick={() => {
-            const notesId = getNotesFolderId();
-            if (notesId) setCurrentDirId(notesId);
-          }}
-          className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--border)]/40 hover:text-[var(--text)] text-left transition"
+          onClick={() => setCurrentDirId("downloads_folder")}
+          className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--border)]/40 hover:text-[var(--text)] text-left transition cursor-pointer ${currentDirId === "downloads_folder" ? "bg-[var(--border)] text-[var(--text)]" : ""}`}
         >
           <Folder className="w-3.5 h-3.5 text-violet-400" />
-          <span>Notes</span>
+          <span>Downloads</span>
+        </button>
+
+        <button
+          onClick={() => setCurrentDirId("documents_folder")}
+          className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--border)]/40 hover:text-[var(--text)] text-left transition cursor-pointer ${currentDirId === "documents_folder" ? "bg-[var(--border)] text-[var(--text)]" : ""}`}
+        >
+          <Folder className="w-3.5 h-3.5 text-violet-400" />
+          <span>Documents</span>
         </button>
       </div>
 
       {/* Explorer Workspace */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         {/* Navigation Toolbar */}
         <div className="flex items-center justify-between gap-4 border-b border-[var(--border)] px-4 py-3 bg-[var(--surface)]/20 shrink-0 text-xs">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <button
               onClick={handleGoUp}
-              disabled={currentDirId === null || vfs.getNode(currentDirId)?.parentId === null}
-              className="p-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--border)]/40 disabled:opacity-30 disabled:hover:bg-transparent transition"
+              disabled={currentDirId === null}
+              className="p-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--border)]/40 disabled:opacity-30 disabled:hover:bg-transparent transition cursor-pointer"
             >
               <ArrowUp className="w-3.5 h-3.5" />
             </button>
@@ -205,11 +183,23 @@ export function ExplorerWindow() {
             </div>
           </div>
 
+          {/* Search bar inside toolbar */}
+          <div className="flex items-center gap-2 border border-[var(--border)] bg-[var(--background)] px-2.5 py-1.5 rounded-xl w-40 shrink-0">
+            <Search className="w-3.5 h-3.5 text-[var(--muted)]" />
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-transparent border-none text-[var(--text)] outline-none w-full placeholder-[var(--muted)] text-[10px]"
+            />
+          </div>
+
           {/* Action buttons */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={handleCreateFolder}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--border)]/40 transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--border)]/40 transition cursor-pointer font-semibold"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>New Folder</span>
@@ -217,7 +207,7 @@ export function ExplorerWindow() {
 
             <button
               onClick={handleCreateFile}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--border)]/40 transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--border)]/40 transition cursor-pointer font-semibold"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>New File</span>
@@ -225,7 +215,7 @@ export function ExplorerWindow() {
 
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--border)]/40 transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--border)]/40 transition cursor-pointer font-semibold"
             >
               <Upload className="w-3.5 h-3.5" />
               <span>Upload</span>
@@ -241,7 +231,7 @@ export function ExplorerWindow() {
 
             <button
               onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
-              className="p-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--border)]/40 transition"
+              className="p-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--border)]/40 transition cursor-pointer"
               title="Toggle View Mode"
             >
               {viewMode === "grid" ? <List className="w-3.5 h-3.5" /> : <Grid className="w-3.5 h-3.5" />}
@@ -264,8 +254,8 @@ export function ExplorerWindow() {
                     key={node.id}
                     onClick={() => setSelectedNodeId(node.id)}
                     onDoubleClick={() => handleDoubleClick(node)}
-                    className={`flex flex-col items-center p-2 rounded-xl text-center cursor-default group transition ${
-                      isSelected ? "bg-violet-500/10 border border-violet-500/30" : "hover:bg-[var(--border)]/30 border border-transparent"
+                    className={`flex flex-col items-center p-2 rounded-xl text-center cursor-pointer group transition border ${
+                      isSelected ? "bg-violet-500/10 border-violet-500/30" : "hover:bg-[var(--border)]/30 border-transparent"
                     }`}
                   >
                     {node.type === "folder" ? (
@@ -294,7 +284,7 @@ export function ExplorerWindow() {
                     key={node.id}
                     onClick={() => setSelectedNodeId(node.id)}
                     onDoubleClick={() => handleDoubleClick(node)}
-                    className={`flex py-2 px-2 rounded-lg cursor-default transition ${
+                    className={`flex py-2 px-2 rounded-lg cursor-pointer transition ${
                       isSelected ? "bg-violet-500/10" : "hover:bg-[var(--border)]/20"
                     }`}
                   >
@@ -330,7 +320,7 @@ export function ExplorerWindow() {
                   const node = children.find((n) => n.id === selectedNodeId);
                   if (node) handleRename(node);
                 }}
-                className="flex items-center gap-1 hover:text-violet-400 transition"
+                className="flex items-center gap-1 hover:text-violet-400 transition cursor-pointer"
               >
                 <Edit className="w-3 h-3" />
                 <span>Rename</span>
@@ -342,7 +332,7 @@ export function ExplorerWindow() {
                     const node = children.find((n) => n.id === selectedNodeId);
                     if (node) handleDownloadFile(node);
                   }}
-                  className="flex items-center gap-1 hover:text-violet-400 transition"
+                  className="flex items-center gap-1 hover:text-violet-400 transition cursor-pointer"
                 >
                   <Download className="w-3 h-3" />
                   <span>Download</span>
@@ -354,7 +344,7 @@ export function ExplorerWindow() {
                   const node = children.find((n) => n.id === selectedNodeId);
                   if (node) handleDelete(node);
                 }}
-                className="flex items-center gap-1 hover:text-rose-500 text-rose-400 transition"
+                className="flex items-center gap-1 hover:text-rose-500 text-rose-400 transition cursor-pointer"
               >
                 <Trash className="w-3 h-3" />
                 <span>Delete</span>

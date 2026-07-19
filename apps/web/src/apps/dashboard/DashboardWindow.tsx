@@ -115,18 +115,9 @@ export function DashboardWindow() {
       fetchWeather(51.5074, -0.1278, "London");
     }
 
-    // Load VFS notes
     const loadNotes = () => {
-      const rootFolders = vfs.getChildren(null);
-      const home = rootFolders.find((n) => n.name === "Home");
-      if (home) {
-        const homeChildren = vfs.getChildren(home.id);
-        const notesFolder = homeChildren.find((n) => n.name === "Notes" && n.type === "folder");
-        if (notesFolder) {
-          const mdFiles = vfs.getChildren(notesFolder.id).filter((n) => n.name.endsWith(".md"));
-          setRecentNotes(mdFiles.slice(0, 4));
-        }
-      }
+      const mdFiles = vfs.getChildren("notes_folder").filter((n) => n.name.endsWith(".md"));
+      setRecentNotes(mdFiles.slice(0, 4));
     };
     loadNotes();
 

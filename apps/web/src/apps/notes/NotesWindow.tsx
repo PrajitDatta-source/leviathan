@@ -44,15 +44,8 @@ export function NotesWindow() {
   const saveTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Find the Notes folder in VFS on load
-  const getNotesFolderId = (): string | null => {
-    const rootNodes = vfs.getChildren(null);
-    const home = rootNodes.find((n) => n.name === "Home");
-    if (home) {
-      const homeChildren = vfs.getChildren(home.id);
-      const notesFolder = homeChildren.find((n) => n.name === "Notes" && n.type === "folder");
-      return notesFolder ? notesFolder.id : home.id;
-    }
-    return null;
+  const getNotesFolderId = (): string => {
+    return "notes_folder";
   };
 
   const loadNotesList = () => {

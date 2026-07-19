@@ -80,27 +80,68 @@ class VFSManager {
   }
 
   private initializeDefaultFileSystem() {
-    // Root folders
-    const home = this.createNode("Home", "folder", null);
-    const documents = this.createNode("Documents", "folder", home.id);
-    const notes = this.createNode("Notes", "folder", home.id);
-    const downloads = this.createNode("Downloads", "folder", home.id);
+    const now = new Date().toISOString();
+
+    if (!this.nodes.has("documents_folder")) {
+      this.nodes.set("documents_folder", {
+        id: "documents_folder",
+        name: "Documents",
+        type: "folder",
+        parentId: null,
+        createdAt: now,
+        updatedAt: now
+      });
+    }
+
+    if (!this.nodes.has("downloads_folder")) {
+      this.nodes.set("downloads_folder", {
+        id: "downloads_folder",
+        name: "Downloads",
+        type: "folder",
+        parentId: null,
+        createdAt: now,
+        updatedAt: now
+      });
+    }
+
+    if (!this.nodes.has("notes_folder")) {
+      this.nodes.set("notes_folder", {
+        id: "notes_folder",
+        name: "Notes",
+        type: "folder",
+        parentId: null,
+        createdAt: now,
+        updatedAt: now
+      });
+    }
 
     // Welcome file
-    this.createNode(
-      "welcome.md",
-      "file",
-      home.id,
-      `# Welcome to Leviathan OS! 👋\n\nThis is a browser-based personal operating system designed to manage your digital workspace.\n\n### Core Features in Alpha:\n- **File Explorer**: Browse folders, upload/download, create files.\n- **Notes App**: Markdown editor with auto-save and tag indexing.\n- **Terminal**: Run system commands (\`ls\`, \`cd\`, \`cat\`, \`neofetch\`).\n- **Command Palette** (\`Super + D\` / \`Alt + D\`): Run calculation operations, toggle themes, and find files.\n\nEnjoy customizing your new desktop environment!`
-    );
+    if (!this.nodes.has("welcome_file")) {
+      this.nodes.set("welcome_file", {
+        id: "welcome_file",
+        name: "welcome.md",
+        type: "file",
+        parentId: null,
+        content: `# Welcome to Leviathan OS! 👋\n\nThis is a browser-based personal operating system designed to manage your digital workspace.\n\n### Core Features in Alpha:\n- **File Explorer**: Browse folders, upload/download, create files.\n- **Notes App**: Markdown editor with auto-save and tag indexing.\n- **Terminal**: Run system commands (\`ls\`, \`cd\`, \`cat\`, \`neofetch\`).\n- **Command Palette** (\`Super + D\` / \`Alt + D\`): Run calculation operations, toggle themes, and find files.\n\nEnjoy customizing your new desktop environment!`,
+        createdAt: now,
+        updatedAt: now
+      });
+    }
 
     // Example Note
-    this.createNode(
-      "Project Plan.md",
-      "file",
-      notes.id,
-      `# Project Plan: Phase 2 Goals\n\n- [x] Snapping layouts & snapping preview\n- [x] Custom context menu\n- [x] Mobile full-screen constraints\n- [ ] Expand desktop wallpaper settings\n- [ ] Configure full virtual workspace switching`
-    );
+    if (!this.nodes.has("project_plan_file")) {
+      this.nodes.set("project_plan_file", {
+        id: "project_plan_file",
+        name: "Project Plan.md",
+        type: "file",
+        parentId: "notes_folder",
+        content: `# Project Plan: Phase 2 Goals\n\n- [x] Snapping layouts & snapping preview\n- [x] Custom context menu\n- [x] Mobile full-screen constraints\n- [ ] Expand desktop wallpaper settings\n- [ ] Configure full virtual workspace switching`,
+        createdAt: now,
+        updatedAt: now
+      });
+    }
+
+    this.saveToStorage();
   }
 
   private createNode(

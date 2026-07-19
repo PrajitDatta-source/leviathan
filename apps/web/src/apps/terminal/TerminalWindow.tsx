@@ -30,12 +30,8 @@ export function TerminalWindow() {
 
   // Set initial home directory pointer
   useEffect(() => {
-    const rootFolders = vfs.getChildren(null);
-    const homeFolder = rootFolders.find((n) => n.name === "Home");
-    if (homeFolder) {
-      setCurrentDirId(homeFolder.id);
-      currentDirRef.current = homeFolder.id;
-    }
+    setCurrentDirId(null);
+    currentDirRef.current = null;
   }, []);
 
   const getPromptPath = () => {
@@ -110,16 +106,12 @@ export function TerminalWindow() {
         t.writeln("");
         const target = args.join(" ");
         if (!target) {
-          const rootFolders = vfs.getChildren(null);
-          const home = rootFolders.find((n) => n.name === "Home");
-          if (home) {
-            currentDirRef.current = home.id;
-            setCurrentDirId(home.id);
-          }
+          currentDirRef.current = null;
+          setCurrentDirId(null);
         } else if (target === "..") {
           if (currentDirRef.current) {
             const node = vfs.getNode(currentDirRef.current);
-            if (node && node.parentId) {
+            if (node) {
               currentDirRef.current = node.parentId;
               setCurrentDirId(node.parentId);
             }
