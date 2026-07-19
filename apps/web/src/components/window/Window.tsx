@@ -18,7 +18,9 @@ type Props = {
     window: WindowInstance;
 };
 
-export function Window({ window }: Props) {
+export function Window({ window: initialWindow }: Props) {
+    const window = useWindowStore((state) => state.windows[initialWindow.id]) || initialWindow;
+
     console.log(`[PIPELINE] React Render for Window: ${window.id}`, {
         focused: window.isFocused,
         minimized: window.isMinimized,
@@ -290,7 +292,7 @@ export function Window({ window }: Props) {
                 transition-shadow
                 duration-150
                 ${window.isFocused ? 'border-violet-500/50 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.65)] ring-1 ring-violet-500/20' : 'border-[var(--border)] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)]'}
-                ${window.isMinimized ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'}
+                ${window.isMinimized ? 'hidden pointer-events-none' : 'opacity-100 scale-100'}
                 ${(isDragging || isResizing) ? '' : 'transition-all duration-200 ease-out'}
             `}
             style={{
