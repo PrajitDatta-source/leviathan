@@ -14,6 +14,7 @@ import {
 import { useState, useRef, useEffect, createElement } from "react";
 import { Z_INDEX } from "@/core/window/zIndex";
 import { appRegistry } from "@/core/app";
+import { useThemeStore } from "@/core/theme/useThemeStore";
 
 type Props = {
     window: WindowInstance;
@@ -24,6 +25,7 @@ export function Window({ window: initialWindow }: Props) {
     const windowWorkspaces = useWorkspaceStore((state) => state.windowWorkspaces);
     const activeWorkspace = useWorkspaceStore((state) => state.activeWorkspace);
     const belongsToActiveWorkspace = (windowWorkspaces[window.id] || 1) === activeWorkspace;
+    const activeTheme = useThemeStore((state) => state.theme);
 
     console.log(`[PIPELINE] React Render for Window: ${window.id}`, {
         focused: window.isFocused,
@@ -279,6 +281,51 @@ export function Window({ window: initialWindow }: Props) {
     const appDef = appRegistry.get(window.appId);
     const content = appDef ? createElement(appDef.component) : null;
 
+    // Define theme styling configurations
+    let themeContainerClasses = "";
+    let themeHeaderClasses = "";
+
+    if (activeTheme === "aero-glass") {
+      themeContainerClasses = "bg-white/10 backdrop-blur-xl border border-white/20 text-white rounded-2xl";
+      themeHeaderClasses = "bg-white/5 border-b border-white/10 text-white";
+    } else if (activeTheme === "macos") {
+      themeContainerClasses = "bg-[#1d1d1f] border border-[#3a3a3c] text-zinc-100 rounded-xl";
+      themeHeaderClasses = "bg-[#2c2c2e]/80 border-b border-[#3a3a3c] text-zinc-200";
+    } else if (activeTheme === "clean-light") {
+      themeContainerClasses = "bg-zinc-50 border border-zinc-300 text-zinc-800 rounded-2xl";
+      themeHeaderClasses = "bg-zinc-200 border-b border-zinc-300 text-zinc-700";
+    } else {
+      // default neon-dark
+      themeContainerClasses = "bg-[#07070c]/95 backdrop-blur-md border border-violet-500/20 text-zinc-100 rounded-2xl";
+      themeHeaderClasses = "bg-violet-950/10 border-b border-violet-500/10 text-zinc-200";
+    }
+
+    // Add active shadow/highlight classes
+    let activeHighlightClasses = "";
+    if (window.isFocused) {
+      if (activeTheme === "aero-glass") {
+        activeHighlightClasses = "border-sky-400/40 shadow-[0_20px_60px_rgba(56,189,248,0.15)] ring-1 ring-sky-400/10";
+      } else if (activeTheme === "macos") {
+        activeHighlightClasses = "shadow-[0_25px_55px_rgba(0,0,0,0.6)] border-zinc-600";
+      } else if (activeTheme === "clean-light") {
+        activeHighlightClasses = "shadow-[0_15px_40px_rgba(0,0,0,0.15)] border-zinc-400 ring-1 ring-zinc-300";
+      } else {
+        activeHighlightClasses = "border-violet-500/50 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.65)] ring-1 ring-violet-500/20";
+      }
+    } else {
+      if (activeTheme === "aero-glass") {
+        activeHighlightClasses = "shadow-lg";
+      } else if (activeTheme === "macos") {
+        activeHighlightClasses = "shadow-md opacity-90";
+      } else if (activeTheme === "clean-light") {
+        activeHighlightClasses = "shadow-sm border-zinc-200 text-zinc-500";
+      } else {
+        activeHighlightClasses = "border-[var(--border)] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)]";
+      }
+    }
+
+    const isMac = activeTheme === "macos";
+
     return (
         <div
             ref={windowRef}
@@ -286,16 +333,12 @@ export function Window({ window: initialWindow }: Props) {
                 window-instance
                 absolute
                 overflow-hidden
-                rounded-2xl
-                border
-                text-[var(--text)]
                 select-none
                 animate-window-open
-                bg-[var(--surface)]/95
-                backdrop-blur-md
-                transition-shadow
-                duration-150
-                ${window.isFocused ? 'border-violet-500/50 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.65)] ring-1 ring-violet-500/20' : 'border-[var(--border)] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)]'}
+                flex
+                flex-col
+                ${themeContainerClasses}
+                ${activeHighlightClasses}
                 ${(window.isMinimized || !belongsToActiveWorkspace) ? 'hidden pointer-events-none' : 'opacity-100 scale-100'}
                 ${(isDragging || isResizing) ? '' : 'transition-all duration-200 ease-out'}
             `}
@@ -315,95 +358,106 @@ export function Window({ window: initialWindow }: Props) {
                 focusWindow(window.id);
             }}
         >
+            {isMac ? (
+                <div
+                    onPointerDown={handlePointerDown}
+                    className={`flex items-center px-4 py-2.5 cursor-grab select-none shrink-0 ${themeHeaderClasses} ${isDragging ? 'cursor-grabbing' : ''}`}
+                >
+                    {/* macOS traffic light window controls */}
+                    <div className="flex gap-1.5 w-16 shrink-0" onPointerDown={(e) => e.stopPropagation()}>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                closeWindow(window.id);
+                            }}
+                            className="w-3 h-3 rounded-full bg-rose-500 hover:bg-rose-600 flex items-center justify-center text-[7px] text-rose-950 font-bold group cursor-pointer border-none outline-none"
+                            title="Close"
+                        >
+                            <span className="opacity-0 group-hover:opacity-100">✕</span>
+                        </button>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                minimizeWindow(window.id);
+                            }}
+                            className="w-3 h-3 rounded-full bg-amber-400 hover:bg-amber-500 flex items-center justify-center text-[7px] text-amber-950 font-bold group cursor-pointer border-none outline-none"
+                            title="Minimize"
+                        >
+                            <span className="opacity-0 group-hover:opacity-100">−</span>
+                        </button>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.isMaximized) {
+                                    restoreWindow(window.id);
+                                } else {
+                                    maximizeWindow(window.id);
+                                }
+                            }}
+                            className="w-3 h-3 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center text-[7px] text-emerald-950 font-bold group cursor-pointer border-none outline-none"
+                            title={window.isMaximized ? "Restore" : "Maximize"}
+                        >
+                            <span className="opacity-0 group-hover:opacity-100">＋</span>
+                        </button>
+                    </div>
 
-            <div
-                onPointerDown={handlePointerDown}
-                className={`
-                    flex
-                    items-center
-                    justify-between
-                    border-b
-                    border-[var(--border)]
-                    bg-[var(--surface)]
-                    brightness-110
-                    px-4
-                    py-2.5
-                    cursor-grab
-                    select-none
-                    ${isDragging ? 'cursor-grabbing' : ''}
-                `}
-            >
+                    {/* Centered Title */}
+                    <div className="flex-1 text-center font-semibold text-xs tracking-wide select-none">
+                        {window.title}
+                    </div>
 
-                <span className="font-medium">
-                    {window.title}
-                </span>
-
-                <div className="flex gap-2">
-                    <button
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                            console.log("[PIPELINE] Minimize Button Click triggered for window: " + window.id);
-                            e.stopPropagation();
-                            minimizeWindow(window.id);
-                        }}
-                        className="
-                            rounded
-                            px-2
-                            transition
-                            hover:bg-[var(--border)]
-                        "
-                        title="Minimize"
-                    >
-                        −
-                    </button>
-
-                    <button
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                            console.log("[PIPELINE] Maximize Button Click triggered for window: " + window.id);
-                            e.stopPropagation();
-                            if (window.isMaximized) {
-                                restoreWindow(window.id);
-                            } else {
-                                maximizeWindow(window.id);
-                            }
-                        }}
-                        className="
-                            rounded
-                            px-2
-                            transition
-                            hover:bg-[var(--border)]
-                        "
-                        title={window.isMaximized ? "Restore" : "Maximize"}
-                    >
-                        {window.isMaximized ? "❐" : "□"}
-                    </button>
-
-                    <button
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                            console.log("[PIPELINE] Close Button Click triggered for window: " + window.id);
-                            e.stopPropagation();
-                            closeWindow(window.id);
-                        }}
-                        className="
-                            rounded
-                            px-2
-                            transition
-                            hover:bg-red-600
-                            hover:text-white
-                        "
-                        title="Close"
-                    >
-                        ✕
-                    </button>
+                    {/* Empty spacer to balance layout */}
+                    <div className="w-16 shrink-0" />
                 </div>
+            ) : (
+                <div
+                    onPointerDown={handlePointerDown}
+                    className={`flex items-center justify-between px-4 py-2.5 cursor-grab select-none shrink-0 ${themeHeaderClasses} ${isDragging ? 'cursor-grabbing' : ''}`}
+                >
+                    <span className="font-semibold text-xs tracking-wide">
+                        {window.title}
+                    </span>
 
-            </div>
+                    <div className="flex gap-1.5" onPointerDown={(e) => e.stopPropagation()}>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                minimizeWindow(window.id);
+                            }}
+                            className="w-5 h-5 rounded-md hover:bg-white/10 hover:text-white transition flex items-center justify-center text-xs text-zinc-400 font-bold cursor-pointer"
+                            title="Minimize"
+                        >
+                            −
+                        </button>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.isMaximized) {
+                                    restoreWindow(window.id);
+                                } else {
+                                    maximizeWindow(window.id);
+                                }
+                            }}
+                            className="w-5 h-5 rounded-md hover:bg-white/10 hover:text-white transition flex items-center justify-center text-xs text-zinc-400 font-bold cursor-pointer"
+                            title={window.isMaximized ? "Restore" : "Maximize"}
+                        >
+                            {window.isMaximized ? "❐" : "□"}
+                        </button>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                closeWindow(window.id);
+                            }}
+                            className="w-5 h-5 rounded-md hover:bg-rose-600 hover:text-white transition flex items-center justify-center text-xs text-zinc-400 font-bold cursor-pointer"
+                            title="Close"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                </div>
+            )}
 
-            <div
-                className="h-[calc(100%-52px)] overflow-auto"
-            >
+            <div className="flex-1 min-h-0 overflow-auto relative">
                 {content}
             </div>
 
@@ -446,7 +500,6 @@ export function Window({ window: initialWindow }: Props) {
                     />
                 </>
             )}
-
         </div>
     );
 }

@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { Folder, FileText, Terminal, Settings, Trash2, Sun, MessageSquare, Mail } from "lucide-react";
 import { useTheme } from "@/modules/theme/ThemeContext";
 import { themePresets } from "@/modules/theme/presets";
+import { useThemeStore } from "@/core/theme/useThemeStore";
 
 export interface IconPack {
   id: string;
@@ -295,8 +296,21 @@ interface AppIconProps {
 }
 
 export function AppIcon({ appId, size = 20, className = "" }: AppIconProps) {
-  const { iconTheme } = useIconTheme();
-  const pack = iconPackRegistry.get(iconTheme) || iconPackRegistry.get("windows11");
+  const activeTheme = useThemeStore((state) => state.theme);
+  
+  // Resolve icon theme pack name based on the active preset
+  let resolvedPack = "windows11";
+  if (activeTheme === "aero-glass") {
+    resolvedPack = "windows7";
+  } else if (activeTheme === "macos") {
+    resolvedPack = "macos";
+  } else if (activeTheme === "clean-light") {
+    resolvedPack = "kde";
+  } else {
+    resolvedPack = "papirus"; // neon-dark cyber look
+  }
+
+  const pack = iconPackRegistry.get(resolvedPack) || iconPackRegistry.get("windows11");
   if (pack) {
     return pack.renderIcon(appId, size, className) as React.ReactElement;
   }

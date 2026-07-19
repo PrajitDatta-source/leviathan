@@ -12,6 +12,7 @@ import { bootstrap } from "@/core/bootstrap";
 import { WindowManagerProvider, useWindowStore, useWorkspaceStore, openWindow, closeWindow, focusWindow, minimizeWindow, maximizeWindow, restoreWindow, toggleShowDesktop } from "@/core/window/manager";
 import { useTheme } from "@/modules/theme/ThemeContext";
 import { loadShortcutsConfig, getShortcutCombination, matchesEvent } from "@/core/window/shortcuts";
+import { useThemeStore } from "@/core/theme/useThemeStore";
 
 // KeyboardManager component handles i3-inspired keyboard shortcuts
 function KeyboardManager({ setOpenPalette }: { setOpenPalette: (open: boolean) => void }) {
@@ -214,6 +215,17 @@ function KeyboardManager({ setOpenPalette }: { setOpenPalette: (open: boolean) =
 export function AppShell() {
   const [open, setOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const activeTheme = useThemeStore((state) => state.theme);
+
+  useEffect(() => {
+    document.documentElement.classList.remove(
+      "theme-neon-dark",
+      "theme-aero-glass",
+      "theme-macos",
+      "theme-clean-light"
+    );
+    document.documentElement.classList.add(`theme-${activeTheme}`);
+  }, [activeTheme]);
 
   useEffect(() => {
     bootstrap();

@@ -5,6 +5,7 @@ import { useTheme } from "@/modules/theme/ThemeContext";
 import { Theme } from "@/modules/theme/types";
 import { Plus, Trash2, Keyboard, RotateCcw, Edit2 } from "lucide-react";
 import { useIconTheme, type IconTheme } from "@/modules/icons/IconThemeContext";
+import { useThemeStore, ThemePreset } from "@/core/theme/useThemeStore";
 import {
   SHORTCUT_DEFS,
   loadShortcutsConfig,
@@ -57,6 +58,8 @@ export function SettingsWindow() {
   } = useTheme();
   const { iconTheme, setIconTheme } = useIconTheme();
   const [activeTab, setActiveTab] = useState<Tab>("appearance");
+  const activeThemePreset = useThemeStore((state) => state.theme);
+  const setThemePreset = useThemeStore((state) => state.setTheme);
   
   const [shortcutsConfig, setShortcutsConfig] = useState(() => loadShortcutsConfig());
   const [recordingId, setRecordingId] = useState<string | null>(null);
@@ -202,68 +205,31 @@ export function SettingsWindow() {
       <div className="flex-1 p-6 overflow-y-auto bg-[var(--background)]">
         {activeTab === "appearance" && (
           <div>
-            <h3 className="text-lg font-medium mb-1">Color Theme</h3>
+            <h3 className="text-lg font-medium mb-1">Appearance & Themes</h3>
             <p className="text-xs text-[var(--muted)] mb-6">
-              Customize the system coloring of Iris windows and overlays.
+              Customize the system coloring of Iris windows, control borders, and visual effects.
             </p>
 
             <div className="grid grid-cols-2 gap-4">
               {([
-                { id: "iris-dark", label: "Iris Dark (Default)", desc: "Modern flat icons, synthetic click sounds, and dark walls" },
-                { id: "iris-light", label: "Iris Light", desc: "Clean bright look with modern flat icons & click sounds" },
-                { id: "fluent-glass", label: "Glass Fluent", desc: "Frosted glass-morphism panels and glowing neon fluent icons" },
-                { id: "retro-mac", label: "Retro Macintosh", desc: "Monochrome gray style with pixel icons and pixel crosshair cursor" },
-                { id: "material-design", label: "Material Design", desc: "Material theme with circular solid icons & flat dark card styling" },
-                { id: "dark", label: "Legacy Dark", desc: "Sleek dark carbon style fallback" },
-                { id: "light", label: "Legacy Light", desc: "Standard light contrast fallback" },
-                { id: "oled", label: "OLED Black", desc: "Pure deep blacks fallback" },
-                { id: "glass", label: "Frosted Glass", desc: "Standard frosted sheet fallback" },
-              ] as { id: Theme; label: string; desc: string }[]).map((t) => (
+                { id: "neon-dark", label: "Neon Dark", desc: "Refined dark cyber theme with glowing borders and deep dark workspaces" },
+                { id: "aero-glass", label: "Aero Glass (Win7/11 Hybrid)", desc: "Translucent frosted glass window frames with realistic ice-blue glowing shadows" },
+                { id: "macos", label: "macOS Big Sur", desc: "Sleek grey titlebars, traffic-light controls on left, and rounded layouts" },
+                { id: "clean-light", label: "Clean Light", desc: "Crisp, high-contrast daylight theme for optimal productivity and readability" },
+              ] as { id: ThemePreset; label: string; desc: string }[]).map((t) => (
                 <button
                   key={t.id}
-                  onClick={() => setTheme(t.id)}
+                  onClick={() => setThemePreset(t.id)}
                   className={`relative p-4 rounded-xl border text-left transition cursor-pointer ${
-                    theme === t.id
-                      ? "border-violet-500 bg-violet-500/5"
+                    activeThemePreset === t.id
+                      ? "border-violet-500 bg-violet-500/10"
                       : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border)]/80"
                   }`}
                 >
                   <div className="font-semibold text-sm">{t.label}</div>
                   <div className="text-xs text-[var(--muted)] mt-1">{t.desc}</div>
-                  {theme === t.id && (
-                    <div className="absolute right-3 top-3 w-2 h-2 rounded-full bg-violet-500" />
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {/* Icon Themes */}
-            <h3 className="text-lg font-medium mb-1 mt-8">Icon Theme</h3>
-            <p className="text-xs text-[var(--muted)] mb-6">
-              Select a system icon pack theme.
-            </p>
-
-            <div className="grid grid-cols-2 gap-4">
-              {([
-                { id: "windows11", label: "Windows 11 (Fluent 3D)", desc: "Modern glossy rounded depth cogs" },
-                { id: "windows7", label: "Windows 7 / Aero", desc: "Classic Aero glass reflections" },
-                { id: "kde", label: "KDE Breeze", desc: "Clean geometric flat shapes" },
-                { id: "macos", label: "macOS Big Sur", desc: "Chunky squircle containers" },
-                { id: "papirus", label: "Papirus", desc: "Circular bold flat icons" },
-              ] as { id: IconTheme; label: string; desc: string }[]).map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setIconTheme(t.id)}
-                  className={`relative p-4 rounded-xl border text-left transition ${
-                    iconTheme === t.id
-                      ? "border-violet-500 bg-violet-500/5"
-                      : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border)]/80"
-                  }`}
-                >
-                  <div className="font-semibold text-sm">{t.label}</div>
-                  <div className="text-xs text-[var(--muted)] mt-1">{t.desc}</div>
-                  {iconTheme === t.id && (
-                    <div className="absolute right-3 top-3 w-2 h-2 rounded-full bg-violet-500" />
+                  {activeThemePreset === t.id && (
+                    <div className="absolute right-3 top-3 w-2.5 h-2.5 rounded-full bg-violet-500" />
                   )}
                 </button>
               ))}
