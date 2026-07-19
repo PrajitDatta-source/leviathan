@@ -171,6 +171,9 @@ class CommandServiceClass {
       tree: "tree - Render a visual tree representation of directories and files\n\nUsage: tree",
       grep: "grep - Search for patterns in a file\n\nUsage: grep <pattern> <file_name>",
       open: "open - Bridge CLI to GUI: opens a folder in File Explorer or a file in Notes\n\nUsage: open <path>",
+      nano: "nano - Edit text files using the graphical text/markdown editor\n\nUsage: nano <filename>",
+      vim: "vim - Edit text files using the graphical text/markdown editor\n\nUsage: vim <filename>",
+      code: "code - Edit text files using the graphical text/markdown editor\n\nUsage: code <filename>",
     };
 
     switch (cmd) {
@@ -199,7 +202,10 @@ class CommandServiceClass {
             "  grep <pat> <file> - Search matches in file",
             "  man <command>     - Command manual pages",
             "  open <path>       - Open GUI window at path",
-            "  neofetch          - Stylized Iris OS specs"
+            "  neofetch          - Stylized Iris OS specs",
+            "  nano <filename>   - Edit file in GUI Text Editor",
+            "  vim <filename>    - Edit file in GUI Text Editor",
+            "  code <filename>   - Edit file in GUI Text Editor"
           ].join("\n")
         };
 
@@ -473,6 +479,27 @@ class CommandServiceClass {
           return { output: `No manual entry for ${targetCommand}`, error: true };
         }
         return { output: manual };
+      }
+
+      case "nano":
+      case "vim":
+      case "code": {
+        const fileName = args.join(" ");
+        if (!fileName) {
+          return { output: `${cmd}: missing filename`, error: true };
+        }
+
+        const children = vfs.getChildren(this.currentDirId);
+        let file = children.find((c) => c.name === fileName && c.type === "file");
+        if (!file) {
+          file = vfs.createFile(fileName, this.currentDirId, "");
+        }
+
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("notes-open-file", { detail: { fileId: file.id } }));
+          openWindow("notes");
+        }
+        return { output: `Opening '${fileName}' in Notes/Text Editor...` };
       }
 
       case "open":
