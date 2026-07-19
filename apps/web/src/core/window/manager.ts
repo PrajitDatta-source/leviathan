@@ -115,6 +115,10 @@ export const useSnapPreviewStore = create<SnapPreviewState>((set) => ({
 }));
 
 // Helper actions to maintain standard OS windowing workflows
+export const focusWindow = (id: string) => {
+  useWindowStore.getState().focusWindow(id);
+};
+
 export const minimizeWindow = (id: string) => {
   useWindowStore.setState((state) => {
     if (!state.windows[id]) return state;

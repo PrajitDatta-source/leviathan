@@ -1,6 +1,5 @@
 import { commandRegistry } from "./registry";
-import { appRegistry } from "../app";
-import { createElement } from "react";
+import { openWindow } from "@/core/window/manager";
 import { CommandContext } from "./types";
 
 export function registerBuiltinCommands() {
@@ -11,28 +10,8 @@ export function registerBuiltinCommands() {
     category: "System",
     keywords: ["preferences", "config"],
 
-    run: (context: CommandContext) => {
-      const app = appRegistry.get("settings");
-      if (!app) {
-        console.error("Settings app not found");
-        return;
-      }
-
-      const manager = context.windowManager;
-      if (!manager) {
-        console.error("WindowManager not found in command context");
-        return;
-      }
-
-      manager.open({
-        id: "settings",
-        title: app.title,
-        content: createElement(app.component),
-        x: 100,
-        y: 100,
-        width: app.width || 700,
-        height: app.height || 500,
-      });
+    run: () => {
+      openWindow("settings");
     },
   });
 
