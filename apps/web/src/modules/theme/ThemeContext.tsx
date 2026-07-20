@@ -257,6 +257,22 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       };
     }
 
+    // Determine the active wallpaper to apply
+    const isCustomWallpaper = wallpaper.startsWith("data:") || customWallpapers.includes(wallpaper);
+    let resolvedWallpaper = wallpaper;
+
+    if (!isCustomWallpaper) {
+      if (activePreset === "aero-glass") {
+        resolvedWallpaper = "radial-gradient(circle at 80% 20%, #3b82f6 0%, #1d4ed8 50%, #1e3a8a 100%)";
+      } else if (activePreset === "macos") {
+        resolvedWallpaper = "linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)";
+      } else if (activePreset === "clean-light") {
+        resolvedWallpaper = "linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%)";
+      } else {
+        resolvedWallpaper = "linear-gradient(135deg, #09090b 0%, #020205 100%)";
+      }
+    }
+
     // Apply color values to CSS custom variables
     root.style.setProperty("--background", colors.background);
     root.style.setProperty("--text", colors.foreground);
@@ -264,7 +280,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.style.setProperty("--accent", colors.accent);
     root.style.setProperty("--surface", colors.card);
     root.style.setProperty("--border", colors.border);
-    root.style.setProperty("--wallpaper", wallpaper);
+    root.style.setProperty("--wallpaper", resolvedWallpaper);
 
     // Apply custom theme cursor
     const activeThemePresetObj = themePresets[theme] || themePresets["iris-dark"];
@@ -279,7 +295,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     } else {
       root.classList.remove("theme-glass");
     }
-  }, [activePreset, theme, wallpaper]);
+  }, [activePreset, theme, wallpaper, customWallpapers]);
 
   // Global click listener to play click sounds
   useEffect(() => {

@@ -338,7 +338,7 @@ export function DesktopIcons() {
                 className="w-full bg-[var(--surface)] text-[var(--text)] text-[10px] text-center border border-[var(--accent)] rounded px-0.5 outline-none select-text pointer-events-auto"
               />
             ) : (
-              <span className="text-[11px] font-semibold text-white text-center tracking-wide drop-shadow-[0_1.5px_1.5px_rgba(0,0,0,0.95)] truncate max-w-full px-0.5 mt-1 select-none">
+              <span className="text-[11px] font-semibold text-white text-center tracking-wide drop-shadow-md truncate max-w-full px-0.5 mt-1 select-none">
                 {icon.label}
               </span>
             )}

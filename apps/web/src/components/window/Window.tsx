@@ -286,7 +286,7 @@ export function Window({ window: initialWindow }: Props) {
     let themeHeaderClasses = "";
 
     if (activeTheme === "aero-glass") {
-      themeContainerClasses = "bg-white/10 backdrop-blur-2xl border border-white/20 text-white rounded-2xl shadow-[0_0_15px_rgba(255,255,255,0.1)]";
+      themeContainerClasses = "bg-slate-900/40 backdrop-blur-2xl border border-white/25 text-white rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.37)]";
       themeHeaderClasses = "bg-white/5 border-b border-white/10 text-white";
     } else if (activeTheme === "macos") {
       themeContainerClasses = "bg-[#1e1e1e] border border-[#323236] text-zinc-100 rounded-xl shadow-2xl";

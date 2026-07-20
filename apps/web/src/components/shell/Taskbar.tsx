@@ -148,7 +148,7 @@ export function Taskbar() {
 
   let taskbarThemeClasses = "";
   if (activeTheme === "aero-glass") {
-    taskbarThemeClasses = "bg-white/10 backdrop-blur-2xl border-t border-white/20 shadow-[0_-5px_15px_rgba(255,255,255,0.1)] text-white";
+    taskbarThemeClasses = "bg-slate-900/40 backdrop-blur-2xl border-t border-white/25 shadow-[0_-8px_32px_rgba(0,0,0,0.2)] text-white";
   } else if (activeTheme === "macos") {
     taskbarThemeClasses = "bg-[#1e1e1e]/90 backdrop-blur-2xl border-t border-[#323236] text-zinc-100 shadow-2xl";
   } else if (activeTheme === "clean-light") {
@@ -245,17 +245,17 @@ export function Taskbar() {
         } ${taskbarThemeClasses}`}
       >
         {/* Left Section: Launcher & Workspace switcher */}
-        <div className="flex items-center gap-3 w-1/4">
+        <div className="flex items-center gap-2 w-1/4">
           <button
             onClick={handleLauncherClick}
-            className="p-2 rounded-xl bg-[var(--border)]/35 hover:bg-[var(--border)]/75 hover:scale-105 transition text-[var(--accent)] flex items-center justify-center cursor-pointer border-none"
+            className="p-2 rounded-xl hover:bg-[var(--border)]/40 hover:scale-105 transition text-[var(--accent)] flex items-center justify-center cursor-pointer border-none bg-transparent"
             title="Open Application Search (Alt + D)"
           >
             <Search className="w-4 h-4" />
           </button>
 
           {/* Compact workspace switcher */}
-          <div className="flex items-center bg-[var(--background)]/35 border border-[var(--border)]/55 rounded-xl p-0.5 font-mono text-[9px]">
+          <div className="flex items-center gap-1 font-mono text-[9px]">
             {([1, 2, 3, 4, 5]).map((num) => {
               const isActive = activeWorkspace === num;
               const hasWindows = runningWindows.some(w => windowWorkspaces[w.id] === num);
@@ -263,12 +263,12 @@ export function Taskbar() {
                 <button
                   key={num}
                   onClick={() => useWorkspaceStore.getState().setActiveWorkspace(num)}
-                  className={`w-5 h-5 rounded-lg flex items-center justify-center font-bold transition-all cursor-pointer border-none ${
+                  className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold transition-all cursor-pointer border-none ${
                     isActive
                       ? "bg-[var(--accent)] text-white shadow-sm font-extrabold"
                       : hasWindows
                       ? "text-zinc-300 bg-[var(--border)]/50"
-                      : "text-zinc-500 hover:bg-[var(--border)]/20 hover:text-[var(--text)]"
+                      : "text-[var(--muted)] hover:bg-[var(--border)]/40 hover:text-[var(--text)] bg-transparent"
                   }`}
                   title={`Workspace ${num}`}
                 >
@@ -342,13 +342,13 @@ export function Taskbar() {
         </div>
 
         {/* Right Section: System Tray & Clock */}
-        <div className="flex items-center justify-end gap-3.5 w-1/4 text-xs font-medium">
+        <div className="flex items-center justify-end gap-3.5 w-1/4 text-xs font-medium bg-transparent">
           
-          <div className="flex items-center bg-[var(--background)]/40 border border-[var(--border)]/65 rounded-xl px-2 py-1 gap-3">
+          <div className="flex items-center gap-3 px-1">
             {/* Auto-hide switcher */}
             <button
               onClick={toggleAutohide}
-              className="text-[var(--muted)] hover:text-[var(--text)] transition cursor-pointer border-none"
+              className="text-[var(--muted)] hover:text-[var(--text)] transition cursor-pointer border-none bg-transparent"
               title={isAutohide ? "Disable Taskbar Autohide" : "Enable Taskbar Autohide"}
             >
               {isAutohide ? <EyeOff className="w-3.5 h-3.5 text-[var(--accent)]" /> : <Eye className="w-3.5 h-3.5" />}
@@ -357,7 +357,7 @@ export function Taskbar() {
             {/* Volume toggle */}
             <button
               onClick={() => setIsMuted(!isMuted)}
-              className="text-[var(--muted)] hover:text-[var(--text)] transition cursor-pointer border-none"
+              className="text-[var(--muted)] hover:text-[var(--text)] transition cursor-pointer border-none bg-transparent"
               title={isMuted ? "Unmute sound" : "Mute sound"}
             >
               {isMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5 text-emerald-400" />}
@@ -380,7 +380,7 @@ export function Taskbar() {
                 e.stopPropagation();
                 setShowNotifications(!showNotifications);
               }}
-              className="text-[var(--muted)] hover:text-[var(--text)] transition relative cursor-pointer border-none"
+              className="text-[var(--muted)] hover:text-[var(--text)] transition relative cursor-pointer border-none bg-transparent"
               title="Toggle notifications"
             >
               <Bell className={`w-3.5 h-3.5 ${showNotifications ? "text-[var(--accent)]" : ""}`} />
@@ -392,10 +392,10 @@ export function Taskbar() {
           <div className="w-[1px] h-4 bg-[var(--border)]/75" />
 
           {/* Clock/Date */}
-          <div className="flex items-center gap-2 text-[var(--muted)]">
+          <div className="flex items-center gap-2 text-[var(--muted)] select-none">
             <div className="text-right">
               <div className="font-semibold text-[var(--text)] text-[11px] leading-tight">
-                {time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                {time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}
               </div>
               <div className="text-[9px] text-[var(--muted)] leading-tight mt-0.5">
                 {time.toLocaleDateString([], { month: "short", day: "numeric" })}

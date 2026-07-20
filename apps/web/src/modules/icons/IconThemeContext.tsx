@@ -407,16 +407,16 @@ export function AppIcon({ appId, size = 48, className = "" }: AppIconProps) {
   return (
     <div
       style={{ width: size, height: size }}
-      className={`relative rounded-lg bg-black/80 border border-cyan-500/40 shadow-[0_0_10px_rgba(0,243,255,0.15)] flex items-center justify-center transition-all duration-150 group-hover:border-cyan-400 group-hover:shadow-[0_0_15px_rgba(0,243,255,0.4)] ${className}`}
+      className={`relative flex items-center justify-center transition-all duration-150 ${className}`}
     >
-      {appId === "explorer" && <Folder className="w-1/2 h-1/2 text-cyan-400 stroke-[1.5]" />}
-      {appId === "terminal" && <Terminal className="w-1/2 h-1/2 text-emerald-400 stroke-[1.5]" />}
-      {appId === "notes" && <FileText className="w-1/2 h-1/2 text-cyan-300 stroke-[1.5]" />}
-      {appId === "settings" && <Settings className="w-1/2 h-1/2 text-slate-300 stroke-[1.5]" />}
-      {appId === "weather" && <Sun className="w-1/2 h-1/2 text-yellow-400 stroke-[1.5]" />}
-      {appId === "telegram" && <MessageSquare className="w-1/2 h-1/2 text-sky-400 stroke-[1.5]" />}
-      {appId === "gmail" && <Mail className="w-1/2 h-1/2 text-rose-400 stroke-[1.5]" />}
-      {appId === "trash" && <Trash2 className="w-1/2 h-1/2 text-rose-500 stroke-[1.5]" />}
+      {appId === "explorer" && <Folder className="w-3/5 h-3/5 text-cyan-400 stroke-[1.5] drop-shadow-[0_0_8px_rgba(0,243,255,0.4)]" />}
+      {appId === "terminal" && <Terminal className="w-3/5 h-3/5 text-emerald-400 stroke-[1.5] drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]" />}
+      {appId === "notes" && <FileText className="w-3/5 h-3/5 text-cyan-300 stroke-[1.5] drop-shadow-[0_0_8px_rgba(0,243,255,0.4)]" />}
+      {appId === "settings" && <Settings className="w-3/5 h-3/5 text-slate-300 stroke-[1.5] drop-shadow-[0_0_8px_rgba(203,213,225,0.4)]" />}
+      {appId === "weather" && <Sun className="w-3/5 h-3/5 text-yellow-400 stroke-[1.5] drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]" />}
+      {appId === "telegram" && <MessageSquare className="w-3/5 h-3/5 text-sky-400 stroke-[1.5] drop-shadow-[0_0_8px_rgba(56,189,248,0.4)]" />}
+      {appId === "gmail" && <Mail className="w-3/5 h-3/5 text-rose-400 stroke-[1.5] drop-shadow-[0_0_8px_rgba(251,113,133,0.4)]" />}
+      {appId === "trash" && <Trash2 className="w-3/5 h-3/5 text-rose-500 stroke-[1.5] drop-shadow-[0_0_8px_rgba(239,68,68,0.4)]" />}
     </div>
   );
 }
