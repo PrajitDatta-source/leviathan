@@ -217,19 +217,11 @@ export function AppShell() {
   const [open, setOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const activeTheme = useThemeStore((state) => state.theme);
+  const themeContext = useTheme();
 
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // PREVENTS HYDRATION MISMATCH: Render a clean, dark splash screen during SSR
-  if (!mounted) {
-    return (
-      <div className="h-screen w-screen bg-[#0a0a0c] flex items-center justify-center select-none">
-        <div className="w-8 h-8 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin" />
-      </div>
-    );
-  }
 
   useEffect(() => {
     document.documentElement.classList.remove(
@@ -272,7 +264,14 @@ export function AppShell() {
     };
   }, []);
 
-  const themeContext = useTheme();
+  // PREVENTS HYDRATION MISMATCH: Render a clean, dark splash screen during SSR
+  if (!mounted) {
+    return (
+      <div className="h-screen w-screen bg-[#0a0a0c] flex items-center justify-center select-none">
+        <div className="w-8 h-8 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin" />
+      </div>
+    );
+  }
 
   const handleContextMenu = (e: React.MouseEvent) => {
     if (e.target instanceof HTMLElement) {
