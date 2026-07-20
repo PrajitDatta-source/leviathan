@@ -315,7 +315,7 @@ export function Taskbar() {
                 `}
                 title={`${appDef.title} ${isRunning ? `(Workspace ${workspace})` : ""}`}
               >
-                <AppIcon appId={appId} size={15} />
+                <AppIcon appId={appId} size={28} />
                 
                 {/* Horizontal Running bar indicator */}
                 {isRunning && (

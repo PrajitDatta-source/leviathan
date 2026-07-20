@@ -295,33 +295,128 @@ interface AppIconProps {
   className?: string;
 }
 
-export function AppIcon({ appId, size = 20, className = "" }: AppIconProps) {
+export function AppIcon({ appId, size = 48, className = "" }: AppIconProps) {
   const activeTheme = useThemeStore((state) => state.theme);
-  
-  // Resolve icon theme pack name based on the active preset
-  let resolvedPack = "windows11";
-  if (activeTheme === "aero-glass") {
-    resolvedPack = "windows7";
-  } else if (activeTheme === "macos") {
-    resolvedPack = "macos";
-  } else if (activeTheme === "clean-light") {
-    resolvedPack = "kde";
-  } else {
-    resolvedPack = "papirus"; // neon-dark cyber look
+
+  // 1. macOS Theme: Sleek gradients, subtle drop shadows, rounded iOS-style squircle shapes
+  if (activeTheme === "macos") {
+    return (
+      <div
+        style={{ width: size, height: size }}
+        className={`relative rounded-[22%] shadow-lg flex items-center justify-center overflow-hidden transition-transform duration-150 group-hover:scale-105 ${className}`}
+      >
+        {appId === "explorer" && (
+          <div className="w-full h-full bg-gradient-to-b from-blue-400 to-blue-600 flex items-center justify-center border border-white/20">
+            <Folder className="w-1/2 h-1/2 text-white fill-white/20 drop-shadow-sm" />
+          </div>
+        )}
+        {appId === "terminal" && (
+          <div className="w-full h-full bg-gradient-to-b from-zinc-700 to-zinc-900 flex items-center justify-center border border-white/10">
+            <span className="font-mono font-bold text-white text-xs tracking-tighter">&gt;_</span>
+          </div>
+        )}
+        {appId === "notes" && (
+          <div className="w-full h-full bg-gradient-to-b from-amber-400 to-amber-500 flex items-center justify-center border border-white/20">
+            <FileText className="w-1/2 h-1/2 text-white drop-shadow-sm" />
+          </div>
+        )}
+        {appId === "settings" && (
+          <div className="w-full h-full bg-gradient-to-b from-slate-500 to-slate-700 flex items-center justify-center border border-white/20">
+            <Settings className="w-1/2 h-1/2 text-white" />
+          </div>
+        )}
+        {appId === "weather" && (
+          <div className="w-full h-full bg-gradient-to-b from-yellow-400 to-orange-500 flex items-center justify-center border border-white/20">
+            <Sun className="w-1/2 h-1/2 text-white fill-white/20 drop-shadow-sm" />
+          </div>
+        )}
+        {appId === "telegram" && (
+          <div className="w-full h-full bg-gradient-to-b from-sky-400 to-sky-600 flex items-center justify-center border border-white/20">
+            <MessageSquare className="w-1/2 h-1/2 text-white fill-white/20 drop-shadow-sm" />
+          </div>
+        )}
+        {appId === "gmail" && (
+          <div className="w-full h-full bg-gradient-to-b from-rose-500 to-red-600 flex items-center justify-center border border-white/20">
+            <Mail className="w-1/2 h-1/2 text-white fill-white/20 drop-shadow-sm" />
+          </div>
+        )}
+        {appId === "trash" && (
+          <div className="w-full h-full bg-gradient-to-b from-rose-500 to-rose-700 flex items-center justify-center border border-white/20">
+            <Trash2 className="w-1/2 h-1/2 text-white" />
+          </div>
+        )}
+      </div>
+    );
   }
 
-  const pack = iconPackRegistry.get(resolvedPack) || iconPackRegistry.get("windows11");
-  if (pack) {
-    return pack.renderIcon(appId, size, className) as React.ReactElement;
+  // 2. Aero Glass Theme: Glossy reflections, white inner borders, vibrant Skeuomorphism
+  if (activeTheme === "aero-glass") {
+    return (
+      <div
+        style={{ width: size, height: size }}
+        className={`relative rounded-xl shadow-[0_4px_10px_rgba(0,0,0,0.3)] flex items-center justify-center overflow-hidden transition-all duration-200 group-hover:brightness-110 group-hover:-translate-y-0.5 ${className}`}
+      >
+        {/* Glossy Top Shine Overlay for realistic Aero feel */}
+        <div className="absolute top-0 left-0 right-0 h-2/5 bg-gradient-to-b from-white/60 to-white/10 rounded-t-xl pointer-events-none z-10" />
+
+        {appId === "explorer" && (
+          <div className="w-full h-full bg-gradient-to-b from-amber-300 via-amber-400 to-amber-600 flex items-center justify-center border border-white/60 shadow-inner">
+            <Folder className="w-3/5 h-3/5 text-amber-950 fill-amber-100/50 drop-shadow" />
+          </div>
+        )}
+        {appId === "terminal" && (
+          <div className="w-full h-full bg-gradient-to-b from-slate-800 via-slate-900 to-black flex items-center justify-center border border-white/40 shadow-inner">
+            <Terminal className="w-3/5 h-3/5 text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.8)]" />
+          </div>
+        )}
+        {appId === "notes" && (
+          <div className="w-full h-full bg-gradient-to-b from-sky-300 via-sky-400 to-blue-600 flex items-center justify-center border border-white/60 shadow-inner">
+            <FileText className="w-3/5 h-3/5 text-white drop-shadow" />
+          </div>
+        )}
+        {appId === "settings" && (
+          <div className="w-full h-full bg-gradient-to-b from-zinc-300 via-zinc-400 to-zinc-600 flex items-center justify-center border border-white/60 shadow-inner">
+            <Settings className="w-3/5 h-3/5 text-zinc-900 drop-shadow-sm" />
+          </div>
+        )}
+        {appId === "weather" && (
+          <div className="w-full h-full bg-gradient-to-b from-yellow-300 via-yellow-400 to-orange-500 flex items-center justify-center border border-white/60 shadow-inner">
+            <Sun className="w-3/5 h-3/5 text-yellow-950 fill-yellow-100/50 drop-shadow" />
+          </div>
+        )}
+        {appId === "telegram" && (
+          <div className="w-full h-full bg-gradient-to-b from-sky-300 via-sky-400 to-blue-600 flex items-center justify-center border border-white/60 shadow-inner">
+            <MessageSquare className="w-3/5 h-3/5 text-white fill-sky-100/30 drop-shadow" />
+          </div>
+        )}
+        {appId === "gmail" && (
+          <div className="w-full h-full bg-gradient-to-b from-rose-300 via-rose-400 to-red-600 flex items-center justify-center border border-white/60 shadow-inner">
+            <Mail className="w-3/5 h-3/5 text-white fill-rose-100/30 drop-shadow" />
+          </div>
+        )}
+        {appId === "trash" && (
+          <div className="w-full h-full bg-gradient-to-b from-slate-300 via-slate-400 to-slate-500 flex items-center justify-center border border-white/60 shadow-inner">
+            <Trash2 className="w-3/5 h-3/5 text-rose-600 drop-shadow" />
+          </div>
+        )}
+      </div>
+    );
   }
-  
-  // Safe Fallback
+
+  // 3. Neon Dark & Default: Sharp wireframes, neon cyan glows, cyber aesthetic
   return (
     <div
-      className={`rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center shrink-0 ${className}`}
-      style={{ width: size * 2.2, height: size * 2.2 }}
+      style={{ width: size, height: size }}
+      className={`relative rounded-lg bg-black/80 border border-cyan-500/40 shadow-[0_0_10px_rgba(0,243,255,0.15)] flex items-center justify-center transition-all duration-150 group-hover:border-cyan-400 group-hover:shadow-[0_0_15px_rgba(0,243,255,0.4)] ${className}`}
     >
-      <Folder className="w-1/2 h-1/2 text-zinc-100" />
+      {appId === "explorer" && <Folder className="w-1/2 h-1/2 text-cyan-400 stroke-[1.5]" />}
+      {appId === "terminal" && <Terminal className="w-1/2 h-1/2 text-emerald-400 stroke-[1.5]" />}
+      {appId === "notes" && <FileText className="w-1/2 h-1/2 text-cyan-300 stroke-[1.5]" />}
+      {appId === "settings" && <Settings className="w-1/2 h-1/2 text-slate-300 stroke-[1.5]" />}
+      {appId === "weather" && <Sun className="w-1/2 h-1/2 text-yellow-400 stroke-[1.5]" />}
+      {appId === "telegram" && <MessageSquare className="w-1/2 h-1/2 text-sky-400 stroke-[1.5]" />}
+      {appId === "gmail" && <Mail className="w-1/2 h-1/2 text-rose-400 stroke-[1.5]" />}
+      {appId === "trash" && <Trash2 className="w-1/2 h-1/2 text-rose-500 stroke-[1.5]" />}
     </div>
   );
 }

@@ -321,7 +321,7 @@ export function DesktopIcons() {
           >
             <AppIcon
               appId={icon.appId}
-              size={22}
+              size={48}
               className="group-hover:scale-105 transition-transform duration-100 shadow-md shrink-0 animate-window-open"
             />
 
