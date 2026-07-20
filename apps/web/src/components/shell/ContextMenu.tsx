@@ -1,10 +1,19 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
-import { useTheme } from "@/modules/theme/ThemeContext";
-import { Theme } from "@/modules/theme/types";
-import { useWindowStore, openWindow, closeWindow } from "@/core/window/manager";
+import React, { useEffect, useRef, useState } from "react";
+import { useThemeStore } from "@/modules/theme/useThemeStore";
+import { openWindow } from "@/core/window/manager";
 import { Z_INDEX } from "@/core/window/zIndex";
+import { 
+  Eye, 
+  ArrowUpDown, 
+  RotateCw, 
+  FolderPlus, 
+  FileText, 
+  Terminal, 
+  Settings, 
+  ChevronRight
+} from "lucide-react";
 
 interface ContextMenuProps {
   x: number;
@@ -13,9 +22,10 @@ interface ContextMenuProps {
 }
 
 export function ContextMenu({ x, y, onClose }: ContextMenuProps) {
-  const { setTheme, theme: currentTheme } = useTheme();
-  const windows = useWindowStore((state) => state.windows);
+  const { osStyle } = useThemeStore();
   const menuRef = useRef<HTMLDivElement>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeSubmenu, setActiveSubmenu] = useState<"view" | "sort" | "new" | null>(null);
 
   // Close when clicking outside
   useEffect(() => {
@@ -28,8 +38,25 @@ export function ContextMenu({ x, y, onClose }: ContextMenuProps) {
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, [onClose]);
 
-  const handleThemeChange = (newTheme: Theme) => {
-    setTheme(newTheme);
+  // Viewport bounds protection
+  const menuWidth = 220;
+  const menuHeight = 260;
+  const sw = typeof window !== "undefined" ? window.innerWidth : 1200;
+  const sh = typeof window !== "undefined" ? window.innerHeight : 800;
+
+  const posX = x + menuWidth > sw ? Math.max(10, x - menuWidth) : x;
+  const posY = y + menuHeight > sh ? Math.max(10, y - menuHeight) : y;
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => {
+      setRefreshing(false);
+      onClose();
+    }, 400);
+  };
+
+  const handleOpenTerminal = () => {
+    openWindow("terminal");
     onClose();
   };
 
@@ -38,63 +65,165 @@ export function ContextMenu({ x, y, onClose }: ContextMenuProps) {
     onClose();
   };
 
-  const handleCloseAllWindows = () => {
-    Object.keys(windows).forEach((winId) => closeWindow(winId));
+  const handleNewTextDocument = () => {
+    openWindow("notes");
     onClose();
   };
+
+  const handleNewFolder = () => {
+    openWindow("explorer");
+    onClose();
+  };
+
+  const isRetro = osStyle === "win95-retro";
+  const isAero = osStyle === "win7-aero";
+  const isMac = osStyle === "macos";
+
+  // Container styling per osStyle
+  let containerClasses = "";
+  let itemHoverClasses = "";
+  let dividerClasses = "";
+
+  if (isMac) {
+    containerClasses = "bg-slate-900/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl py-1 text-xs text-white";
+    itemHoverClasses = "hover:bg-blue-600 hover:text-white rounded-lg transition-colors";
+    dividerClasses = "my-1 border-t border-white/10";
+  } else if (isAero) {
+    containerClasses = "bg-sky-950/70 backdrop-blur-2xl rounded-lg border border-white/40 shadow-[0_0_15px_rgba(255,255,255,0.2)] p-1 text-xs text-white";
+    itemHoverClasses = "hover:bg-white/20 hover:shadow-sm rounded-md transition-all";
+    dividerClasses = "my-1 border-t border-white/20";
+  } else if (isRetro) {
+    containerClasses = "bg-[#c0c0c0] border-2 border-t-white border-l-white border-b-black border-r-black p-1 text-xs text-black font-sans shadow-none rounded-none";
+    itemHoverClasses = "hover:bg-[#000080] hover:text-white rounded-none transition-none";
+    dividerClasses = "my-1 border-t border-zinc-500 border-b border-white";
+  } else {
+    // win11
+    containerClasses = "bg-slate-900/90 backdrop-blur-2xl rounded-lg border border-white/10 shadow-xl p-1 text-xs text-white";
+    itemHoverClasses = "hover:bg-white/10 rounded-md transition-all";
+    dividerClasses = "my-1 border-t border-white/10";
+  }
 
   return (
     <div
       ref={menuRef}
-      className="fixed min-w-[200px] rounded-xl border border-zinc-800 bg-zinc-950/80 backdrop-blur-md p-1.5 shadow-2xl animate-in fade-in zoom-in-95 duration-100 select-none text-sm text-zinc-200"
-      style={{ left: x, top: y, zIndex: Z_INDEX.CONTEXT_MENUS }}
+      className={`fixed min-w-[210px] select-none z-50 animate-in fade-in zoom-in-95 duration-100 ${containerClasses}`}
+      style={{ left: posX, top: posY, zIndex: Z_INDEX.CONTEXT_MENUS }}
     >
-      <button
-        onClick={handleOpenSettings}
-        className="flex w-full items-center rounded-lg px-3 py-2 text-left hover:bg-zinc-800 transition"
+      {/* 1. View Submenu Option */}
+      <div 
+        className="relative"
+        onMouseEnter={() => setActiveSubmenu("view")}
+        onMouseLeave={() => setActiveSubmenu(null)}
       >
-        <span>System Settings</span>
-      </button>
+        <button className={`w-full flex items-center justify-between px-3 py-1.5 text-left cursor-pointer ${itemHoverClasses}`}>
+          <div className="flex items-center gap-2">
+            <Eye className="w-3.5 h-3.5 opacity-80" />
+            <span>View</span>
+          </div>
+          <ChevronRight className="w-3 h-3 opacity-60" />
+        </button>
 
-      <button
-        onClick={handleCloseAllWindows}
-        className="flex w-full items-center rounded-lg px-3 py-2 text-left hover:bg-zinc-800 transition"
-      >
-        <span>Close All Windows</span>
-      </button>
-
-      <div className="my-1.5 border-t border-zinc-800/80" />
-
-      {/* Submenu for Themes */}
-      <div className="relative group px-3 py-2 rounded-lg hover:bg-zinc-800 transition cursor-default flex items-center justify-between">
-        <span>Change Theme</span>
-        <span className="text-xs text-zinc-500">▶</span>
-
-        <div className="absolute left-[calc(100%-4px)] top-0 hidden group-hover:block min-w-[160px] rounded-xl border border-zinc-800 bg-zinc-950/90 backdrop-blur-md p-1.5 shadow-2xl animate-in fade-in slide-in-from-left-2 duration-100">
-          {(["light", "dark", "oled", "glass"] as Theme[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => handleThemeChange(t)}
-              className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-zinc-800 transition capitalized ${
-                currentTheme === t ? "text-violet-400 font-medium" : ""
-              }`}
-            >
-              <span className="capitalize">{t}</span>
-              {currentTheme === t && <span>✓</span>}
+        {activeSubmenu === "view" && (
+          <div className={`absolute left-full top-0 ml-1 min-w-[150px] ${containerClasses}`}>
+            <button onClick={onClose} className={`w-full text-left px-3 py-1.5 cursor-pointer ${itemHoverClasses}`}>
+              Large Icons
             </button>
-          ))}
-        </div>
+            <button onClick={onClose} className={`w-full text-left px-3 py-1.5 cursor-pointer ${itemHoverClasses}`}>
+              Medium Icons
+            </button>
+            <button onClick={onClose} className={`w-full text-left px-3 py-1.5 cursor-pointer ${itemHoverClasses}`}>
+              Small Icons
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className="my-1.5 border-t border-zinc-800/80" />
-
-      <button
-        onClick={() => {
-          window.location.reload();
-        }}
-        className="flex w-full items-center rounded-lg px-3 py-2 text-left hover:bg-zinc-800 transition"
+      {/* 2. Sort By Submenu Option */}
+      <div 
+        className="relative"
+        onMouseEnter={() => setActiveSubmenu("sort")}
+        onMouseLeave={() => setActiveSubmenu(null)}
       >
-        <span>Reload OS</span>
+        <button className={`w-full flex items-center justify-between px-3 py-1.5 text-left cursor-pointer ${itemHoverClasses}`}>
+          <div className="flex items-center gap-2">
+            <ArrowUpDown className="w-3.5 h-3.5 opacity-80" />
+            <span>Sort by</span>
+          </div>
+          <ChevronRight className="w-3 h-3 opacity-60" />
+        </button>
+
+        {activeSubmenu === "sort" && (
+          <div className={`absolute left-full top-0 ml-1 min-w-[140px] ${containerClasses}`}>
+            <button onClick={onClose} className={`w-full text-left px-3 py-1.5 cursor-pointer ${itemHoverClasses}`}>
+              Name
+            </button>
+            <button onClick={onClose} className={`w-full text-left px-3 py-1.5 cursor-pointer ${itemHoverClasses}`}>
+              Size
+            </button>
+            <button onClick={onClose} className={`w-full text-left px-3 py-1.5 cursor-pointer ${itemHoverClasses}`}>
+              Date modified
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 3. Refresh Action */}
+      <button 
+        onClick={handleRefresh}
+        className={`w-full flex items-center gap-2 px-3 py-1.5 text-left cursor-pointer ${itemHoverClasses}`}
+      >
+        <RotateCw className={`w-3.5 h-3.5 opacity-80 ${refreshing ? "animate-spin" : ""}`} />
+        <span>Refresh</span>
+      </button>
+
+      <div className={dividerClasses} />
+
+      {/* 4. New Item Submenu Option */}
+      <div 
+        className="relative"
+        onMouseEnter={() => setActiveSubmenu("new")}
+        onMouseLeave={() => setActiveSubmenu(null)}
+      >
+        <button className={`w-full flex items-center justify-between px-3 py-1.5 text-left cursor-pointer ${itemHoverClasses}`}>
+          <div className="flex items-center gap-2">
+            <FolderPlus className="w-3.5 h-3.5 opacity-80" />
+            <span>New</span>
+          </div>
+          <ChevronRight className="w-3 h-3 opacity-60" />
+        </button>
+
+        {activeSubmenu === "new" && (
+          <div className={`absolute left-full top-0 ml-1 min-w-[160px] ${containerClasses}`}>
+            <button onClick={handleNewFolder} className={`w-full flex items-center gap-2 px-3 py-1.5 text-left cursor-pointer ${itemHoverClasses}`}>
+              <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
+              <span>Folder</span>
+            </button>
+            <button onClick={handleNewTextDocument} className={`w-full flex items-center gap-2 px-3 py-1.5 text-left cursor-pointer ${itemHoverClasses}`}>
+              <FileText className="w-3.5 h-3.5 text-sky-400" />
+              <span>Text Document</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className={dividerClasses} />
+
+      {/* 5. Open Terminal Here */}
+      <button 
+        onClick={handleOpenTerminal}
+        className={`w-full flex items-center gap-2 px-3 py-1.5 text-left cursor-pointer ${itemHoverClasses}`}
+      >
+        <Terminal className="w-3.5 h-3.5 opacity-80 text-emerald-400" />
+        <span>Open Terminal Here</span>
+      </button>
+
+      {/* 6. Personalize Settings */}
+      <button 
+        onClick={handleOpenSettings}
+        className={`w-full flex items-center gap-2 px-3 py-1.5 text-left cursor-pointer ${itemHoverClasses}`}
+      >
+        <Settings className="w-3.5 h-3.5 opacity-80 text-violet-400" />
+        <span>Personalize</span>
       </button>
     </div>
   );
