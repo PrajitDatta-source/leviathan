@@ -211,7 +211,7 @@ export function GmailWindow() {
                     activeTab === lbl && !searchQuery ? "bg-[var(--border)] font-semibold text-zinc-100" : "hover:bg-[var(--border)]/40 text-[var(--muted)] hover:text-[var(--text)]"
                   }`}
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400 shrink-0" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shrink-0" />
                   <span className="truncate">{lbl}</span>
                 </button>
               ))}
@@ -272,7 +272,7 @@ export function GmailWindow() {
                       onClick={() => setSelectedThreadId(thread.id)}
                       className={`relative flex flex-col gap-1.5 p-3.5 cursor-pointer transition-all ${
                         isThreadSelected
-                          ? "bg-violet-500/10 border-l-2 border-violet-500"
+                          ? "bg-[var(--accent)]/10 border-l-2 border-[var(--accent)]"
                           : isFocused
                           ? "bg-[var(--border)]/75 border-l-2 border-[var(--muted)]"
                           : "hover:bg-[var(--surface)]/20"
@@ -298,7 +298,7 @@ export function GmailWindow() {
                           {thread.subject}
                         </div>
                         {!thread.isRead && (
-                          <span className="w-1.5 h-1.5 bg-violet-500 rounded-full shrink-0" />
+                          <span className="w-1.5 h-1.5 bg-[var(--accent)] rounded-full shrink-0" />
                         )}
                       </div>
                       
@@ -322,7 +322,7 @@ export function GmailWindow() {
                     <h2 className="text-sm font-bold text-zinc-100">{selectedThread.subject}</h2>
                     <div className="flex flex-wrap items-center gap-1.5 mt-2">
                       {selectedThread.labels.map(lbl => (
-                        <span key={lbl} className="bg-violet-500/15 border border-violet-500/35 text-[9px] text-violet-400 font-semibold px-2 py-0.5 rounded-full">
+                        <span key={lbl} className="bg-[var(--accent)]/15 border border-[var(--accent)]/35 text-[9px] text-[var(--accent)] font-semibold px-2 py-0.5 rounded-full">
                           {lbl}
                         </span>
                       ))}
@@ -389,7 +389,7 @@ export function GmailWindow() {
       {isComposing && (
         <form 
           onSubmit={handleComposeSubmit} 
-          className="absolute bottom-4 right-4 w-96 bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col z-50 animate-window-open border-violet-500/35"
+          className="absolute bottom-4 right-4 w-96 bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col z-50 animate-window-open border-[var(--accent)]/35"
         >
           <div className="bg-zinc-950 px-4 py-3 flex justify-between items-center text-xs font-bold text-zinc-100 border-b border-[var(--border)]">
             <span>New Message</span>
@@ -436,7 +436,7 @@ export function GmailWindow() {
           <div className="bg-[var(--border)]/20 border-t border-[var(--border)] px-4 py-3 flex justify-between items-center">
             <button
               type="submit"
-              className="bg-violet-600 hover:bg-violet-700 text-white font-bold px-5 py-2 rounded-xl shadow-md hover:shadow-lg transition cursor-pointer"
+              className="bg-[var(--accent)] hover:opacity-90 text-white font-bold px-5 py-2 rounded-xl shadow-md hover:shadow-lg transition cursor-pointer border-none"
             >
               Send
             </button>

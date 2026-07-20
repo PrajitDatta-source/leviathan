@@ -78,12 +78,12 @@ kbd {
 
 /* Theme Presets Variables Override */
 .theme-neon-dark {
-  --background: #06060c;
-  --surface: #0b0b14;
-  --border: rgba(139, 92, 246, 0.15);
+  --background: #0a0a0c;
+  --surface: #0d0d11;
+  --border: rgba(0, 243, 255, 0.2);
   --text: #fafafa;
   --muted: #8e8ea8;
-  --accent: #8b5cf6;
+  --accent: #00f3ff;
 }
 
 .theme-aero-glass {

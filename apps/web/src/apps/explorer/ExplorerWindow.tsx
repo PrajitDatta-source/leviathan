@@ -231,21 +231,21 @@ export function ExplorerWindow() {
                 onClick={() => { startRenameInline(contextMenu.node!); setContextMenu(null); }}
                 className="w-full text-left px-4 py-2 hover:bg-[var(--border)]/40 hover:text-zinc-100 flex items-center gap-2 cursor-pointer"
               >
-                <Edit className="w-3.5 h-3.5 text-violet-400" />
+                <Edit className="w-3.5 h-3.5 text-[var(--accent)]" />
                 <span>Rename</span>
               </button>
               <button
                 onClick={() => { vfs.setClipboard("copy", contextMenu.node!.id); setContextMenu(null); }}
                 className="w-full text-left px-4 py-2 hover:bg-[var(--border)]/40 hover:text-zinc-100 flex items-center gap-2 cursor-pointer"
               >
-                <Copy className="w-3.5 h-3.5 text-violet-400" />
+                <Copy className="w-3.5 h-3.5 text-[var(--accent)]" />
                 <span>Copy</span>
               </button>
               <button
                 onClick={() => { vfs.setClipboard("cut", contextMenu.node!.id); setContextMenu(null); }}
                 className="w-full text-left px-4 py-2 hover:bg-[var(--border)]/40 hover:text-zinc-100 flex items-center gap-2 cursor-pointer"
               >
-                <Scissors className="w-3.5 h-3.5 text-violet-400" />
+                <Scissors className="w-3.5 h-3.5 text-[var(--accent)]" />
                 <span>Cut</span>
               </button>
               <button
@@ -263,7 +263,7 @@ export function ExplorerWindow() {
                 disabled={!vfs.getClipboard()}
                 className="w-full text-left px-4 py-2 hover:bg-[var(--border)]/40 hover:text-zinc-100 flex items-center gap-2 cursor-pointer disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-zinc-300"
               >
-                <Clipboard className="w-3.5 h-3.5 text-violet-400" />
+                <Clipboard className="w-3.5 h-3.5 text-[var(--accent)]" />
                 <span>Paste</span>
               </button>
               <div className="h-[1px] bg-[var(--border)] my-1" />
@@ -271,14 +271,14 @@ export function ExplorerWindow() {
                 onClick={() => { handleCreateFolder(); setContextMenu(null); }}
                 className="w-full text-left px-4 py-2 hover:bg-[var(--border)]/40 hover:text-zinc-100 flex items-center gap-2 cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5 text-violet-400" />
+                <Plus className="w-3.5 h-3.5 text-[var(--accent)]" />
                 <span>New Folder</span>
               </button>
               <button
                 onClick={() => { handleCreateFile(); setContextMenu(null); }}
                 className="w-full text-left px-4 py-2 hover:bg-[var(--border)]/40 hover:text-zinc-100 flex items-center gap-2 cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5 text-violet-400" />
+                <Plus className="w-3.5 h-3.5 text-[var(--accent)]" />
                 <span>New File</span>
               </button>
             </>
@@ -296,7 +296,7 @@ export function ExplorerWindow() {
           onClick={() => setCurrentDirId(null)}
           className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--border)]/40 hover:text-[var(--text)] text-left transition cursor-pointer ${currentDirId === null ? "bg-[var(--border)] text-[var(--text)]" : ""}`}
         >
-          <Folder className="w-3.5 h-3.5 text-violet-400" />
+          <Folder className="w-3.5 h-3.5 text-[var(--accent)]" />
           <span>Home</span>
         </button>
 
@@ -304,7 +304,7 @@ export function ExplorerWindow() {
           onClick={() => setCurrentDirId("downloads_folder")}
           className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--border)]/40 hover:text-[var(--text)] text-left transition cursor-pointer ${currentDirId === "downloads_folder" ? "bg-[var(--border)] text-[var(--text)]" : ""}`}
         >
-          <Folder className="w-3.5 h-3.5 text-violet-400" />
+          <Folder className="w-3.5 h-3.5 text-[var(--accent)]" />
           <span>Downloads</span>
         </button>
 
@@ -312,7 +312,7 @@ export function ExplorerWindow() {
           onClick={() => setCurrentDirId("documents_folder")}
           className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--border)]/40 hover:text-[var(--text)] text-left transition cursor-pointer ${currentDirId === "documents_folder" ? "bg-[var(--border)] text-[var(--text)]" : ""}`}
         >
-          <Folder className="w-3.5 h-3.5 text-violet-400" />
+          <Folder className="w-3.5 h-3.5 text-[var(--accent)]" />
           <span>Documents</span>
         </button>
       </div>
@@ -429,11 +429,11 @@ export function ExplorerWindow() {
                     onDoubleClick={() => handleDoubleClick(node)}
                     onContextMenu={(e) => handleNodeContextMenu(e, node)}
                     className={`flex flex-col items-center p-2 rounded-xl text-center cursor-pointer group transition border ${
-                      isSelected ? "bg-violet-500/10 border-violet-500/30" : "hover:bg-[var(--border)]/30 border-transparent"
+                      isSelected ? "bg-[var(--accent)]/10 border-[var(--accent)]/30" : "hover:bg-[var(--border)]/30 border-transparent"
                     }`}
                   >
                     {node.type === "folder" ? (
-                      <Folder className="w-8 h-8 text-violet-400 group-hover:scale-105 transition" />
+                      <Folder className="w-8 h-8 text-[var(--accent)] group-hover:scale-105 transition" />
                     ) : (
                       <File className="w-8 h-8 text-indigo-400 group-hover:scale-105 transition" />
                     )}
@@ -448,7 +448,7 @@ export function ExplorerWindow() {
                           if (e.key === "Enter") finishRename();
                           if (e.key === "Escape") setEditingNodeId(null);
                         }}
-                        className="bg-[var(--surface)] text-[var(--text)] border border-violet-500 rounded px-1 mt-1 text-[10px] outline-none w-full text-center"
+                        className="bg-[var(--surface)] text-[var(--text)] border border-[var(--accent)] rounded px-1 mt-1 text-[10px] outline-none w-full text-center"
                         autoFocus
                         onClick={(e) => e.stopPropagation()}
                       />
@@ -478,12 +478,12 @@ export function ExplorerWindow() {
                     onDoubleClick={() => handleDoubleClick(node)}
                     onContextMenu={(e) => handleNodeContextMenu(e, node)}
                     className={`flex py-2 px-2 rounded-lg cursor-pointer transition items-center ${
-                      isSelected ? "bg-violet-500/10" : "hover:bg-[var(--border)]/20"
+                      isSelected ? "bg-[var(--accent)]/10" : "hover:bg-[var(--border)]/20"
                     }`}
                   >
                     <span className="flex-1 flex items-center gap-2 font-medium">
                       {node.type === "folder" ? (
-                        <Folder className="w-3.5 h-3.5 text-violet-400" />
+                        <Folder className="w-3.5 h-3.5 text-[var(--accent)]" />
                       ) : (
                         <File className="w-3.5 h-3.5 text-indigo-400" />
                       )}
@@ -498,7 +498,7 @@ export function ExplorerWindow() {
                             if (e.key === "Enter") finishRename();
                             if (e.key === "Escape") setEditingNodeId(null);
                           }}
-                          className="bg-[var(--surface)] text-[var(--text)] border border-violet-500 rounded px-1.5 py-0.5 text-xs outline-none w-48"
+                          className="bg-[var(--surface)] text-[var(--text)] border border-[var(--accent)] rounded px-1.5 py-0.5 text-xs outline-none w-48"
                           autoFocus
                           onClick={(e) => e.stopPropagation()}
                         />
@@ -530,7 +530,7 @@ export function ExplorerWindow() {
                   const node = children.find((n) => n.id === selectedNodeId);
                   if (node) handleRename(node);
                 }}
-                className="flex items-center gap-1 hover:text-violet-400 transition cursor-pointer"
+                className="flex items-center gap-1 hover:text-[var(--accent)] transition cursor-pointer"
               >
                 <Edit className="w-3 h-3" />
                 <span>Rename</span>
@@ -542,7 +542,7 @@ export function ExplorerWindow() {
                     const node = children.find((n) => n.id === selectedNodeId);
                     if (node) handleDownloadFile(node);
                   }}
-                  className="flex items-center gap-1 hover:text-violet-400 transition cursor-pointer"
+                  className="flex items-center gap-1 hover:text-[var(--accent)] transition cursor-pointer"
                 >
                   <Download className="w-3 h-3" />
                   <span>Download</span>

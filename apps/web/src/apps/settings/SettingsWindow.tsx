@@ -40,9 +40,9 @@ const WALLPAPER_PRESETS = [
     preview: "from-emerald-950 to-gray-950",
   },
   {
-    name: "Sunset Mesh",
-    value: "linear-gradient(135deg, #581c87 0%, #030712 100%)",
-    preview: "from-purple-950 to-gray-950",
+    name: "Cyber Mesh",
+    value: "linear-gradient(135deg, #09090b 0%, #00f3ff 100%)",
+    preview: "from-cyan-950 to-gray-950",
   },
 ];
 
@@ -222,14 +222,14 @@ export function SettingsWindow() {
                   onClick={() => setThemePreset(t.id)}
                   className={`relative p-4 rounded-xl border text-left transition cursor-pointer ${
                     activeThemePreset === t.id
-                      ? "border-violet-500 bg-violet-500/10"
+                      ? "border-[var(--accent)] bg-[var(--accent)]/10"
                       : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border)]/80"
                   }`}
                 >
                   <div className="font-semibold text-sm">{t.label}</div>
                   <div className="text-xs text-[var(--muted)] mt-1">{t.desc}</div>
                   {activeThemePreset === t.id && (
-                    <div className="absolute right-3 top-3 w-2.5 h-2.5 rounded-full bg-violet-500" />
+                    <div className="absolute right-3 top-3 w-2.5 h-2.5 rounded-full bg-[var(--accent)]" />
                   )}
                 </button>
               ))}

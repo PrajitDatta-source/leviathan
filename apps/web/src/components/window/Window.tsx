@@ -286,18 +286,18 @@ export function Window({ window: initialWindow }: Props) {
     let themeHeaderClasses = "";
 
     if (activeTheme === "aero-glass") {
-      themeContainerClasses = "bg-white/10 backdrop-blur-xl border border-white/20 text-white rounded-2xl";
+      themeContainerClasses = "bg-white/10 backdrop-blur-2xl border border-white/20 text-white rounded-2xl shadow-[0_0_15px_rgba(255,255,255,0.1)]";
       themeHeaderClasses = "bg-white/5 border-b border-white/10 text-white";
     } else if (activeTheme === "macos") {
-      themeContainerClasses = "bg-[#1d1d1f] border border-[#3a3a3c] text-zinc-100 rounded-xl";
-      themeHeaderClasses = "bg-[#2c2c2e]/80 border-b border-[#3a3a3c] text-zinc-200";
+      themeContainerClasses = "bg-[#1e1e1e] border border-[#323236] text-zinc-100 rounded-xl shadow-2xl";
+      themeHeaderClasses = "bg-[#2c2c2e]/80 border-b border-[#323236] text-zinc-200";
     } else if (activeTheme === "clean-light") {
-      themeContainerClasses = "bg-zinc-50 border border-zinc-300 text-zinc-800 rounded-2xl";
-      themeHeaderClasses = "bg-zinc-200 border-b border-zinc-300 text-zinc-700";
+      themeContainerClasses = "bg-slate-100 border border-slate-300 text-slate-800 rounded-2xl";
+      themeHeaderClasses = "bg-slate-200 border-b border-slate-300 text-slate-700";
     } else {
-      // default neon-dark
-      themeContainerClasses = "bg-[#07070c]/95 backdrop-blur-md border border-violet-500/20 text-zinc-100 rounded-2xl";
-      themeHeaderClasses = "bg-violet-950/10 border-b border-violet-500/10 text-zinc-200";
+      // default neon-dark (Pitch black/charcoal, sharp borders, cyber cyan accent/shadow)
+      themeContainerClasses = "bg-[#0a0a0c] border border-cyan-500/50 text-zinc-100 rounded-none shadow-[0_0_15px_rgba(0,243,255,0.1)]";
+      themeHeaderClasses = "bg-cyan-950/15 border-b border-cyan-500/30 text-zinc-200";
     }
 
     // Add active shadow/highlight classes
@@ -308,9 +308,9 @@ export function Window({ window: initialWindow }: Props) {
       } else if (activeTheme === "macos") {
         activeHighlightClasses = "shadow-[0_25px_55px_rgba(0,0,0,0.6)] border-zinc-600";
       } else if (activeTheme === "clean-light") {
-        activeHighlightClasses = "shadow-[0_15px_40px_rgba(0,0,0,0.15)] border-zinc-400 ring-1 ring-zinc-300";
+        activeHighlightClasses = "shadow-[0_15px_40px_rgba(0,0,0,0.15)] border-slate-400 ring-1 ring-slate-300";
       } else {
-        activeHighlightClasses = "border-violet-500/50 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.65)] ring-1 ring-violet-500/20";
+        activeHighlightClasses = "border-[#00f3ff]/50 shadow-[0_25px_50px_-12px_rgba(0,243,255,0.18)] ring-1 ring-[#00f3ff]/20";
       }
     } else {
       if (activeTheme === "aero-glass") {
@@ -318,7 +318,7 @@ export function Window({ window: initialWindow }: Props) {
       } else if (activeTheme === "macos") {
         activeHighlightClasses = "shadow-md opacity-90";
       } else if (activeTheme === "clean-light") {
-        activeHighlightClasses = "shadow-sm border-zinc-200 text-zinc-500";
+        activeHighlightClasses = "shadow-sm border-slate-300 text-slate-500";
       } else {
         activeHighlightClasses = "border-[var(--border)] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)]";
       }
@@ -363,14 +363,14 @@ export function Window({ window: initialWindow }: Props) {
                     onPointerDown={handlePointerDown}
                     className={`flex items-center px-4 py-2.5 cursor-grab select-none shrink-0 ${themeHeaderClasses} ${isDragging ? 'cursor-grabbing' : ''}`}
                 >
-                    {/* macOS traffic light window controls */}
+                    {/* macOS traffic light window controls with exact visual specifications */}
                     <div className="flex gap-1.5 w-16 shrink-0" onPointerDown={(e) => e.stopPropagation()}>
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
                                 closeWindow(window.id);
                             }}
-                            className="w-3 h-3 rounded-full bg-rose-500 hover:bg-rose-600 flex items-center justify-center text-[7px] text-rose-950 font-bold group cursor-pointer border-none outline-none"
+                            className="w-3 h-3 rounded-full bg-[#ff5f56] flex items-center justify-center text-[7px] text-rose-950 font-bold group cursor-pointer border-none outline-none hover:brightness-95 transition-all"
                             title="Close"
                         >
                             <span className="opacity-0 group-hover:opacity-100">✕</span>
@@ -380,7 +380,7 @@ export function Window({ window: initialWindow }: Props) {
                                 e.stopPropagation();
                                 minimizeWindow(window.id);
                             }}
-                            className="w-3 h-3 rounded-full bg-amber-400 hover:bg-amber-500 flex items-center justify-center text-[7px] text-amber-950 font-bold group cursor-pointer border-none outline-none"
+                            className="w-3 h-3 rounded-full bg-[#ffbd2e] flex items-center justify-center text-[7px] text-amber-950 font-bold group cursor-pointer border-none outline-none hover:brightness-95 transition-all"
                             title="Minimize"
                         >
                             <span className="opacity-0 group-hover:opacity-100">−</span>
@@ -394,7 +394,7 @@ export function Window({ window: initialWindow }: Props) {
                                     maximizeWindow(window.id);
                                 }
                             }}
-                            className="w-3 h-3 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center text-[7px] text-emerald-950 font-bold group cursor-pointer border-none outline-none"
+                            className="w-3 h-3 rounded-full bg-[#27c93f] flex items-center justify-center text-[7px] text-emerald-950 font-bold group cursor-pointer border-none outline-none hover:brightness-95 transition-all"
                             title={window.isMaximized ? "Restore" : "Maximize"}
                         >
                             <span className="opacity-0 group-hover:opacity-100">＋</span>
@@ -424,7 +424,7 @@ export function Window({ window: initialWindow }: Props) {
                                 e.stopPropagation();
                                 minimizeWindow(window.id);
                             }}
-                            className="w-5 h-5 rounded-md hover:bg-white/10 hover:text-white transition flex items-center justify-center text-xs text-zinc-400 font-bold cursor-pointer"
+                            className="w-5 h-5 rounded-md hover:bg-[var(--border)]/40 hover:text-[var(--text)] transition flex items-center justify-center text-xs text-[var(--muted)] font-bold cursor-pointer"
                             title="Minimize"
                         >
                             −
@@ -438,7 +438,7 @@ export function Window({ window: initialWindow }: Props) {
                                     maximizeWindow(window.id);
                                 }
                             }}
-                            className="w-5 h-5 rounded-md hover:bg-white/10 hover:text-white transition flex items-center justify-center text-xs text-zinc-400 font-bold cursor-pointer"
+                            className="w-5 h-5 rounded-md hover:bg-[var(--border)]/40 hover:text-[var(--text)] transition flex items-center justify-center text-xs text-[var(--muted)] font-bold cursor-pointer"
                             title={window.isMaximized ? "Restore" : "Maximize"}
                         >
                             {window.isMaximized ? "❐" : "□"}
@@ -448,7 +448,7 @@ export function Window({ window: initialWindow }: Props) {
                                 e.stopPropagation();
                                 closeWindow(window.id);
                             }}
-                            className="w-5 h-5 rounded-md hover:bg-rose-600 hover:text-white transition flex items-center justify-center text-xs text-zinc-400 font-bold cursor-pointer"
+                            className="w-5 h-5 rounded-md hover:bg-rose-600 hover:text-white transition flex items-center justify-center text-xs text-[var(--muted)] hover:text-zinc-100 font-bold cursor-pointer"
                             title="Close"
                         >
                             ✕

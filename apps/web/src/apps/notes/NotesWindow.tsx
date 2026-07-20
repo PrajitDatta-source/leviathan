@@ -18,7 +18,7 @@ function renderMarkdown(md: string): string {
   html = html.replace(/^### (.*?)$/gm, '<h3 class="text-base font-semibold mt-3 mb-1 text-zinc-300">$1</h3>');
 
   // Checkboxes
-  html = html.replace(/^- \[x\] (.*?)$/gm, '<div class="flex items-center gap-2 my-1"><input type="checkbox" checked disabled class="accent-violet-500" /> <span class="line-through text-zinc-500">$1</span></div>');
+  html = html.replace(/^- \[x\] (.*?)$/gm, '<div class="flex items-center gap-2 my-1"><input type="checkbox" checked disabled class="accent-[var(--accent)]" /> <span class="line-through text-zinc-500">$1</span></div>');
   html = html.replace(/^- \[ \] (.*?)$/gm, '<div class="flex items-center gap-2 my-1"><input type="checkbox" disabled /> <span class="text-zinc-300">$1</span></div>');
 
   // Bullet Lists
@@ -192,7 +192,7 @@ export function NotesWindow() {
       <div className="w-[200px] border-r border-[var(--border)] bg-[var(--surface)]/20 p-3 flex flex-col gap-3 shrink-0">
         <button
           onClick={handleCreateNote}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white py-2 text-xs font-semibold shadow transition cursor-pointer"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--accent)] hover:opacity-90 text-white py-2 text-xs font-semibold shadow transition cursor-pointer border-none"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>New Note</span>
@@ -220,7 +220,7 @@ export function NotesWindow() {
                 }`}
               >
                 <div className="flex items-center gap-2 truncate">
-                  <FileText className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                  <FileText className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
                   <span className="text-xs truncate">{note.name.replace(/\.md$/, "")}</span>
                 </div>
 
@@ -253,7 +253,7 @@ export function NotesWindow() {
                 
                 {/* Unsaved modification dot indicator */}
                 {isDirty && (
-                  <span className="w-2 h-2 rounded-full bg-violet-400" title="Unsaved changes" />
+                  <span className="w-2 h-2 rounded-full bg-[var(--accent)]" title="Unsaved changes" />
                 )}
                 {!isDirty && (
                   <span className="text-[10px] text-zinc-500 font-mono">({activeNode.name})</span>
@@ -281,9 +281,9 @@ export function NotesWindow() {
                 {activeNode.name.endsWith(".md") && (
                   <button
                     onClick={() => setShowPreview(!showPreview)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition border-none ${
                       showPreview 
-                        ? "bg-violet-600/10 border-violet-500/30 text-violet-400" 
+                        ? "bg-[var(--accent)]/10 border-[var(--accent)]/30 text-[var(--accent)]" 
                         : "border-[var(--border)] hover:bg-[var(--border)]/40 text-zinc-400"
                     }`}
                   >
@@ -294,7 +294,7 @@ export function NotesWindow() {
 
                 <button
                   onClick={handleSave}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-semibold shadow cursor-pointer transition text-xs"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[var(--accent)] hover:opacity-90 text-white font-semibold shadow cursor-pointer transition text-xs border-none"
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>Save (Ctrl+S)</span>

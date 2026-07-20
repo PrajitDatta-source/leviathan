@@ -10,6 +10,7 @@ import {
   openWindow 
 } from "@/core/window/manager";
 import { appRegistry } from "@/core/app";
+import { useThemeStore } from "@/core/theme/useThemeStore";
 import { useEffect, useState, useRef } from "react";
 import { 
   Volume2, 
@@ -36,6 +37,7 @@ export function Taskbar() {
   const windows = useWindowStore((state) => state.windows);
   const windowWorkspaces = useWorkspaceStore((state) => state.windowWorkspaces);
   const activeWorkspace = useWorkspaceStore((state) => state.activeWorkspace);
+  const activeTheme = useThemeStore((state) => state.theme);
   const [time, setTime] = useState(new Date());
 
   // Taskbar settings states
@@ -144,6 +146,18 @@ export function Taskbar() {
 
   const isCollapsed = isAutohide && !isHovered;
 
+  let taskbarThemeClasses = "";
+  if (activeTheme === "aero-glass") {
+    taskbarThemeClasses = "bg-white/10 backdrop-blur-2xl border-t border-white/20 shadow-[0_-5px_15px_rgba(255,255,255,0.1)] text-white";
+  } else if (activeTheme === "macos") {
+    taskbarThemeClasses = "bg-[#1e1e1e]/90 backdrop-blur-2xl border-t border-[#323236] text-zinc-100 shadow-2xl";
+  } else if (activeTheme === "clean-light") {
+    taskbarThemeClasses = "bg-slate-100 border-t border-slate-300 text-slate-800 shadow-lg";
+  } else {
+    // default neon-dark (Pitch black, cyan border, cyber shadow)
+    taskbarThemeClasses = "bg-[#0a0a0c] border-t border-cyan-500/50 backdrop-blur-md text-zinc-100 shadow-[0_-5px_15px_rgba(0,243,255,0.05)]";
+  }
+
   return (
     <>
       {isAutohide && (
@@ -226,15 +240,15 @@ export function Taskbar() {
       <div
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className={`fixed bottom-0 left-0 right-0 h-12 bg-[var(--surface)]/75 border-t border-[var(--border)] backdrop-blur-xl flex items-center px-4 justify-between z-50 text-[var(--text)] transition-all duration-300 select-none ${
+        className={`fixed bottom-0 left-0 right-0 h-12 flex items-center px-4 justify-between z-50 transition-all duration-300 select-none ${
           isCollapsed ? "translate-y-[42px] opacity-25" : "translate-y-0 opacity-100"
-        }`}
+        } ${taskbarThemeClasses}`}
       >
         {/* Left Section: Launcher & Workspace switcher */}
         <div className="flex items-center gap-3 w-1/4">
           <button
             onClick={handleLauncherClick}
-            className="p-2 rounded-xl bg-[var(--border)]/35 hover:bg-[var(--border)]/75 hover:scale-105 transition text-violet-400 flex items-center justify-center cursor-pointer"
+            className="p-2 rounded-xl bg-[var(--border)]/35 hover:bg-[var(--border)]/75 hover:scale-105 transition text-[var(--accent)] flex items-center justify-center cursor-pointer border-none"
             title="Open Application Search (Alt + D)"
           >
             <Search className="w-4 h-4" />
@@ -249,9 +263,9 @@ export function Taskbar() {
                 <button
                   key={num}
                   onClick={() => useWorkspaceStore.getState().setActiveWorkspace(num)}
-                  className={`w-5 h-5 rounded-lg flex items-center justify-center font-bold transition-all cursor-pointer ${
+                  className={`w-5 h-5 rounded-lg flex items-center justify-center font-bold transition-all cursor-pointer border-none ${
                     isActive
-                      ? "bg-violet-600 text-white shadow-sm"
+                      ? "bg-[var(--accent)] text-white shadow-sm font-extrabold"
                       : hasWindows
                       ? "text-zinc-300 bg-[var(--border)]/50"
                       : "text-zinc-500 hover:bg-[var(--border)]/20 hover:text-[var(--text)]"
@@ -293,8 +307,9 @@ export function Taskbar() {
                   justify-center
                   cursor-pointer
                   group
+                  border-none
                   ${isFocused 
-                    ? "bg-[var(--border)]/90 border border-violet-500/40 shadow-inner scale-95" 
+                    ? "bg-[var(--border)]/90 border border-[var(--accent)]/40 shadow-inner scale-95" 
                     : "hover:bg-[var(--border)]/50 hover:scale-105 active:scale-95"
                   }
                 `}
@@ -313,10 +328,10 @@ export function Taskbar() {
                       transition-all
                       duration-150
                       ${isFocused 
-                        ? "w-4 bg-violet-400" 
+                        ? "w-4 bg-[var(--accent)]" 
                         : isMinimized 
                         ? "w-1 bg-zinc-500" 
-                        : "w-2 bg-violet-500/60"
+                        : "w-2 bg-[var(--accent)]/60"
                       }
                     `}
                   />
@@ -329,20 +344,20 @@ export function Taskbar() {
         {/* Right Section: System Tray & Clock */}
         <div className="flex items-center justify-end gap-3.5 w-1/4 text-xs font-medium">
           
-          <div className="flex items-center bg-zinc-900/40 border border-[var(--border)]/65 rounded-xl px-2 py-1 gap-3">
+          <div className="flex items-center bg-[var(--background)]/40 border border-[var(--border)]/65 rounded-xl px-2 py-1 gap-3">
             {/* Auto-hide switcher */}
             <button
               onClick={toggleAutohide}
-              className="text-[var(--muted)] hover:text-[var(--text)] transition cursor-pointer"
+              className="text-[var(--muted)] hover:text-[var(--text)] transition cursor-pointer border-none"
               title={isAutohide ? "Disable Taskbar Autohide" : "Enable Taskbar Autohide"}
             >
-              {isAutohide ? <EyeOff className="w-3.5 h-3.5 text-violet-400" /> : <Eye className="w-3.5 h-3.5" />}
+              {isAutohide ? <EyeOff className="w-3.5 h-3.5 text-[var(--accent)]" /> : <Eye className="w-3.5 h-3.5" />}
             </button>
 
             {/* Volume toggle */}
             <button
               onClick={() => setIsMuted(!isMuted)}
-              className="text-[var(--muted)] hover:text-[var(--text)] transition cursor-pointer"
+              className="text-[var(--muted)] hover:text-[var(--text)] transition cursor-pointer border-none"
               title={isMuted ? "Unmute sound" : "Mute sound"}
             >
               {isMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5 text-emerald-400" />}
@@ -365,11 +380,11 @@ export function Taskbar() {
                 e.stopPropagation();
                 setShowNotifications(!showNotifications);
               }}
-              className="text-[var(--muted)] hover:text-[var(--text)] transition relative cursor-pointer"
+              className="text-[var(--muted)] hover:text-[var(--text)] transition relative cursor-pointer border-none"
               title="Toggle notifications"
             >
-              <Bell className={`w-3.5 h-3.5 ${showNotifications ? "text-violet-400" : ""}`} />
-              <div className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-violet-500" />
+              <Bell className={`w-3.5 h-3.5 ${showNotifications ? "text-[var(--accent)]" : ""}`} />
+              <div className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
             </button>
           </div>
 

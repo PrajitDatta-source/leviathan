@@ -185,13 +185,13 @@ export function DashboardWindow() {
         {/* Welcome Section */}
         <div className="flex flex-col gap-1">
           <h2 className="text-2xl font-light tracking-wide text-zinc-100">
-            Welcome to <span className="font-semibold text-violet-400">Iris Desktop</span>
+            Welcome to <span className="font-semibold text-[var(--accent)]">Iris Desktop</span>
           </h2>
           <p className="text-xs text-[var(--muted)]">
             Everything in your digital workspace, organized in one central dashboard.
           </p>
           <div className="flex gap-3.5 mt-2.5">
-            <span className="text-[10px] px-2.5 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 font-medium">
+            <span className="text-[10px] px-2.5 py-1 rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/20 text-[var(--accent)] font-medium">
               Active Workspace: {activeWorkspace}
             </span>
             <span className="text-[10px] px-2.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-medium">
@@ -204,7 +204,7 @@ export function DashboardWindow() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Time & Date Widget */}
           <div className="flex gap-4 p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] items-center">
-            <div className="w-12 h-12 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-400 flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-xl bg-[var(--accent)]/10 border border-[var(--accent)]/20 text-[var(--accent)] flex items-center justify-center shrink-0">
               <Clock className="w-6 h-6" />
             </div>
             <div>
@@ -219,7 +219,7 @@ export function DashboardWindow() {
 
           {/* Weather Widget */}
           <div className="flex gap-4 p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] items-center">
-            <div className="w-12 h-12 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-400 flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-xl bg-[var(--accent)]/10 border border-[var(--accent)]/20 text-[var(--accent)] flex items-center justify-center shrink-0">
               <span className="text-2xl">🌤️</span>
             </div>
             <div>
@@ -243,7 +243,7 @@ export function DashboardWindow() {
           {/* System CPU, RAM & Storage Resources */}
           <div className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] flex flex-col gap-3">
             <div className="flex items-center gap-2 text-xs font-semibold text-[var(--muted)] uppercase tracking-wider">
-              <Cpu className="w-4 h-4 text-violet-400" />
+              <Cpu className="w-4 h-4 text-[var(--accent)]" />
               <span>Real System Metrics</span>
             </div>
 
@@ -256,7 +256,7 @@ export function DashboardWindow() {
                 </div>
                 <div className="h-1.5 w-full bg-[var(--border)] rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-violet-500 rounded-full transition-all duration-500"
+                    className="h-full bg-[var(--accent)] rounded-full transition-all duration-500"
                     style={{ width: `${cpuUsage}%` }}
                   />
                 </div>
@@ -295,7 +295,7 @@ export function DashboardWindow() {
           {/* Tasks Todo Widget */}
           <div className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] flex flex-col gap-4">
             <div className="flex items-center gap-2 text-xs font-semibold text-[var(--muted)] uppercase tracking-wider">
-              <CheckSquare className="w-4 h-4 text-violet-400" />
+              <CheckSquare className="w-4 h-4 text-[var(--accent)]" />
               <span>Personal Task Checklist</span>
             </div>
 
@@ -308,7 +308,7 @@ export function DashboardWindow() {
               />
               <button
                 type="submit"
-                className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold transition"
+                className="px-3 py-1.5 rounded-lg bg-[var(--accent)] hover:opacity-90 text-white text-xs font-semibold transition"
               >
                 Add
               </button>
@@ -328,7 +328,7 @@ export function DashboardWindow() {
                         type="checkbox"
                         checked={task.completed}
                         onChange={() => toggleTask(task.id)}
-                        className="w-3.5 h-3.5 accent-violet-500 rounded border-[var(--border)] bg-transparent cursor-pointer"
+                        className="w-3.5 h-3.5 accent-[var(--accent)] rounded border-[var(--border)] bg-transparent cursor-pointer"
                       />
                       <span className={`truncate ${task.completed ? "line-through text-zinc-500" : ""}`}>
                         {task.text}
@@ -351,12 +351,12 @@ export function DashboardWindow() {
           <div className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-semibold text-[var(--muted)] uppercase tracking-wider">
-                <FileText className="w-4 h-4 text-violet-400" />
+                <FileText className="w-4 h-4 text-[var(--accent)]" />
                 <span>Recent Markdown Notes</span>
               </div>
               <button
                 onClick={handleOpenNote}
-                className="text-[10px] font-semibold text-violet-400 hover:underline"
+                className="text-[10px] font-semibold text-[var(--accent)] hover:underline"
               >
                 Open Notes App
               </button>
@@ -374,7 +374,7 @@ export function DashboardWindow() {
                     onClick={handleOpenNote}
                     className="flex items-center gap-3 p-2.5 bg-[var(--background)]/30 hover:bg-[var(--border)]/30 rounded-lg cursor-pointer transition text-xs"
                   >
-                    <FileText className="w-4 h-4 text-violet-400 shrink-0" />
+                    <FileText className="w-4 h-4 text-[var(--accent)] shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold truncate">{note.name.replace(/\.md$/, "")}</div>
                       <div className="text-[10px] text-[var(--muted)] mt-0.5">

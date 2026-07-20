@@ -225,6 +225,7 @@ export function AppShell() {
       "theme-clean-light"
     );
     document.documentElement.classList.add(`theme-${activeTheme}`);
+    document.documentElement.setAttribute("data-theme", activeTheme);
   }, [activeTheme]);
 
   useEffect(() => {
@@ -298,7 +299,8 @@ export function AppShell() {
         onClick={handleLeftClick}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
-        className="h-screen w-screen relative overflow-hidden select-none"
+        data-theme={activeTheme}
+        className={`h-screen w-screen relative overflow-hidden select-none theme-${activeTheme}`}
         style={{ background: "var(--wallpaper)" }}
       >
         {/* Keyboard OS Action interceptor */}

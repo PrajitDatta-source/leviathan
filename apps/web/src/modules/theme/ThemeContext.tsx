@@ -4,12 +4,14 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { Theme } from "./types";
 import { themePresets } from "./presets";
 import { profileManager } from "../identity/profile/manager";
+import { useThemeStore, ThemePreset } from "@/core/theme/useThemeStore";
 
 // Synthetic web audio tone generator for zero-dependency sound packs
 export function playThemeSound(type: "startup" | "click" | "error") {
   if (typeof window === "undefined") return;
   try {
-    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const AudioContextClass = window.AudioContext || (window as Window & typeof globalThis & { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const audioCtx = new AudioContextClass();
     
     if (type === "click") {
       const osc = audioCtx.createOscillator();
@@ -72,13 +74,29 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     "linear-gradient(135deg, #09090b 0%, #020205 100%)"
   );
   const [customWallpapers, setCustomWallpapers] = useState<string[]>([]);
+  
+  const activePreset = useThemeStore((state) => state.theme);
+  const setPreset = useThemeStore((state) => state.setTheme);
 
   // Load initial theme, wallpaper and custom wallpapers from backend DB on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
       const prefs = profileManager.getPreferences();
       if (prefs) {
-        if (prefs.theme) setThemeState(prefs.theme as Theme);
+        if (prefs.theme) {
+          const loadedTheme = prefs.theme as Theme;
+          setThemeState(loadedTheme);
+          // Sync with preset store
+          let nextPreset: ThemePreset = "neon-dark";
+          if (loadedTheme === "light" || loadedTheme === "iris-light") {
+            nextPreset = "clean-light";
+          } else if (loadedTheme === "glass" || loadedTheme === "fluent-glass") {
+            nextPreset = "aero-glass";
+          } else if (loadedTheme === "retro-mac") {
+            nextPreset = "macos";
+          }
+          setPreset(nextPreset);
+        }
         if (prefs.wallpaper) setWallpaperState(prefs.wallpaper);
       }
       
@@ -87,7 +105,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         .then((res) => res.json())
         .then((data) => {
           if (data) {
-            if (data.theme) setThemeState(data.theme as Theme);
+            if (data.theme) {
+              const fetchedTheme = data.theme as Theme;
+              setThemeState(fetchedTheme);
+              let nextPreset: ThemePreset = "neon-dark";
+              if (fetchedTheme === "light" || fetchedTheme === "iris-light") {
+                nextPreset = "clean-light";
+              } else if (fetchedTheme === "glass" || fetchedTheme === "fluent-glass") {
+                nextPreset = "aero-glass";
+              } else if (fetchedTheme === "retro-mac") {
+                nextPreset = "macos";
+              }
+              setPreset(nextPreset);
+            }
             if (data.wallpaper) setWallpaperState(data.wallpaper);
             if (data.customWallpapers) setCustomWallpapers(data.customWallpapers);
             profileManager.updatePreferences(data);
@@ -95,7 +125,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         })
         .catch((err) => console.error("Settings backend sync failed:", err));
     }
-  }, []);
+  }, [setPreset]);
 
   const pushSettingsToBackend = async (newTheme: Theme, newWp: string, newCustomWps: string[]) => {
     try {
@@ -113,11 +143,32 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Sync theme to profileManager preferences
+  // Sync theme to profileManager preferences and useThemeStore
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
-    profileManager.updatePreferences({ theme: newTheme as any });
+
+    // Map newTheme strictly to the type required by profileManager
+    let prefTheme: "light" | "dark" | "oled" | "custom" = "dark";
+    if (newTheme === "light" || newTheme === "iris-light") {
+      prefTheme = "light";
+    } else if (newTheme === "oled") {
+      prefTheme = "oled";
+    } else if (newTheme === "glass" || newTheme === "fluent-glass" || newTheme === "retro-mac") {
+      prefTheme = "custom";
+    }
+    profileManager.updatePreferences({ theme: prefTheme });
     
+    // Map legacy themes to new presets
+    let nextPreset: ThemePreset = "neon-dark";
+    if (newTheme === "light" || newTheme === "iris-light") {
+      nextPreset = "clean-light";
+    } else if (newTheme === "glass" || newTheme === "fluent-glass") {
+      nextPreset = "aero-glass";
+    } else if (newTheme === "retro-mac") {
+      nextPreset = "macos";
+    }
+    setPreset(nextPreset);
+
     // Automatically apply theme's default wallpaper if present
     const preset = themePresets[newTheme];
     let nextWp = wallpaper;
@@ -166,8 +217,45 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (typeof window === "undefined") return;
 
     const root = document.documentElement;
-    const activeTheme = themePresets[theme] || themePresets["iris-dark"];
-    const colors = activeTheme.colors;
+    
+    // Resolve color variables based on the active preset
+    let colors = {
+      background: "#0a0a0c",
+      foreground: "#fafafa",
+      secondary: "#8e8ea8",
+      accent: "#00f3ff",
+      border: "rgba(0, 243, 255, 0.2)",
+      card: "#0d0d11",
+    };
+
+    if (activePreset === "aero-glass") {
+      colors = {
+        background: "#091522",
+        foreground: "#ffffff",
+        secondary: "#94a3b8",
+        accent: "#0ea5e9",
+        border: "rgba(255, 255, 255, 0.2)",
+        card: "rgba(255, 255, 255, 0.08)",
+      };
+    } else if (activePreset === "macos") {
+      colors = {
+        background: "#161617",
+        foreground: "#f5f5f7",
+        secondary: "#86868b",
+        accent: "#0071e3",
+        border: "#323236",
+        card: "#1e1e1f",
+      };
+    } else if (activePreset === "clean-light") {
+      colors = {
+        background: "#f4f4f5",
+        foreground: "#09090b",
+        secondary: "#71717a",
+        accent: "#2563eb",
+        border: "#e4e4e7",
+        card: "#ffffff",
+      };
+    }
 
     // Apply color values to CSS custom variables
     root.style.setProperty("--background", colors.background);
@@ -179,26 +267,27 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.style.setProperty("--wallpaper", wallpaper);
 
     // Apply custom theme cursor
-    root.style.cursor = activeTheme.cursor || "default";
+    const activeThemePresetObj = themePresets[theme] || themePresets["iris-dark"];
+    root.style.cursor = activeThemePresetObj.cursor || "default";
 
     // Set dataset theme attribute for tailwind / ad-hoc styles
-    root.setAttribute("data-theme", theme);
+    root.setAttribute("data-theme", activePreset);
     
     // Add glass helper classes if theme is glass
-    if (theme === "glass" || theme === "fluent-glass") {
+    if (activePreset === "aero-glass") {
       root.classList.add("theme-glass");
     } else {
       root.classList.remove("theme-glass");
     }
-  }, [theme, wallpaper]);
+  }, [activePreset, theme, wallpaper]);
 
   // Global click listener to play click sounds
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const handleGlobalClick = () => {
-      const activePreset = themePresets[theme];
-      if (activePreset && activePreset.soundPack === "synthetic") {
+      const activePresetObj = themePresets[theme];
+      if (activePresetObj && activePresetObj.soundPack === "synthetic") {
         playThemeSound("click");
       }
     };

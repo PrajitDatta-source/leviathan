@@ -283,7 +283,7 @@ export function DesktopIcons() {
     >
       {selectionBox && (
         <div
-          className="absolute border border-violet-500/50 bg-violet-500/10 pointer-events-none rounded"
+          className="absolute border border-[var(--accent)]/50 bg-[var(--accent)]/10 pointer-events-none rounded"
           style={{
             left: Math.min(selectionBox.startX, selectionBox.currentX),
             top: Math.min(selectionBox.startY, selectionBox.currentY),
@@ -307,10 +307,10 @@ export function DesktopIcons() {
             onDoubleClick={() => handleDoubleClick(icon.appId)}
             className={`desktop-icon-item absolute w-20 flex flex-col items-center gap-1.5 p-1.5 rounded-xl cursor-default select-none border border-transparent pointer-events-auto ${
               isDragging
-                ? "bg-white/10 opacity-70 scale-95 border-white/5"
+                ? "bg-[var(--text)]/10 opacity-70 scale-95 border-[var(--text)]/5"
                 : isSelected
-                ? "bg-white/10 border-white/10 shadow-sm"
-                : "hover:bg-white/5 active:scale-95"
+                ? "bg-[var(--text)]/15 border-[var(--text)]/15 shadow-sm"
+                : "hover:bg-[var(--text)]/10 active:scale-95"
             } ${isDragging ? "" : "transition-[left,top] duration-200 ease-out"}`}
             style={{
               left: icon.x,
@@ -335,7 +335,7 @@ export function DesktopIcons() {
                   if (e.key === "Enter") handleRenameSubmit(icon.id);
                   if (e.key === "Escape") setEditingIconId(null);
                 }}
-                className="w-full bg-[var(--surface)] text-zinc-100 text-[10px] text-center border border-violet-500 rounded px-0.5 outline-none select-text pointer-events-auto"
+                className="w-full bg-[var(--surface)] text-[var(--text)] text-[10px] text-center border border-[var(--accent)] rounded px-0.5 outline-none select-text pointer-events-auto"
               />
             ) : (
               <span className="text-[11px] font-semibold text-white text-center tracking-wide drop-shadow-[0_1.5px_1.5px_rgba(0,0,0,0.95)] truncate max-w-full px-0.5 mt-1 select-none">
