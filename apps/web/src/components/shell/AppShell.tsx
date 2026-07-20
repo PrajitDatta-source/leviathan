@@ -13,6 +13,7 @@ import { WindowManagerProvider, useWindowStore, useWorkspaceStore, openWindow, c
 import { useTheme } from "@/modules/theme/ThemeContext";
 import { loadShortcutsConfig, getShortcutCombination, matchesEvent } from "@/core/window/shortcuts";
 import { useThemeStore } from "@/core/theme/useThemeStore";
+import { Wifi, Battery } from "lucide-react";
 
 // KeyboardManager component handles i3-inspired keyboard shortcuts
 function KeyboardManager({ setOpenPalette }: { setOpenPalette: (open: boolean) => void }) {
@@ -212,11 +213,50 @@ function KeyboardManager({ setOpenPalette }: { setOpenPalette: (open: boolean) =
   return null;
 }
 
+function MacTopBar() {
+  const [time, setTime] = useState(new Date());
+  const activeWindowId = useWindowStore((state) => state.activeWindowId);
+  const windows = useWindowStore((state) => state.windows);
+  const activeWindow = activeWindowId ? windows[activeWindowId] : null;
+  const currentAppName = activeWindow ? activeWindow.title : "Finder";
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="fixed top-0 left-0 right-0 h-6 bg-zinc-900/75 backdrop-blur-md text-white border-b border-white/5 flex items-center justify-between px-4 text-xs font-semibold select-none z-[100]">
+      <div className="flex items-center gap-4">
+        {/* Apple/Iris logo */}
+        <span className="text-sm font-bold text-zinc-100 cursor-default"></span>
+        <span className="font-bold text-zinc-100">{currentAppName}</span>
+        <span className="text-zinc-400 font-normal cursor-pointer hover:text-white">File</span>
+        <span className="text-zinc-400 font-normal cursor-pointer hover:text-white">Edit</span>
+        <span className="text-zinc-400 font-normal cursor-pointer hover:text-white">View</span>
+        <span className="text-zinc-400 font-normal cursor-pointer hover:text-white">Go</span>
+        <span className="text-zinc-400 font-normal cursor-pointer hover:text-white">Window</span>
+        <span className="text-zinc-400 font-normal cursor-pointer hover:text-white">Help</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] font-mono leading-none">92%</span>
+          <Battery className="w-3.5 h-3.5 text-zinc-300" />
+        </div>
+        <Wifi className="w-3.5 h-3.5 text-zinc-300" />
+        <span className="text-[11px]">
+          {time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function AppShell() {
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
-  const activeTheme = useThemeStore((state) => state.theme);
+  const { osStyle, colorMode } = useThemeStore();
   const themeContext = useTheme();
 
   useEffect(() => {
@@ -225,14 +265,15 @@ export function AppShell() {
 
   useEffect(() => {
     document.documentElement.classList.remove(
-      "theme-neon-dark",
-      "theme-aero-glass",
+      "theme-win95-retro",
+      "theme-win7-aero",
       "theme-macos",
-      "theme-clean-light"
+      "theme-win11"
     );
-    document.documentElement.classList.add(`theme-${activeTheme}`);
-    document.documentElement.setAttribute("data-theme", activeTheme);
-  }, [activeTheme]);
+    document.documentElement.classList.add(`theme-${osStyle}`);
+    document.documentElement.setAttribute("data-os", osStyle);
+    document.documentElement.setAttribute("data-theme", colorMode);
+  }, [osStyle, colorMode]);
 
   useEffect(() => {
     bootstrap();
@@ -312,18 +353,21 @@ export function AppShell() {
         onClick={handleLeftClick}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
-        data-theme={activeTheme}
-        className={`h-screen w-screen relative overflow-hidden select-none theme-${activeTheme}`}
+        data-os={osStyle}
+        data-theme={colorMode}
+        className={`h-screen w-screen relative overflow-hidden select-none theme-${osStyle} theme-${colorMode}`}
         style={{ background: "var(--wallpaper)" }}
       >
+        {osStyle === "macos" && <MacTopBar />}
+
         {/* Keyboard OS Action interceptor */}
         <KeyboardManager setOpenPalette={setOpen} />
 
-        {/* Desktop shortcuts / background icons */}
-        <DesktopIcons />
-
-        {/* Active Desktop Windows */}
-        <Desktop />
+        {/* Desktop shortcuts / background icons & active windows */}
+        <div className={osStyle === "macos" ? "pt-6 h-[calc(100vh-24px)]" : "h-full"}>
+          <DesktopIcons />
+          <Desktop />
+        </div>
 
         {/* System Taskbar */}
         <Taskbar />

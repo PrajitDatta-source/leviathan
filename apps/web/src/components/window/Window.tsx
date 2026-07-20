@@ -25,7 +25,7 @@ export function Window({ window: initialWindow }: Props) {
     const windowWorkspaces = useWorkspaceStore((state) => state.windowWorkspaces);
     const activeWorkspace = useWorkspaceStore((state) => state.activeWorkspace);
     const belongsToActiveWorkspace = (windowWorkspaces[window.id] || 1) === activeWorkspace;
-    const activeTheme = useThemeStore((state) => state.theme);
+    const { osStyle, colorMode } = useThemeStore();
 
     console.log(`[PIPELINE] React Render for Window: ${window.id}`, {
         focused: window.isFocused,
@@ -281,50 +281,63 @@ export function Window({ window: initialWindow }: Props) {
     const appDef = appRegistry.get(window.appId);
     const content = appDef ? createElement(appDef.component) : null;
 
-    // Define theme styling configurations
+    // Define theme styling configurations based strictly on osStyle and colorMode
     let themeContainerClasses = "";
     let themeHeaderClasses = "";
 
-    if (activeTheme === "aero-glass") {
-      themeContainerClasses = "bg-slate-900/40 backdrop-blur-2xl border border-white/25 text-white rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.37)]";
-      themeHeaderClasses = "bg-white/5 border-b border-white/10 text-white";
-    } else if (activeTheme === "macos") {
-      themeContainerClasses = "bg-[#1e1e1e] border border-[#323236] text-zinc-100 rounded-xl shadow-2xl";
-      themeHeaderClasses = "bg-[#2c2c2e]/80 border-b border-[#323236] text-zinc-200";
-    } else if (activeTheme === "clean-light") {
-      themeContainerClasses = "bg-slate-100 border border-slate-300 text-slate-800 rounded-2xl";
-      themeHeaderClasses = "bg-slate-200 border-b border-slate-300 text-slate-700";
+    if (osStyle === "win7-aero") {
+      themeContainerClasses = "bg-slate-900/40 backdrop-blur-2xl border border-white/30 text-white rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.15)]";
+      themeHeaderClasses = "bg-white/10 border-b border-white/20 text-white";
+    } else if (osStyle === "macos") {
+      themeContainerClasses = colorMode === "light"
+        ? "bg-slate-100/90 backdrop-blur-xl border border-slate-300 text-slate-900 rounded-xl shadow-2xl"
+        : "bg-[#1e1e1e]/90 backdrop-blur-xl border border-[#323236] text-zinc-100 rounded-xl shadow-2xl";
+      themeHeaderClasses = colorMode === "light"
+        ? "bg-slate-200/80 border-b border-slate-300 text-slate-800"
+        : "bg-[#2c2c2e]/80 border-b border-[#323236] text-zinc-200";
+    } else if (osStyle === "win11") {
+      themeContainerClasses = colorMode === "light"
+        ? "bg-white/85 backdrop-blur-xl border border-slate-200 text-slate-900 rounded-lg shadow-lg"
+        : "bg-slate-900/80 backdrop-blur-xl border border-white/10 text-white rounded-lg shadow-[0_15px_40px_rgba(0,0,0,0.4)]";
+      themeHeaderClasses = colorMode === "light"
+        ? "bg-slate-100/60 border-b border-slate-200 text-slate-800"
+        : "bg-white/5 border-b border-white/5 text-white";
     } else {
-      // default neon-dark (Pitch black/charcoal, sharp borders, cyber cyan accent/shadow)
-      themeContainerClasses = "bg-[#0a0a0c] border border-cyan-500/50 text-zinc-100 rounded-none shadow-[0_0_15px_rgba(0,243,255,0.1)]";
-      themeHeaderClasses = "bg-cyan-950/15 border-b border-cyan-500/30 text-zinc-200";
+      // win95-retro
+      themeContainerClasses = "bg-[#c0c0c0] text-black border-2 border-t-white border-l-white border-b-black border-r-black p-[3px] select-none rounded-none";
+      themeHeaderClasses = window.isFocused 
+        ? "bg-[#000080] text-white font-bold tracking-wide text-sm px-2 py-1" 
+        : "bg-[#808080] text-[#c0c0c0] font-bold tracking-wide text-sm px-2 py-1";
     }
 
     // Add active shadow/highlight classes
     let activeHighlightClasses = "";
     if (window.isFocused) {
-      if (activeTheme === "aero-glass") {
-        activeHighlightClasses = "border-sky-400/40 shadow-[0_20px_60px_rgba(56,189,248,0.15)] ring-1 ring-sky-400/10";
-      } else if (activeTheme === "macos") {
+      if (osStyle === "win7-aero") {
+        activeHighlightClasses = "border-sky-400/40 shadow-[0_0_25px_rgba(255,255,255,0.25)] ring-1 ring-sky-400/20";
+      } else if (osStyle === "macos") {
         activeHighlightClasses = "shadow-[0_25px_55px_rgba(0,0,0,0.6)] border-zinc-600";
-      } else if (activeTheme === "clean-light") {
-        activeHighlightClasses = "shadow-[0_15px_40px_rgba(0,0,0,0.15)] border-slate-400 ring-1 ring-slate-300";
+      } else if (osStyle === "win11") {
+        activeHighlightClasses = "shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-white/20 ring-1 ring-white/15";
       } else {
-        activeHighlightClasses = "border-[#00f3ff]/50 shadow-[0_25px_50px_-12px_rgba(0,243,255,0.18)] ring-1 ring-[#00f3ff]/20";
+        // win95-retro
+        activeHighlightClasses = "";
       }
     } else {
-      if (activeTheme === "aero-glass") {
-        activeHighlightClasses = "shadow-lg";
-      } else if (activeTheme === "macos") {
+      if (osStyle === "win7-aero") {
+        activeHighlightClasses = "shadow-[0_0_10px_rgba(255,255,255,0.05)] opacity-85";
+      } else if (osStyle === "macos") {
         activeHighlightClasses = "shadow-md opacity-90";
-      } else if (activeTheme === "clean-light") {
-        activeHighlightClasses = "shadow-sm border-slate-300 text-slate-500";
+      } else if (osStyle === "win11") {
+        activeHighlightClasses = "shadow-lg border-white/5 opacity-90";
       } else {
-        activeHighlightClasses = "border-[var(--border)] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)]";
+        // win95-retro
+        activeHighlightClasses = "";
       }
     }
 
-    const isMac = activeTheme === "macos";
+    const isMac = osStyle === "macos";
+    const isRetro = osStyle === "win95-retro";
 
     return (
         <div
@@ -412,22 +425,25 @@ export function Window({ window: initialWindow }: Props) {
             ) : (
                 <div
                     onPointerDown={handlePointerDown}
-                    className={`flex items-center justify-between px-4 py-2.5 cursor-grab select-none shrink-0 ${themeHeaderClasses} ${isDragging ? 'cursor-grabbing' : ''}`}
+                    className={`flex items-center justify-between px-3 py-1.5 cursor-grab select-none shrink-0 ${themeHeaderClasses} ${isDragging ? 'cursor-grabbing' : ''}`}
                 >
-                    <span className="font-semibold text-xs tracking-wide">
+                    <span className={`font-semibold text-xs tracking-wide ${isRetro ? 'font-sans font-bold text-white' : ''}`}>
                         {window.title}
                     </span>
 
-                    <div className="flex gap-1.5" onPointerDown={(e) => e.stopPropagation()}>
+                    <div className="flex gap-1" onPointerDown={(e) => e.stopPropagation()}>
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
                                 minimizeWindow(window.id);
                             }}
-                            className="w-5 h-5 rounded-md hover:bg-[var(--border)]/40 hover:text-[var(--text)] transition flex items-center justify-center text-xs text-[var(--muted)] font-bold cursor-pointer"
+                            className={isRetro 
+                              ? "w-4 h-4 rounded-none bg-[#c0c0c0] text-black font-bold flex items-center justify-center text-[9px] border-2 border-t-white border-l-white border-b-zinc-700 border-r-zinc-700 active:border-t-zinc-700 active:border-l-zinc-700 active:border-b-white active:border-r-white outline-none cursor-pointer"
+                              : "w-5 h-5 rounded-md hover:bg-[var(--border)]/40 hover:text-[var(--text)] transition flex items-center justify-center text-xs text-[var(--muted)] font-bold cursor-pointer"
+                            }
                             title="Minimize"
                         >
-                            −
+                            {isRetro ? "_" : "−"}
                         </button>
                         <button
                             onClick={(e) => {
@@ -438,17 +454,25 @@ export function Window({ window: initialWindow }: Props) {
                                     maximizeWindow(window.id);
                                 }
                             }}
-                            className="w-5 h-5 rounded-md hover:bg-[var(--border)]/40 hover:text-[var(--text)] transition flex items-center justify-center text-xs text-[var(--muted)] font-bold cursor-pointer"
+                            className={isRetro 
+                              ? "w-4 h-4 rounded-none bg-[#c0c0c0] text-black font-bold flex items-center justify-center text-[9px] border-2 border-t-white border-l-white border-b-zinc-700 border-r-zinc-700 active:border-t-zinc-700 active:border-l-zinc-700 active:border-b-white active:border-r-white outline-none cursor-pointer"
+                              : "w-5 h-5 rounded-md hover:bg-[var(--border)]/40 hover:text-[var(--text)] transition flex items-center justify-center text-xs text-[var(--muted)] font-bold cursor-pointer"
+                            }
                             title={window.isMaximized ? "Restore" : "Maximize"}
                         >
-                            {window.isMaximized ? "❐" : "□"}
+                            {isRetro ? (window.isMaximized ? "🗗" : "🗖") : (window.isMaximized ? "❐" : "□")}
                         </button>
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
                                 closeWindow(window.id);
                             }}
-                            className="w-5 h-5 rounded-md hover:bg-rose-600 hover:text-white transition flex items-center justify-center text-xs text-[var(--muted)] hover:text-zinc-100 font-bold cursor-pointer"
+                            className={isRetro 
+                              ? "w-4 h-4 rounded-none bg-[#c0c0c0] text-black font-bold flex items-center justify-center text-[9px] border-2 border-t-white border-l-white border-b-zinc-700 border-r-zinc-700 active:border-t-zinc-700 active:border-l-zinc-700 active:border-b-white active:border-r-white outline-none cursor-pointer"
+                              : osStyle === "win7-aero"
+                              ? "w-5 h-5 rounded-md hover:bg-rose-600 hover:text-white hover:shadow-[0_0_12px_rgba(244,63,94,0.9)] transition flex items-center justify-center text-xs text-white/80 font-bold cursor-pointer border border-white/20"
+                              : "w-5 h-5 rounded-md hover:bg-rose-600 hover:text-white transition flex items-center justify-center text-xs text-[var(--muted)] hover:text-zinc-100 font-bold cursor-pointer"
+                            }
                             title="Close"
                         >
                             ✕
@@ -457,7 +481,7 @@ export function Window({ window: initialWindow }: Props) {
                 </div>
             )}
 
-            <div className="flex-1 min-h-0 overflow-auto relative">
+            <div className={`flex-1 min-h-0 overflow-auto relative ${isRetro ? 'border-t-2 border-l-2 border-t-zinc-800 border-l-zinc-800 border-b-2 border-r-2 border-b-white border-r-white bg-white m-1' : ''}`}>
                 {content}
             </div>
 

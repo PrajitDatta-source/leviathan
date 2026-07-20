@@ -77,16 +77,16 @@ kbd {
 }
 
 /* Theme Presets Variables Override */
-.theme-neon-dark {
-  --background: #0a0a0c;
-  --surface: #0d0d11;
-  --border: rgba(0, 243, 255, 0.2);
-  --text: #fafafa;
-  --muted: #8e8ea8;
-  --accent: #00f3ff;
+.theme-win95-retro {
+  --background: #008080;
+  --surface: #c0c0c0;
+  --border: #808080;
+  --text: #000000;
+  --muted: #808080;
+  --accent: #000080;
 }
 
-.theme-aero-glass {
+.theme-win7-aero {
   --background: #091522;
   --surface: rgba(255, 255, 255, 0.08);
   --border: rgba(255, 255, 255, 0.2);
@@ -104,7 +104,7 @@ kbd {
   --accent: #0071e3;
 }
 
-.theme-clean-light {
+.theme-win11 {
   --background: #f4f4f5;
   --surface: #ffffff;
   --border: #e4e4e7;

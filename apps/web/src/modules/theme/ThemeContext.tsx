@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { Theme } from "./types";
 import { themePresets } from "./presets";
 import { profileManager } from "../identity/profile/manager";
-import { useThemeStore, ThemePreset } from "@/core/theme/useThemeStore";
+import { useThemeStore, OSStyle } from "@/core/theme/useThemeStore";
 
 // Synthetic web audio tone generator for zero-dependency sound packs
 export function playThemeSound(type: "startup" | "click" | "error") {
@@ -75,8 +75,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
   const [customWallpapers, setCustomWallpapers] = useState<string[]>([]);
   
-  const activePreset = useThemeStore((state) => state.theme);
-  const setPreset = useThemeStore((state) => state.setTheme);
+  const activePreset = useThemeStore((state) => state.osStyle);
+  const setPreset = useThemeStore((state) => state.setOsStyle);
 
   // Load initial theme, wallpaper and custom wallpapers from backend DB on mount
   useEffect(() => {
@@ -87,11 +87,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           const loadedTheme = prefs.theme as Theme;
           setThemeState(loadedTheme);
           // Sync with preset store
-          let nextPreset: ThemePreset = "neon-dark";
+          let nextPreset: OSStyle = "win95-retro";
           if (loadedTheme === "light" || loadedTheme === "iris-light") {
-            nextPreset = "clean-light";
+            nextPreset = "win11";
           } else if (loadedTheme === "glass" || loadedTheme === "fluent-glass") {
-            nextPreset = "aero-glass";
+            nextPreset = "win7-aero";
           } else if (loadedTheme === "retro-mac") {
             nextPreset = "macos";
           }
@@ -108,11 +108,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             if (data.theme) {
               const fetchedTheme = data.theme as Theme;
               setThemeState(fetchedTheme);
-              let nextPreset: ThemePreset = "neon-dark";
+              let nextPreset: OSStyle = "win95-retro";
               if (fetchedTheme === "light" || fetchedTheme === "iris-light") {
-                nextPreset = "clean-light";
+                nextPreset = "win11";
               } else if (fetchedTheme === "glass" || fetchedTheme === "fluent-glass") {
-                nextPreset = "aero-glass";
+                nextPreset = "win7-aero";
               } else if (fetchedTheme === "retro-mac") {
                 nextPreset = "macos";
               }
@@ -159,11 +159,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     profileManager.updatePreferences({ theme: prefTheme });
     
     // Map legacy themes to new presets
-    let nextPreset: ThemePreset = "neon-dark";
+    let nextPreset: OSStyle = "win95-retro";
     if (newTheme === "light" || newTheme === "iris-light") {
-      nextPreset = "clean-light";
+      nextPreset = "win11";
     } else if (newTheme === "glass" || newTheme === "fluent-glass") {
-      nextPreset = "aero-glass";
+      nextPreset = "win7-aero";
     } else if (newTheme === "retro-mac") {
       nextPreset = "macos";
     }
@@ -220,15 +220,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     
     // Resolve color variables based on the active preset
     let colors = {
-      background: "#0a0a0c",
-      foreground: "#fafafa",
-      secondary: "#8e8ea8",
-      accent: "#00f3ff",
-      border: "rgba(0, 243, 255, 0.2)",
-      card: "#0d0d11",
+      background: "#008080",
+      foreground: "#000000",
+      secondary: "#808080",
+      accent: "#000080",
+      border: "#808080",
+      card: "#c0c0c0",
     };
 
-    if (activePreset === "aero-glass") {
+    if (activePreset === "win7-aero") {
       colors = {
         background: "#091522",
         foreground: "#ffffff",
@@ -246,7 +246,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         border: "#323236",
         card: "#1e1e1f",
       };
-    } else if (activePreset === "clean-light") {
+    } else if (activePreset === "win11") {
       colors = {
         background: "#f4f4f5",
         foreground: "#09090b",
@@ -255,6 +255,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         border: "#e4e4e7",
         card: "#ffffff",
       };
+    } else if (activePreset === "win95-retro") {
+      colors = {
+        background: "#008080",
+        foreground: "#000000",
+        secondary: "#808080",
+        accent: "#000080",
+        border: "#808080",
+        card: "#c0c0c0",
+      };
     }
 
     // Determine the active wallpaper to apply
@@ -262,14 +271,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     let resolvedWallpaper = wallpaper;
 
     if (!isCustomWallpaper) {
-      if (activePreset === "aero-glass") {
+      if (activePreset === "win7-aero") {
         resolvedWallpaper = "radial-gradient(circle at 80% 20%, #3b82f6 0%, #1d4ed8 50%, #1e3a8a 100%)";
       } else if (activePreset === "macos") {
         resolvedWallpaper = "linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)";
-      } else if (activePreset === "clean-light") {
+      } else if (activePreset === "win11") {
         resolvedWallpaper = "linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%)";
+      } else if (activePreset === "win95-retro") {
+        resolvedWallpaper = "#008080";
       } else {
-        resolvedWallpaper = "linear-gradient(135deg, #09090b 0%, #020205 100%)";
+        resolvedWallpaper = "#008080";
       }
     }
 
@@ -290,7 +301,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.setAttribute("data-theme", activePreset);
     
     // Add glass helper classes if theme is glass
-    if (activePreset === "aero-glass") {
+    if (activePreset === "win7-aero") {
       root.classList.add("theme-glass");
     } else {
       root.classList.remove("theme-glass");

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Folder, FileText, Terminal, Settings, Trash2, Sun, MessageSquare, Mail } from "lucide-react";
 import { useWindowStore, useWorkspaceStore, openWindow } from "@/core/window/manager";
 import { appRegistry } from "@/core/app";
-import { AppIcon } from "@/modules/icons/IconThemeContext";
+import { AppIcon } from "@/components/icons/AppIcon";
 import { Z_INDEX } from "@/core/window/zIndex";
 
 interface DesktopIcon {

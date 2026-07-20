@@ -5,7 +5,7 @@ import { useTheme } from "@/modules/theme/ThemeContext";
 import { Theme } from "@/modules/theme/types";
 import { Plus, Trash2, Keyboard, RotateCcw, Edit2 } from "lucide-react";
 import { useIconTheme, type IconTheme } from "@/modules/icons/IconThemeContext";
-import { useThemeStore, ThemePreset } from "@/core/theme/useThemeStore";
+import { useThemeStore, OSStyle, ColorMode } from "@/modules/theme/useThemeStore";
 import {
   SHORTCUT_DEFS,
   loadShortcutsConfig,
@@ -58,8 +58,7 @@ export function SettingsWindow() {
   } = useTheme();
   const { iconTheme, setIconTheme } = useIconTheme();
   const [activeTab, setActiveTab] = useState<Tab>("appearance");
-  const activeThemePreset = useThemeStore((state) => state.theme);
-  const setThemePreset = useThemeStore((state) => state.setTheme);
+  const { osStyle, setOsStyle, colorMode, setColorMode } = useThemeStore();
   
   const [shortcutsConfig, setShortcutsConfig] = useState(() => loadShortcutsConfig());
   const [recordingId, setRecordingId] = useState<string | null>(null);
@@ -204,35 +203,69 @@ export function SettingsWindow() {
       {/* Content pane */}
       <div className="flex-1 p-6 overflow-y-auto bg-[var(--background)]">
         {activeTab === "appearance" && (
-          <div>
-            <h3 className="text-lg font-medium mb-1">Appearance & Themes</h3>
-            <p className="text-xs text-[var(--muted)] mb-6">
-              Customize the system coloring of Iris windows, control borders, and visual effects.
-            </p>
+          <div className="space-y-8">
+            {/* 1. OS Layout & Style Section */}
+            <div>
+              <h3 className="text-lg font-medium mb-1">OS Layout & Window Manager</h3>
+              <p className="text-xs text-[var(--muted)] mb-4">
+                Select your operating system desktop layout, taskbar behavior, and window frame decorators.
+              </p>
 
-            <div className="grid grid-cols-2 gap-4">
-              {([
-                { id: "neon-dark", label: "Neon Dark", desc: "Refined dark cyber theme with glowing borders and deep dark workspaces" },
-                { id: "aero-glass", label: "Aero Glass (Win7/11 Hybrid)", desc: "Translucent frosted glass window frames with realistic ice-blue glowing shadows" },
-                { id: "macos", label: "macOS Big Sur", desc: "Sleek grey titlebars, traffic-light controls on left, and rounded layouts" },
-                { id: "clean-light", label: "Clean Light", desc: "Crisp, high-contrast daylight theme for optimal productivity and readability" },
-              ] as { id: ThemePreset; label: string; desc: string }[]).map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setThemePreset(t.id)}
-                  className={`relative p-4 rounded-xl border text-left transition cursor-pointer ${
-                    activeThemePreset === t.id
-                      ? "border-[var(--accent)] bg-[var(--accent)]/10"
-                      : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border)]/80"
-                  }`}
-                >
-                  <div className="font-semibold text-sm">{t.label}</div>
-                  <div className="text-xs text-[var(--muted)] mt-1">{t.desc}</div>
-                  {activeThemePreset === t.id && (
-                    <div className="absolute right-3 top-3 w-2.5 h-2.5 rounded-full bg-[var(--accent)]" />
-                  )}
-                </button>
-              ))}
+              <div className="grid grid-cols-2 gap-4">
+                {([
+                  { id: "win11", label: "Windows 11 Modern", desc: "Clean translucent layout with strictly centered start menu, centered app dock and high-contrast system tray" },
+                  { id: "win7-aero", label: "Windows 7 Aero Glass", desc: "Glossy transparent layout with blue highlights, left-aligned circular Start orb and app tabs" },
+                  { id: "win95-retro", label: "Windows 95 Retro", desc: "Solid classic grey taskbar with raised 3D Start button, sharp 3D beveled windows, and classic pixel styling" },
+                  { id: "macos", label: "macOS Big Sur", desc: "Sleek top menu bar, centered floating bottom Dock, graphite windows with traffic light buttons" },
+                ] as { id: OSStyle; label: string; desc: string }[]).map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setOsStyle(t.id)}
+                    className={`relative p-4 rounded-xl border text-left transition cursor-pointer ${
+                      osStyle === t.id
+                        ? "border-violet-500 bg-violet-500/10 shadow-md"
+                        : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border)]/80"
+                    }`}
+                  >
+                    <div className="font-semibold text-sm">{t.label}</div>
+                    <div className="text-xs text-[var(--muted)] mt-1">{t.desc}</div>
+                    {osStyle === t.id && (
+                      <div className="absolute right-3 top-3 w-2.5 h-2.5 rounded-full bg-violet-500" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 2. Color Mode (Palette) Section */}
+            <div>
+              <h3 className="text-lg font-medium mb-1">Color Mode (Palette)</h3>
+              <p className="text-xs text-[var(--muted)] mb-4">
+                Decoupled theme color scheme. Switch between dark cyber theme and light mode.
+              </p>
+
+              <div className="grid grid-cols-2 gap-4 max-w-lg">
+                {([
+                  { id: "dark", label: "Dark Mode", desc: "Deep dark background with high-contrast glowing elements" },
+                  { id: "light", label: "Light Mode", desc: "Clean bright backdrop with high readability text" },
+                ] as { id: ColorMode; label: string; desc: string }[]).map((mode) => (
+                  <button
+                    key={mode.id}
+                    onClick={() => setColorMode(mode.id)}
+                    className={`relative p-4 rounded-xl border text-left transition cursor-pointer ${
+                      colorMode === mode.id
+                        ? "border-violet-500 bg-violet-500/10 shadow-md"
+                        : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border)]/80"
+                    }`}
+                  >
+                    <div className="font-semibold text-sm">{mode.label}</div>
+                    <div className="text-xs text-[var(--muted)] mt-1">{mode.desc}</div>
+                    {colorMode === mode.id && (
+                      <div className="absolute right-3 top-3 w-2.5 h-2.5 rounded-full bg-violet-500" />
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
