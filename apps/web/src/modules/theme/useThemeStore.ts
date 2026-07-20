@@ -18,7 +18,7 @@ export const useThemeStore = create<ThemeState>()(
     (set) => ({
       osStyle: 'win11',
       colorMode: 'dark',
-      wallpaper: '#0a0a0c', // Default cyber dark background
+      wallpaper: '', // Empty string triggers OS-default wallpaper fallbacks in AppShell
       setOsStyle: (osStyle) => set({ osStyle }),
       setColorMode: (colorMode) => set({ colorMode }),
       setWallpaper: (wallpaper) => set({ wallpaper }),

@@ -5,24 +5,24 @@
       "name": "Documents",
       "type": "folder",
       "parentId": null,
-      "createdAt": "2026-07-19T12:12:51.620Z",
-      "updatedAt": "2026-07-19T12:12:51.620Z"
+      "createdAt": "2026-07-20T11:44:28.141Z",
+      "updatedAt": "2026-07-20T11:44:28.141Z"
     },
     {
       "id": "downloads_folder",
       "name": "Downloads",
       "type": "folder",
       "parentId": null,
-      "createdAt": "2026-07-19T12:12:51.620Z",
-      "updatedAt": "2026-07-19T12:12:51.620Z"
+      "createdAt": "2026-07-20T11:44:28.141Z",
+      "updatedAt": "2026-07-20T11:44:28.141Z"
     },
     {
       "id": "notes_folder",
       "name": "Notes",
       "type": "folder",
       "parentId": null,
-      "createdAt": "2026-07-19T12:12:51.620Z",
-      "updatedAt": "2026-07-19T12:12:51.620Z"
+      "createdAt": "2026-07-20T11:44:28.141Z",
+      "updatedAt": "2026-07-20T11:44:28.141Z"
     },
     {
       "id": "welcome_file",
@@ -30,8 +30,8 @@
       "type": "file",
       "parentId": null,
       "content": "# Welcome to Iris OS! 👋\n\nThis is a browser-based personal operating system designed to manage your digital workspace.\n\n### Core Features in Alpha:\n- **File Explorer**: Browse folders, upload/download, create files.\n- **Notes App**: Markdown editor with auto-save and tag indexing.\n- **Terminal**: Run system commands (`ls`, `cd`, `cat`, `neofetch`).\n- **Command Palette** (`Super + D` / `Alt + D`): Run calculation operations, toggle themes, and find files.\n\nEnjoy customizing your new desktop environment!",
-      "createdAt": "2026-07-19T12:12:51.620Z",
-      "updatedAt": "2026-07-19T12:12:51.620Z"
+      "createdAt": "2026-07-20T11:44:28.141Z",
+      "updatedAt": "2026-07-20T11:44:28.141Z"
     },
     {
       "id": "project_plan_file",
@@ -39,30 +39,13 @@
       "type": "file",
       "parentId": "notes_folder",
       "content": "# Project Plan: Phase 2 Goals\n\n- [x] Snapping layouts & snapping preview\n- [x] Custom context menu\n- [x] Mobile full-screen constraints\n- [ ] Expand desktop wallpaper settings\n- [ ] Configure full virtual workspace switching",
-      "createdAt": "2026-07-19T12:12:51.620Z",
-      "updatedAt": "2026-07-19T12:12:51.620Z"
-    },
-    {
-      "id": "694ae7e4-7034-4326-9629-9a3e4aa92ea7",
-      "name": "iris",
-      "type": "folder",
-      "parentId": null,
-      "createdAt": "2026-07-19T12:24:53.175Z",
-      "updatedAt": "2026-07-19T12:24:53.175Z"
-    },
-    {
-      "id": "05b7fe57-fb79-411e-b5e3-e322c5c86eee",
-      "name": "iris",
-      "type": "file",
-      "parentId": null,
-      "content": "",
-      "createdAt": "2026-07-19T12:44:48.997Z",
-      "updatedAt": "2026-07-19T12:44:48.997Z"
+      "createdAt": "2026-07-20T11:44:28.141Z",
+      "updatedAt": "2026-07-20T11:44:28.141Z"
     }
   ],
   "preferences": {
-    "theme": "glass",
-    "wallpaper": "linear-gradient(135deg, #1e1b4b 0%, #030712 100%)",
+    "theme": "dark",
+    "wallpaper": "linear-gradient(135deg, #09090b 0%, #020205 100%)",
     "notifications": true,
     "autoSync": true,
     "customWallpapers": []
