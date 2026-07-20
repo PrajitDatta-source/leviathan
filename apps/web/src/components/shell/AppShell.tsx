@@ -8,6 +8,7 @@ import { Desktop } from "@/components/window/Desktop";
 import { CommandPalette } from "@/components/command/CommandPalette";
 import { ContextMenu } from "./ContextMenu";
 import { bootstrap } from "@/core/bootstrap";
+import { saveWallpaperToDb } from "@/modules/wallpaper/wallpaperDb";
 import { 
   WindowManagerProvider, 
   useWindowStore, 
@@ -264,7 +265,17 @@ export function AppShell() {
 
   // Dynamic fallback wallpapers if custom wallpaper is not set
   const getWallpaperStyle = () => {
-    if (wallpaper) return { background: `url(${wallpaper}) center/cover no-repeat` };
+    if (wallpaper) {
+      if (
+        wallpaper.startsWith("data:") || 
+        wallpaper.startsWith("blob:") || 
+        wallpaper.startsWith("http:") || 
+        wallpaper.startsWith("https:")
+      ) {
+        return { background: `url(${wallpaper}) center/cover no-repeat` };
+      }
+      return { background: wallpaper };
+    }
     if (osStyle === "win95-retro") return { background: "#008080" }; // Classic Teal
     if (osStyle === "macos") return { background: "linear-gradient(135deg, #4f3961 0%, #1d2671 100%)" };
     if (osStyle === "win7-aero") return { background: "radial-gradient(circle at center, #0052d4 0%, #4364f7 50%, #6fb1fc 100%)" };
@@ -304,8 +315,14 @@ export function AppShell() {
     const file = e.dataTransfer.files?.[0];
     if (file && file.type.startsWith("image/")) {
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         const dataUri = event.target?.result as string;
+        await saveWallpaperToDb({
+          id: `wp_${Date.now()}`,
+          name: file.name,
+          dataUrl: dataUri,
+          createdAt: Date.now(),
+        });
         useThemeStore.getState().setWallpaper(dataUri);
       };
       reader.readAsDataURL(file);

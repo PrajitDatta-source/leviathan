@@ -2,10 +2,14 @@
 
 import React, { useState, useEffect } from "react";
 import { useTheme } from "@/modules/theme/ThemeContext";
-import { Theme } from "@/modules/theme/types";
 import { Plus, Trash2, Keyboard, RotateCcw, Edit2 } from "lucide-react";
-import { useIconTheme, type IconTheme } from "@/modules/icons/IconThemeContext";
 import { useThemeStore, OSStyle, ColorMode } from "@/modules/theme/useThemeStore";
+import {
+  saveWallpaperToDb,
+  getAllWallpapersFromDb,
+  deleteWallpaperFromDb,
+  CustomWallpaperItem,
+} from "@/modules/wallpaper/wallpaperDb";
 import {
   SHORTCUT_DEFS,
   loadShortcutsConfig,
@@ -13,7 +17,6 @@ import {
   getShortcutCombination,
   formatKeyCombo,
   GlobalModifier,
-  KeyCombination,
 } from "@/core/window/shortcuts";
 
 type Tab = "appearance" | "wallpaper" | "accounts" | "api" | "system" | "shortcuts";
@@ -47,21 +50,22 @@ const WALLPAPER_PRESETS = [
 ];
 
 export function SettingsWindow() {
-  const { 
-    theme, 
-    setTheme, 
-    wallpaper, 
-    setWallpaper, 
-    customWallpapers, 
-    addCustomWallpaper, 
-    deleteCustomWallpaper 
-  } = useTheme();
-  const { iconTheme, setIconTheme } = useIconTheme();
+  const { wallpaper, setWallpaper } = useTheme();
   const [activeTab, setActiveTab] = useState<Tab>("appearance");
-  const { osStyle, setOsStyle, colorMode, setColorMode } = useThemeStore();
+  const { osStyle, setOsStyle, colorMode, setColorMode, setWallpaper: setStoreWallpaper, wallpaper: currentStoreWallpaper } = useThemeStore();
   
+  const [dbWallpapers, setDbWallpapers] = useState<CustomWallpaperItem[]>([]);
   const [shortcutsConfig, setShortcutsConfig] = useState(() => loadShortcutsConfig());
   const [recordingId, setRecordingId] = useState<string | null>(null);
+
+  const loadDbWallpapers = async () => {
+    const list = await getAllWallpapersFromDb();
+    setDbWallpapers(list);
+  };
+
+  useEffect(() => {
+    loadDbWallpapers();
+  }, []);
 
   useEffect(() => {
     if (!recordingId) return;
@@ -117,13 +121,24 @@ export function SettingsWindow() {
     const file = e.target.files?.[0];
     if (file && file.type.startsWith("image/")) {
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         const dataUri = event.target?.result as string;
-        addCustomWallpaper(dataUri);
+        const item: CustomWallpaperItem = {
+          id: `wp_${Date.now()}`,
+          name: file.name,
+          dataUrl: dataUri,
+          createdAt: Date.now(),
+        };
+        await saveWallpaperToDb(item);
+        setWallpaper(dataUri);
+        setStoreWallpaper(dataUri);
+        loadDbWallpapers();
       };
       reader.readAsDataURL(file);
     }
   };
+
+  const activeWallpaper = currentStoreWallpaper || wallpaper;
 
   return (
     <div className="flex h-full text-[var(--text)] select-none">
@@ -145,7 +160,10 @@ export function SettingsWindow() {
         </button>
 
         <button
-          onClick={() => setActiveTab("wallpaper")}
+          onClick={() => {
+            setActiveTab("wallpaper");
+            loadDbWallpapers();
+          }}
           className={`w-full text-left px-3 py-2 rounded-lg transition text-sm ${
             activeTab === "wallpaper"
               ? "bg-[var(--border)] font-medium"
@@ -274,7 +292,7 @@ export function SettingsWindow() {
           <div>
             <h3 className="text-lg font-medium mb-1">Desktop Wallpaper</h3>
             <p className="text-xs text-[var(--muted)] mb-4">
-              Choose a color gradient or upload custom image files to personalize your workspace.
+              Choose a color gradient or upload custom image files stored in IndexedDB.
             </p>
 
             {/* Upload Input */}
@@ -286,24 +304,27 @@ export function SettingsWindow() {
               onChange={handleCustomWallpaperUpload}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 mb-6">
               {/* Upload Image trigger */}
               <label
                 htmlFor="wallpaper-upload-btn"
                 className="border border-[var(--border)] border-dashed hover:border-violet-500 rounded-xl h-[100px] flex flex-col items-center justify-center cursor-pointer transition text-xs text-[var(--muted)] hover:text-violet-400 gap-1.5 bg-[var(--surface)]/30"
               >
                 <Plus className="w-5 h-5 text-violet-400" />
-                <span>Upload Image File</span>
+                <span>Upload Custom Image</span>
               </label>
 
               {/* Preset Wallpapers */}
               {WALLPAPER_PRESETS.map((wp) => {
-                const isActive = wallpaper === wp.value;
+                const isActive = activeWallpaper === wp.value;
                 return (
                   <button
                     key={wp.name}
-                    onClick={() => setWallpaper(wp.value)}
-                    className={`group relative overflow-hidden rounded-xl border text-left transition flex flex-col h-[100px] ${
+                    onClick={() => {
+                      setWallpaper(wp.value);
+                      setStoreWallpaper(wp.value);
+                    }}
+                    className={`group relative overflow-hidden rounded-xl border text-left transition flex flex-col h-[100px] cursor-pointer ${
                       isActive
                         ? "border-violet-500 shadow-lg"
                         : "border-[var(--border)] hover:border-[var(--border)]/80"
@@ -326,46 +347,61 @@ export function SettingsWindow() {
                   </button>
                 );
               })}
-
-              {/* Custom Uploaded Wallpapers */}
-              {customWallpapers.map((wp, index) => {
-                const isActive = wallpaper === wp;
-                return (
-                  <div
-                    key={index}
-                    onClick={() => setWallpaper(wp)}
-                    className={`group relative overflow-hidden rounded-xl border text-left transition flex flex-col h-[100px] cursor-pointer ${
-                      isActive
-                        ? "border-violet-500 shadow-lg"
-                        : "border-[var(--border)] hover:border-[var(--border)]/80"
-                    }`}
-                  >
-                    {/* Delete wallpaper button */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteCustomWallpaper(wp);
-                      }}
-                      className="absolute right-2 top-2 p-1.5 rounded-lg bg-black/60 hover:bg-rose-600 text-white transition-colors duration-150 z-10"
-                      title="Delete custom wallpaper"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-
-                    <div
-                      className="w-full flex-1 bg-center bg-cover bg-no-repeat"
-                      style={{ backgroundImage: `url(${wp})` }}
-                    />
-                    <div className="w-full bg-[var(--surface)] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide border-t border-[var(--border)] flex justify-between items-center">
-                      <span className="truncate">Custom {index + 1}</span>
-                      {isActive && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
             </div>
+
+            {/* Custom Uploaded Gallery Section (IndexedDB) */}
+            {dbWallpapers.length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider mb-3">
+                  My Uploads (IndexedDB Gallery)
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  {dbWallpapers.map((wp) => {
+                    const isActive = activeWallpaper === wp.dataUrl;
+                    return (
+                      <div
+                        key={wp.id}
+                        onClick={() => {
+                          setWallpaper(wp.dataUrl);
+                          setStoreWallpaper(wp.dataUrl);
+                        }}
+                        className={`group relative overflow-hidden rounded-xl border text-left transition flex flex-col h-[100px] cursor-pointer ${
+                          isActive
+                            ? "border-violet-500 shadow-lg"
+                            : "border-[var(--border)] hover:border-[var(--border)]/80"
+                        }`}
+                      >
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            await deleteWallpaperFromDb(wp.id);
+                            loadDbWallpapers();
+                            if (activeWallpaper === wp.dataUrl) {
+                              setWallpaper("");
+                              setStoreWallpaper("");
+                            }
+                          }}
+                          className="absolute right-2 top-2 p-1.5 rounded-lg bg-black/60 hover:bg-rose-600 text-white transition-colors duration-150 z-10"
+                          title="Delete custom wallpaper"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                        <div
+                          className="w-full flex-1 bg-center bg-cover bg-no-repeat"
+                          style={{ backgroundImage: `url(${wp.dataUrl})` }}
+                        />
+                        <div className="w-full bg-[var(--surface)] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide border-t border-[var(--border)] flex justify-between items-center">
+                          <span className="truncate">{wp.name || "Custom Upload"}</span>
+                          {isActive && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -567,7 +603,7 @@ export function SettingsWindow() {
                   </h4>
                   <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] divide-y divide-[var(--border)] overflow-hidden">
                     {SHORTCUT_DEFS.filter(d => d.category === category).map((def) => {
-                      const combo = getShortcutCombination(def.id, shortcutsConfig);
+                      const combo = formatKeyCombo(getShortcutCombination(def.id, shortcutsConfig));
                       const isCustom = !!shortcutsConfig.customBinds[def.id];
                       return (
                         <div key={def.id} className="flex justify-between items-center p-3 text-xs">
@@ -577,7 +613,7 @@ export function SettingsWindow() {
                           </div>
                           <div className="flex items-center gap-3">
                             <span className="font-mono bg-[var(--background)] px-2 py-1 border border-[var(--border)] rounded text-[var(--text)] text-[11px] font-medium shadow-sm">
-                              {formatKeyCombo(combo)}
+                              {combo}
                             </span>
                             <div className="flex gap-1">
                               <button
