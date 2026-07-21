@@ -1,5 +1,10 @@
 import { AppShell } from "@/components/shell/AppShell";
+import LockScreen from "@/core/components/LockScreen";
 
 export default function Home() {
-  return <AppShell />;
+  return (
+    <LockScreen>
+      <AppShell />
+    </LockScreen>
+  );
 }

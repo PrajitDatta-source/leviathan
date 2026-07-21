@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useTheme } from "@/modules/theme/ThemeContext";
-import { Plus, Trash2, Keyboard, RotateCcw, Edit2, Check } from "lucide-react";
+import { Plus, Trash2, Keyboard, RotateCcw, Edit2, Check, Lock } from "lucide-react";
 import { useThemeStore, OSStyle } from "@/modules/theme/useThemeStore";
 import { themePresets } from "@/modules/theme/presets";
 import { Theme } from "@/modules/theme/types";
@@ -22,7 +22,7 @@ import {
   GlobalModifier,
 } from "@/core/window/shortcuts";
 
-type Tab = "appearance" | "wallpaper" | "accounts" | "api" | "system" | "shortcuts";
+type Tab = "appearance" | "wallpaper" | "accounts" | "api" | "system" | "shortcuts" | "security";
 
 const WALLPAPER_PRESETS = [
   {
@@ -61,6 +61,8 @@ export function SettingsWindow() {
   const [dbWallpapers, setDbWallpapers] = useState<CustomWallpaperItem[]>([]);
   const [shortcutsConfig, setShortcutsConfig] = useState(() => loadShortcutsConfig());
   const [recordingId, setRecordingId] = useState<string | null>(null);
+  const [newPasscode, setNewPasscode] = useState("");
+  const [passcodeSuccess, setPasscodeSuccess] = useState(false);
   const [systemInfo, setSystemInfo] = useState<{
     environment: string;
     storage: { adapter: string; persistent: boolean; note: string };
@@ -231,6 +233,17 @@ export function SettingsWindow() {
           }`}
         >
           Keyboard Shortcuts
+        </button>
+
+        <button
+          onClick={() => setActiveTab("security")}
+          className={`w-full text-left px-3 py-2 rounded-lg transition text-sm ${
+            activeTab === "security"
+              ? "bg-[var(--border)] font-medium"
+              : "hover:bg-[var(--border)]/40 text-[var(--muted)] hover:text-[var(--text)]"
+          }`}
+        >
+          Security & Privacy
         </button>
       </div>
 
@@ -749,6 +762,76 @@ export function SettingsWindow() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === "security" && (
+          <div>
+            <h3 className="text-lg font-medium mb-1">Security & Master Passcode</h3>
+            <p className="text-xs text-[var(--muted)] mb-6">
+              Configure your Master Passcode and lock settings for the Iris OS Privacy Barrier.
+            </p>
+
+            <div className="space-y-6 max-w-md">
+              <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-600/20 text-blue-400">
+                    <Lock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold text-zinc-100">Master Passcode</h4>
+                    <p className="text-xs text-[var(--muted)]">Default passcode is <code className="font-mono text-blue-400">@@#:</code></p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-[var(--muted)]">New Passcode</label>
+                  <input
+                    type="password"
+                    value={newPasscode}
+                    onChange={(e) => setNewPasscode(e.target.value)}
+                    placeholder="Enter new passcode..."
+                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-zinc-200 outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                {passcodeSuccess && (
+                  <div className="text-xs text-emerald-400 font-medium flex items-center gap-1.5">
+                    <Check className="w-4 h-4" /> Passcode updated successfully!
+                  </div>
+                )}
+
+                <button
+                  onClick={() => {
+                    if (newPasscode.trim()) {
+                      localStorage.setItem("iris_master_pin", newPasscode.trim());
+                      setPasscodeSuccess(true);
+                      setNewPasscode("");
+                      setTimeout(() => setPasscodeSuccess(false), 3000);
+                    }
+                  }}
+                  className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs rounded-lg transition"
+                >
+                  Save Master Passcode
+                </button>
+              </div>
+
+              <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] space-y-3">
+                <h4 className="text-sm font-semibold text-zinc-100">Lock OS Session</h4>
+                <p className="text-xs text-[var(--muted)]">
+                  Immediately lock the system session. You will be prompted for your Master Passcode to return to desktop.
+                </p>
+                <button
+                  onClick={() => {
+                    sessionStorage.removeItem("iris_unlocked");
+                    window.location.reload();
+                  }}
+                  className="px-4 py-2 bg-rose-600/80 hover:bg-rose-600 text-white font-medium text-xs rounded-lg transition"
+                >
+                  Lock Desktop Now
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
