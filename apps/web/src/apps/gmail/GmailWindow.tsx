@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface EmailItem {
   id: string;
@@ -47,6 +47,9 @@ const IGNORED_LABELS = [
   'UNREAD',
 ];
 
+// 5 Minutes in Milliseconds for our TTL Cache
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
 export function GmailWindow() {
   const [emails, setEmails] = useState<EmailItem[]>([]);
   const [mailboxes, setMailboxes] = useState<LabelItem[]>([]);
@@ -57,6 +60,9 @@ export function GmailWindow() {
   const [loading, setLoading] = useState<boolean>(false);
   const [unreadInboxCount, setUnreadInboxCount] = useState<number>(0);
 
+  // MEMORY BANK: Stores fetched folder emails to prevent API spam
+  const cacheRef = useRef<Record<string, { timestamp: number; items: EmailItem[] }>>({});
+
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('gmail_code');
@@ -66,14 +72,14 @@ export function GmailWindow() {
       handleTokenExchange(code);
     } else if (existingToken) {
       setIsConnected(true);
-      initializeMailClient(existingToken, 'INBOX');
+      initializeMailClient(existingToken, 'INBOX', false);
     }
   }, []);
 
-  // Wipes tokens and drops user back to auth screen
   const handleDisconnect = () => {
     localStorage.removeItem('iris_gmail_token');
     localStorage.removeItem('iris_gmail_refresh_token');
+    cacheRef.current = {}; // Wipe cache on logout
     setIsConnected(false);
     setEmails([]);
     setMailboxes([]);
@@ -143,7 +149,7 @@ export function GmailWindow() {
         }
         window.history.replaceState({}, document.title, window.location.pathname);
         setIsConnected(true);
-        initializeMailClient(data.access_token, 'INBOX');
+        initializeMailClient(data.access_token, 'INBOX', true);
       } else {
         console.error('Token Exchange Error:', data);
         alert('Authentication failed. Please check your Client ID and Secret in Settings.');
@@ -157,11 +163,9 @@ export function GmailWindow() {
     }
   };
 
-  const initializeMailClient = async (token: string, folderId: string) => {
-    setLoading(true);
+  const initializeMailClient = async (token: string, folderId: string, forceRefresh = false) => {
     await fetchLabelsAndActivity(token);
-    await fetchMessages(token, folderId);
-    setLoading(false);
+    await fetchMessages(token, folderId, forceRefresh);
   };
 
   const getMinimalRelativeTime = (timestampMs?: number) => {
@@ -289,9 +293,22 @@ export function GmailWindow() {
     return { primary, relative };
   };
 
-  const fetchMessages = async (token: string, folderId: string) => {
-    setLoading(true);
+  // TTL CACHED FETCH ENGINE
+  const fetchMessages = async (token: string, folderId: string, forceRefresh = false) => {
     setActiveFolder(folderId);
+
+    // 1. Check TTL Cache: If valid and not force-refreshing, render instantly!
+    if (!forceRefresh && cacheRef.current[folderId]) {
+      const cached = cacheRef.current[folderId];
+      if (Date.now() - cached.timestamp < CACHE_TTL_MS) {
+        setEmails(cached.items);
+        setLoading(false);
+        return; // Zero API calls made!
+      }
+    }
+
+    // 2. Cache Miss or Expired: Fetch fresh from Google
+    setLoading(true);
     try {
       const listRes = await fetch(
         `https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=${folderId}&maxResults=25`,
@@ -301,7 +318,7 @@ export function GmailWindow() {
       if (listRes.status === 401 || listRes.status === 403) {
         const newToken = await refreshAccessToken();
         if (newToken) {
-          return fetchMessages(newToken, folderId);
+          return fetchMessages(newToken, folderId, forceRefresh);
         } else {
           handleDisconnect();
           return;
@@ -312,6 +329,7 @@ export function GmailWindow() {
 
       if (!listData.messages) {
         setEmails([]);
+        cacheRef.current[folderId] = { timestamp: Date.now(), items: [] };
         setLoading(false);
         return;
       }
@@ -360,6 +378,13 @@ export function GmailWindow() {
       );
 
       detailedMessages.sort((a, b) => b.internalDate - a.internalDate);
+      
+      // 3. Save sorted items into Memory Bank
+      cacheRef.current[folderId] = {
+        timestamp: Date.now(),
+        items: detailedMessages,
+      };
+
       setEmails(detailedMessages);
     } catch (err) {
       console.error('Failed to fetch messages:', err);
@@ -416,7 +441,8 @@ export function GmailWindow() {
                 key={folder.id}
                 onClick={() => {
                   const token = localStorage.getItem('iris_gmail_token');
-                  if (token) fetchMessages(token, folder.id);
+                  // Normal navigation uses cache (forceRefresh = false)
+                  if (token) fetchMessages(token, folder.id, false);
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all ${
                   activeFolder === folder.id
@@ -457,7 +483,7 @@ export function GmailWindow() {
                   key={lbl.id}
                   onClick={() => {
                     const token = localStorage.getItem('iris_gmail_token');
-                    if (token) fetchMessages(token, lbl.id);
+                    if (token) fetchMessages(token, lbl.id, false);
                   }}
                   className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition-all ${
                     activeFolder === lbl.id
@@ -500,7 +526,7 @@ export function GmailWindow() {
             <div className="flex items-center justify-between px-2 py-1 bg-slate-950/60 rounded-xl border border-slate-800/60 text-xs">
               <button
                 onClick={handleDisconnect}
-                className="text-slate-500 hover:text-red-400 font-mono text-[11px] transition-colors"
+                className="text-slate-500 hover:text-slate-200 font-mono text-[11px] transition-colors"
                 title="Disconnect & clear saved tokens"
               >
                 ✕ Disconnect
@@ -508,10 +534,11 @@ export function GmailWindow() {
               <button
                 onClick={() => {
                   const token = localStorage.getItem('iris_gmail_token');
-                  if (token) initializeMailClient(token, activeFolder);
+                  // Force sync ignores TTL cache and pulls fresh stream from Google
+                  if (token) initializeMailClient(token, activeFolder, true);
                 }}
                 className="text-slate-400 hover:text-cyan-300 font-medium text-[11px] transition-colors"
-                title="Refresh Mailbox"
+                title="Force Refresh Mailbox from Google"
               >
                 ↻ Sync
               </button>
