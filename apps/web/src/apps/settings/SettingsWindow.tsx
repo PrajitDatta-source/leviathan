@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useTheme } from "@/modules/theme/ThemeContext";
 import { Plus, Trash2, Keyboard, RotateCcw, Edit2, Check, Lock } from "lucide-react";
+import DiskUtility from "@/components/os/DiskUtility";
 import { useThemeStore, OSStyle } from "@/modules/theme/useThemeStore";
 import { themePresets } from "@/modules/theme/presets";
 import { Theme } from "@/modules/theme/types";
@@ -641,7 +642,7 @@ export function SettingsWindow() {
 
         {activeTab === "cloud-vault" && (
           <div className="space-y-6">
-            <p className="text-xs text-[var(--muted)]">Vault state is automatically encrypted and synced in real-time via Zero-Knowledge AES-256 and the system Lockscreen daemon.</p>
+            <DiskUtility />
           </div>
         )}
 

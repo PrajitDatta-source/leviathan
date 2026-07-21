@@ -119,3 +119,66 @@ export async function autoSyncToCloud(): Promise<void> {
   if (!pin) return;
   await pushStateToCloud(pin);
 }
+
+// ==========================================
+// 5. DISK UTILITY & TELEMETRY HELPERS
+// ==========================================
+
+/**
+ * Fetches raw cloud payload size and returns both ciphertext and decrypted telemetry
+ */
+export async function getVaultTelemetry(): Promise<{
+  bytes: number;
+  formattedSize: string;
+  rawData: string | null;
+  decryptedState: IrisOSState | null;
+}> {
+  const { data, error } = await supabase
+    .from('iris_vault')
+    .select('encrypted_data, updated_at')
+    .eq('vault_id', 'primary_user_vault')
+    .single();
+
+  if (error || !data?.encrypted_data) {
+    return { bytes: 0, formattedSize: '0 KB', rawData: null, decryptedState: null };
+  }
+
+  // Calculate actual UTF-8 byte size of the encrypted cloud string
+  const bytes = new Blob([data.encrypted_data]).size;
+  const kb = (bytes / 1024).toFixed(2);
+  const formattedSize = bytes > 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(2)} MB` : `${kb} KB`;
+
+  // Attempt decryption using active RAM PIN
+  let decryptedState: IrisOSState | null = null;
+  try {
+    const decryptedBytes = CryptoJS.AES.decrypt(data.encrypted_data, HARDCODED_PIN);
+    const jsonString = decryptedBytes.toString(CryptoJS.enc.Utf8);
+    if (jsonString) decryptedState = JSON.parse(jsonString);
+  } catch (e) {
+    console.error('Telemetry decryption failed:', e);
+  }
+
+  return { bytes, formattedSize, rawData: data.encrypted_data, decryptedState };
+}
+
+/**
+ * Permanently annihilates cloud database rows and clears local browser memory
+ */
+export async function nukeCloudVault(): Promise<{ success: boolean; message: string }> {
+  try {
+    const { error } = await supabase
+      .from('iris_vault')
+      .delete()
+      .eq('vault_id', 'primary_user_vault');
+
+    if (error) return { success: false, message: error.message };
+
+    // Clear local storage and wipe RAM lock
+    localStorage.clear();
+    lockVault();
+    return { success: true, message: 'Cloud vault and local caches destroyed.' };
+  } catch (err: any) {
+    return { success: false, message: err.message || 'Failed to destroy vault.' };
+  }
+}
+
