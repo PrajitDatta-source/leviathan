@@ -100,6 +100,9 @@ export function GmailWindow() {
 
       if (data.access_token) {
         localStorage.setItem('iris_gmail_token', data.access_token);
+        if (data.refresh_token) {
+          localStorage.setItem('iris_gmail_refresh_token', data.refresh_token);
+        }
         window.history.replaceState({}, document.title, window.location.pathname);
         setIsConnected(true);
         initializeMailClient(data.access_token, 'INBOX');
@@ -321,7 +324,9 @@ export function GmailWindow() {
     }
     const redirectUri = encodeURIComponent('https://irissys.vercel.app/api/auth/callback/google');
     const scope = encodeURIComponent('https://www.googleapis.com/auth/gmail.readonly');
-    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}`;
+    const accessType = 'offline';
+    const prompt = 'consent';
+    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=${accessType}&prompt=${prompt}`;
   };
 
   const getDisplayLabels = (msgLabels: string[]) => {
