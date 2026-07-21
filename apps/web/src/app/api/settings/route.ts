@@ -9,7 +9,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const preferences = await request.json();
-    writeDB({ preferences });
+    await writeDB({ preferences });
     return NextResponse.json({ success: true });
   } catch (e) {
     return NextResponse.json({ error: "Invalid preferences payload" }, { status: 400 });

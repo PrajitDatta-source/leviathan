@@ -1,5 +1,7 @@
 "use client";
 
+import { showToast } from "@/components/shell/Toast";
+
 export interface VFSNode {
   id: string;
   name: string;
@@ -26,6 +28,8 @@ class VFSManager {
     }
   }
 
+  private notifiedSyncFailure = false;
+
   async syncWithBackend() {
     try {
       const res = await fetch("/api/vfs");
@@ -39,6 +43,10 @@ class VFSManager {
       }
     } catch (e) {
       console.error("VFS backend sync failed, fallback to local cache:", e);
+      if (!this.notifiedSyncFailure) {
+        this.notifiedSyncFailure = true;
+        showToast("Can't reach the server — working from your local cache.");
+      }
     }
   }
 

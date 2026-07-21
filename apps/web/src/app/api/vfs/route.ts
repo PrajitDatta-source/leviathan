@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     if (!Array.isArray(nodes)) {
       return NextResponse.json({ error: "Nodes must be an array" }, { status: 400 });
     }
-    writeDB({ vfsNodes: nodes });
+    await writeDB({ vfsNodes: nodes });
     return NextResponse.json({ success: true });
   } catch (e) {
     return NextResponse.json({ error: "Invalid VFS sync payload" }, { status: 400 });

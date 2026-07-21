@@ -68,15 +68,31 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
+// Resolve a theme name safely, always falling back to iris-dark if the
+// stored/fetched value doesn't match a known preset (e.g. after a preset
+// was renamed or removed).
+function resolvePreset(theme: Theme) {
+  return themePresets[theme] || themePresets["iris-dark"];
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("iris-dark");
   const [wallpaper, setWallpaperState] = useState<string>(
-    "linear-gradient(135deg, #09090b 0%, #020205 100%)"
+    themePresets["iris-dark"].wallpaper
   );
   const [customWallpapers, setCustomWallpapers] = useState<string[]>([]);
   
-  const activePreset = useThemeStore((state) => state.osStyle);
   const setPreset = useThemeStore((state) => state.setOsStyle);
+  const setColorMode = useThemeStore((state) => state.setColorMode);
+
+  // Keep the lightweight shell-family store (osStyle/colorMode) in sync
+  // with whatever the active rich theme preset declares. This is the only
+  // place that maps theme -> shell so Taskbar/Window/AppIcon never disagree.
+  const syncShellFromTheme = (t: Theme) => {
+    const preset = resolvePreset(t);
+    setPreset(preset.shellStyle as OSStyle);
+    setColorMode(preset.mode);
+  };
 
   // Load initial theme, wallpaper and custom wallpapers from backend DB on mount
   useEffect(() => {
@@ -86,16 +102,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         if (prefs.theme) {
           const loadedTheme = prefs.theme as Theme;
           setThemeState(loadedTheme);
-          // Sync with preset store
-          let nextPreset: OSStyle = "win95-retro";
-          if (loadedTheme === "light" || loadedTheme === "iris-light") {
-            nextPreset = "win11";
-          } else if (loadedTheme === "glass" || loadedTheme === "fluent-glass") {
-            nextPreset = "win7-aero";
-          } else if (loadedTheme === "retro-mac") {
-            nextPreset = "macos";
-          }
-          setPreset(nextPreset);
+          syncShellFromTheme(loadedTheme);
         }
         if (prefs.wallpaper) setWallpaperState(prefs.wallpaper);
       }
@@ -108,15 +115,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             if (data.theme) {
               const fetchedTheme = data.theme as Theme;
               setThemeState(fetchedTheme);
-              let nextPreset: OSStyle = "win95-retro";
-              if (fetchedTheme === "light" || fetchedTheme === "iris-light") {
-                nextPreset = "win11";
-              } else if (fetchedTheme === "glass" || fetchedTheme === "fluent-glass") {
-                nextPreset = "win7-aero";
-              } else if (fetchedTheme === "retro-mac") {
-                nextPreset = "macos";
-              }
-              setPreset(nextPreset);
+              syncShellFromTheme(fetchedTheme);
             }
             if (data.wallpaper) setWallpaperState(data.wallpaper);
             if (data.customWallpapers) setCustomWallpapers(data.customWallpapers);
@@ -125,7 +124,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         })
         .catch((err) => console.error("Settings backend sync failed:", err));
     }
-  }, [setPreset]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const pushSettingsToBackend = async (newTheme: Theme, newWp: string, newCustomWps: string[]) => {
     try {
@@ -143,43 +143,34 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Sync theme to profileManager preferences and useThemeStore
+  // Switch the active theme. This is the single entry point that updates
+  // the rich color preset, the derived shell family, and the wallpaper.
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
 
-    // Map newTheme strictly to the type required by profileManager
-    let prefTheme: "light" | "dark" | "oled" | "custom" = "dark";
-    if (newTheme === "light" || newTheme === "iris-light") {
-      prefTheme = "light";
-    } else if (newTheme === "oled") {
-      prefTheme = "oled";
-    } else if (newTheme === "glass" || newTheme === "fluent-glass" || newTheme === "retro-mac") {
+    const preset = resolvePreset(newTheme);
+
+    // profileManager only understands a narrower legacy vocabulary; map
+    // onto it for anything that reads preferences.theme directly.
+    let prefTheme: "light" | "dark" | "oled" | "custom" = preset.mode;
+    if (newTheme === "oled") prefTheme = "oled";
+    else if (preset.glass || !["light", "dark", "iris-light", "iris-dark"].includes(newTheme)) {
       prefTheme = "custom";
     }
     profileManager.updatePreferences({ theme: prefTheme });
-    
-    // Map legacy themes to new presets
-    let nextPreset: OSStyle = "win95-retro";
-    if (newTheme === "light" || newTheme === "iris-light") {
-      nextPreset = "win11";
-    } else if (newTheme === "glass" || newTheme === "fluent-glass") {
-      nextPreset = "win7-aero";
-    } else if (newTheme === "retro-mac") {
-      nextPreset = "macos";
-    }
-    setPreset(nextPreset);
 
-    // Automatically apply theme's default wallpaper if present
-    const preset = themePresets[newTheme];
+    syncShellFromTheme(newTheme);
+
+    // Automatically apply theme's default wallpaper
     let nextWp = wallpaper;
-    if (preset && preset.wallpaper) {
+    if (preset.wallpaper) {
       nextWp = preset.wallpaper;
       setWallpaperState(preset.wallpaper);
       profileManager.updatePreferences({ wallpaper: preset.wallpaper });
     }
 
     // Play startup sound if configured in theme
-    if (preset && preset.soundPack === "synthetic") {
+    if (preset.soundPack === "synthetic") {
       playThemeSound("startup");
     }
 
@@ -205,7 +196,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     
     let nextWp = wallpaper;
     if (wallpaper === wp) {
-      nextWp = themePresets[theme]?.wallpaper || "linear-gradient(135deg, #09090b 0%, #020205 100%)";
+      nextWp = resolvePreset(theme).wallpaper;
       setWallpaperState(nextWp);
       profileManager.updatePreferences({ wallpaper: nextWp });
     }
@@ -213,78 +204,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     pushSettingsToBackend(theme, nextWp, updated);
   };
 
+  // Apply the active preset's colors, wallpaper and cursor straight to CSS
+  // custom properties. This used to be hardcoded to only 4 shell families
+  // and ignored each preset's actual `colors`/`wallpaper` — every one of
+  // the 15 themes now applies its own real palette.
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const root = document.documentElement;
-    
-    // Resolve color variables based on the active preset
-    let colors = {
-      background: "#008080",
-      foreground: "#000000",
-      secondary: "#808080",
-      accent: "#000080",
-      border: "#808080",
-      card: "#c0c0c0",
-    };
+    const preset = resolvePreset(theme);
+    const { colors } = preset;
 
-    if (activePreset === "win7-aero") {
-      colors = {
-        background: "#091522",
-        foreground: "#ffffff",
-        secondary: "#94a3b8",
-        accent: "#0ea5e9",
-        border: "rgba(255, 255, 255, 0.2)",
-        card: "rgba(255, 255, 255, 0.08)",
-      };
-    } else if (activePreset === "macos") {
-      colors = {
-        background: "#161617",
-        foreground: "#f5f5f7",
-        secondary: "#86868b",
-        accent: "#0071e3",
-        border: "#323236",
-        card: "#1e1e1f",
-      };
-    } else if (activePreset === "win11") {
-      colors = {
-        background: "#f4f4f5",
-        foreground: "#09090b",
-        secondary: "#71717a",
-        accent: "#2563eb",
-        border: "#e4e4e7",
-        card: "#ffffff",
-      };
-    } else if (activePreset === "win95-retro") {
-      colors = {
-        background: "#008080",
-        foreground: "#000000",
-        secondary: "#808080",
-        accent: "#000080",
-        border: "#808080",
-        card: "#c0c0c0",
-      };
-    }
-
-    // Determine the active wallpaper to apply
     const isCustomWallpaper = wallpaper.startsWith("data:") || customWallpapers.includes(wallpaper);
-    let resolvedWallpaper = wallpaper;
+    const resolvedWallpaper = wallpaper || preset.wallpaper;
 
-    if (!isCustomWallpaper) {
-      if (activePreset === "win7-aero") {
-        resolvedWallpaper = "radial-gradient(circle at 80% 20%, #3b82f6 0%, #1d4ed8 50%, #1e3a8a 100%)";
-      } else if (activePreset === "macos") {
-        resolvedWallpaper = "linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)";
-      } else if (activePreset === "win11") {
-        resolvedWallpaper = "linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%)";
-      } else if (activePreset === "win95-retro") {
-        resolvedWallpaper = "#008080";
-      } else {
-        resolvedWallpaper = "#008080";
-      }
-    }
-
-    // Apply color values to CSS custom variables
     root.style.setProperty("--background", colors.background);
     root.style.setProperty("--text", colors.foreground);
     root.style.setProperty("--muted", colors.secondary);
@@ -292,21 +225,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.style.setProperty("--surface", colors.card);
     root.style.setProperty("--border", colors.border);
     root.style.setProperty("--wallpaper", resolvedWallpaper);
+    // Extra variables the glass/iris themes lean on for specular sheen.
+    root.style.setProperty("--surface-muted", colors.muted);
+    root.style.setProperty("--primary", colors.primary);
 
-    // Apply custom theme cursor
-    const activeThemePresetObj = themePresets[theme] || themePresets["iris-dark"];
-    root.style.cursor = activeThemePresetObj.cursor || "default";
+    root.style.cursor = preset.cursor || "default";
+    root.setAttribute("data-theme", theme);
+    root.setAttribute("data-shell", preset.shellStyle);
+    root.setAttribute("data-mode", preset.mode);
 
-    // Set dataset theme attribute for tailwind / ad-hoc styles
-    root.setAttribute("data-theme", activePreset);
-    
-    // Add glass helper classes if theme is glass
-    if (activePreset === "win7-aero") {
+    if (preset.glass) {
       root.classList.add("theme-glass");
     } else {
       root.classList.remove("theme-glass");
     }
-  }, [activePreset, theme, wallpaper, customWallpapers]);
+
+    void isCustomWallpaper; // reserved for future custom-wallpaper-specific rules
+  }, [theme, wallpaper, customWallpapers]);
 
   // Global click listener to play click sounds
   useEffect(() => {

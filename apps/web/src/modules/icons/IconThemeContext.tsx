@@ -1,10 +1,9 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { Folder, FileText, Terminal, Settings, Trash2, Sun, MessageSquare, Mail } from "lucide-react";
+import { Folder, FileText, Terminal, Settings, Trash2, Sun, MessageSquare, Mail, LayoutDashboard } from "lucide-react";
 import { useTheme } from "@/modules/theme/ThemeContext";
 import { themePresets } from "@/modules/theme/presets";
-import { useThemeStore } from "@/core/theme/useThemeStore";
 
 export interface IconPack {
   id: string;
@@ -14,7 +13,46 @@ export interface IconPack {
 
 export const iconPackRegistry = new Map<string, IconPack>();
 
-export type IconTheme = "windows11" | "windows7" | "kde" | "macos" | "papirus";
+export type IconTheme = "windows11" | "windows7" | "kde" | "macos" | "papirus" | "iris";
+
+// Shared appId -> icon component lookup, reused by every pack below so
+// adding a new app (e.g. "dashboard") only needs one line, not five.
+function iconFor(appId: string, sClass: string) {
+  switch (appId) {
+    case "explorer":
+      return <Folder className={sClass} />;
+    case "notes":
+      return <FileText className={sClass} />;
+    case "terminal":
+      return <Terminal className={sClass} />;
+    case "settings":
+      return <Settings className={sClass} />;
+    case "weather":
+      return <Sun className={sClass} />;
+    case "telegram":
+      return <MessageSquare className={sClass} />;
+    case "gmail":
+      return <Mail className={sClass} />;
+    case "dashboard":
+      return <LayoutDashboard className={sClass} />;
+    case "trash":
+      return <Trash2 className={sClass} />;
+    default:
+      return <Folder className={sClass} />;
+  }
+}
+
+const APP_ACCENTS: Record<string, string> = {
+  explorer: "amber",
+  notes: "blue",
+  terminal: "zinc",
+  settings: "violet",
+  weather: "yellow",
+  telegram: "sky",
+  gmail: "rose",
+  dashboard: "cyan",
+  trash: "red",
+};
 
 // 1. Windows 11 Fluent 3D style wrapper
 iconPackRegistry.set("windows11", {
@@ -22,41 +60,25 @@ iconPackRegistry.set("windows11", {
   name: "Windows 11 (Fluent 3D)",
   renderIcon(appId, size, className) {
     const sClass = `w-1/2 h-1/2 text-zinc-100 select-none pointer-events-none`;
-    let bg = "from-violet-500 to-indigo-600";
-    let icon = <Folder className={sClass} />;
-
-    if (appId === "explorer") {
-      bg = "from-amber-400 to-orange-500";
-      icon = <Folder className={sClass} />;
-    } else if (appId === "notes") {
-      bg = "from-blue-400 to-indigo-500";
-      icon = <FileText className={sClass} />;
-    } else if (appId === "terminal") {
-      bg = "from-zinc-700 to-zinc-900";
-      icon = <Terminal className={sClass} />;
-    } else if (appId === "settings") {
-      bg = "from-purple-500 to-pink-500";
-      icon = <Settings className={sClass} />;
-    } else if (appId === "weather") {
-      bg = "from-yellow-400 to-amber-500";
-      icon = <Sun className={sClass} />;
-    } else if (appId === "telegram") {
-      bg = "from-sky-400 to-blue-500";
-      icon = <MessageSquare className={sClass} />;
-    } else if (appId === "gmail") {
-      bg = "from-rose-500 to-red-600";
-      icon = <Mail className={sClass} />;
-    } else if (appId === "trash") {
-      bg = "from-red-500 to-rose-600";
-      icon = <Trash2 className={sClass} />;
-    }
+    const bgMap: Record<string, string> = {
+      explorer: "from-amber-400 to-orange-500",
+      notes: "from-blue-400 to-indigo-500",
+      terminal: "from-zinc-700 to-zinc-900",
+      settings: "from-purple-500 to-pink-500",
+      weather: "from-yellow-400 to-amber-500",
+      telegram: "from-sky-400 to-blue-500",
+      gmail: "from-rose-500 to-red-600",
+      dashboard: "from-cyan-400 to-blue-500",
+      trash: "from-red-500 to-rose-600",
+    };
+    const bg = bgMap[appId] || "from-violet-500 to-indigo-600";
 
     return (
       <div
         className={`rounded-xl bg-gradient-to-br ${bg} border border-white/10 flex items-center justify-center shrink-0 shadow-md ${className}`}
-        style={{ width: size * 2.2, height: size * 2.2 }}
+        style={{ width: size, height: size }}
       >
-        {icon}
+        {iconFor(appId, sClass)}
       </div>
     );
   }
@@ -67,44 +89,28 @@ iconPackRegistry.set("windows7", {
   id: "windows7",
   name: "Windows 7 / Aero",
   renderIcon(appId, size, className) {
-    const sClass = `w-1/2 h-1/2 select-none pointer-events-none`;
-    let color = "text-violet-200";
-    let bg = "from-cyan-400/80 via-blue-500/40 to-blue-600/80";
-    let icon = <Folder className={`${sClass} ${color}`} />;
-
-    if (appId === "explorer") {
-      color = "text-amber-200";
-      icon = <Folder className={`${sClass} ${color}`} />;
-    } else if (appId === "notes") {
-      color = "text-blue-200";
-      icon = <FileText className={`${sClass} ${color}`} />;
-    } else if (appId === "terminal") {
-      color = "text-emerald-200";
-      icon = <Terminal className={`${sClass} ${color}`} />;
-    } else if (appId === "settings") {
-      color = "text-fuchsia-200";
-      icon = <Settings className={`${sClass} ${color}`} />;
-    } else if (appId === "weather") {
-      color = "text-yellow-200";
-      icon = <Sun className={`${sClass} ${color}`} />;
-    } else if (appId === "telegram") {
-      color = "text-sky-200";
-      icon = <MessageSquare className={`${sClass} ${color}`} />;
-    } else if (appId === "gmail") {
-      color = "text-rose-200";
-      icon = <Mail className={`${sClass} ${color}`} />;
-    } else if (appId === "trash") {
-      color = "text-rose-200";
-      icon = <Trash2 className={`${sClass} ${color}`} />;
-    }
+    const colorMap: Record<string, string> = {
+      explorer: "text-amber-200",
+      notes: "text-blue-200",
+      terminal: "text-emerald-200",
+      settings: "text-fuchsia-200",
+      weather: "text-yellow-200",
+      telegram: "text-sky-200",
+      gmail: "text-rose-200",
+      dashboard: "text-cyan-200",
+      trash: "text-rose-200",
+    };
+    const color = colorMap[appId] || "text-violet-200";
+    const sClass = `w-1/2 h-1/2 select-none pointer-events-none ${color}`;
+    const bg = "from-cyan-400/80 via-blue-500/40 to-blue-600/80";
 
     return (
       <div
         className={`relative overflow-hidden rounded-lg border flex items-center justify-center shrink-0 shadow-cyan-500/40 shadow-sm bg-gradient-to-b ${bg} border-cyan-300/60 ${className}`}
-        style={{ width: size * 2.2, height: size * 2.2 }}
+        style={{ width: size, height: size }}
       >
         <div className="absolute top-0 left-0 right-0 h-1/2 bg-white/20 rounded-t-lg select-none pointer-events-none" />
-        {icon}
+        {iconFor(appId, sClass)}
       </div>
     );
   }
@@ -116,41 +122,25 @@ iconPackRegistry.set("kde", {
   name: "KDE Breeze",
   renderIcon(appId, size, className) {
     const sClass = `w-1/2 h-1/2 text-white select-none pointer-events-none`;
-    let bg = "bg-violet-600";
-    let icon = <Folder className={sClass} />;
-
-    if (appId === "explorer") {
-      bg = "bg-amber-500";
-      icon = <Folder className={sClass} />;
-    } else if (appId === "notes") {
-      bg = "bg-blue-500";
-      icon = <FileText className={sClass} />;
-    } else if (appId === "terminal") {
-      bg = "bg-zinc-800";
-      icon = <Terminal className={sClass} />;
-    } else if (appId === "settings") {
-      bg = "bg-purple-600";
-      icon = <Settings className={sClass} />;
-    } else if (appId === "weather") {
-      bg = "bg-yellow-500";
-      icon = <Sun className={sClass} />;
-    } else if (appId === "telegram") {
-      bg = "bg-sky-500";
-      icon = <MessageSquare className={sClass} />;
-    } else if (appId === "gmail") {
-      bg = "bg-rose-500";
-      icon = <Mail className={sClass} />;
-    } else if (appId === "trash") {
-      bg = "bg-red-500";
-      icon = <Trash2 className={sClass} />;
-    }
+    const bgMap: Record<string, string> = {
+      explorer: "bg-amber-500",
+      notes: "bg-blue-500",
+      terminal: "bg-zinc-800",
+      settings: "bg-purple-600",
+      weather: "bg-yellow-500",
+      telegram: "bg-sky-500",
+      gmail: "bg-rose-500",
+      dashboard: "bg-cyan-600",
+      trash: "bg-red-500",
+    };
+    const bg = bgMap[appId] || "bg-violet-600";
 
     return (
       <div
         className={`rounded-lg ${bg} flex items-center justify-center shrink-0 shadow ${className}`}
-        style={{ width: size * 2.2, height: size * 2.2 }}
+        style={{ width: size, height: size }}
       >
-        {icon}
+        {iconFor(appId, sClass)}
       </div>
     );
   }
@@ -162,41 +152,25 @@ iconPackRegistry.set("macos", {
   name: "macOS Big Sur",
   renderIcon(appId, size, className) {
     const sClass = `w-1/2 h-1/2 text-zinc-200 select-none pointer-events-none`;
-    let bg = "bg-gradient-to-b from-indigo-500 to-indigo-800";
-    let icon = <Folder className={sClass} />;
-
-    if (appId === "explorer") {
-      bg = "bg-gradient-to-b from-yellow-400 to-amber-600";
-      icon = <Folder className={sClass} />;
-    } else if (appId === "notes") {
-      bg = "bg-gradient-to-b from-blue-400 to-blue-600";
-      icon = <FileText className={sClass} />;
-    } else if (appId === "terminal") {
-      bg = "bg-gradient-to-b from-zinc-800 to-zinc-950";
-      icon = <Terminal className={sClass} />;
-    } else if (appId === "settings") {
-      bg = "bg-gradient-to-b from-zinc-700 to-zinc-900";
-      icon = <Settings className={sClass} />;
-    } else if (appId === "weather") {
-      bg = "bg-gradient-to-b from-amber-400 to-orange-500";
-      icon = <Sun className={sClass} />;
-    } else if (appId === "telegram") {
-      bg = "bg-gradient-to-b from-sky-400 to-sky-600";
-      icon = <MessageSquare className={sClass} />;
-    } else if (appId === "gmail") {
-      bg = "bg-gradient-to-b from-red-400 to-rose-600";
-      icon = <Mail className={sClass} />;
-    } else if (appId === "trash") {
-      bg = "bg-gradient-to-b from-zinc-600 to-zinc-800";
-      icon = <Trash2 className={sClass} />;
-    }
+    const bgMap: Record<string, string> = {
+      explorer: "bg-gradient-to-b from-yellow-400 to-amber-600",
+      notes: "bg-gradient-to-b from-blue-400 to-blue-600",
+      terminal: "bg-gradient-to-b from-zinc-800 to-zinc-950",
+      settings: "bg-gradient-to-b from-zinc-700 to-zinc-900",
+      weather: "bg-gradient-to-b from-amber-400 to-orange-500",
+      telegram: "bg-gradient-to-b from-sky-400 to-sky-600",
+      gmail: "bg-gradient-to-b from-red-400 to-rose-600",
+      dashboard: "bg-gradient-to-b from-cyan-400 to-sky-600",
+      trash: "bg-gradient-to-b from-zinc-600 to-zinc-800",
+    };
+    const bg = bgMap[appId] || "bg-gradient-to-b from-indigo-500 to-indigo-800";
 
     return (
       <div
         className={`rounded-2xl ${bg} border border-zinc-700/50 flex items-center justify-center shrink-0 shadow-xl ${className}`}
-        style={{ width: size * 2.2, height: size * 2.2 }}
+        style={{ width: size, height: size }}
       >
-        {icon}
+        {iconFor(appId, sClass)}
       </div>
     );
   }
@@ -208,49 +182,64 @@ iconPackRegistry.set("papirus", {
   name: "Papirus",
   renderIcon(appId, size, className) {
     const sClass = `w-1/2 h-1/2 text-white select-none pointer-events-none`;
-    let bg = "bg-indigo-600";
-    let icon = <Folder className={sClass} />;
-
-    if (appId === "explorer") {
-      bg = "bg-amber-600";
-      icon = <Folder className={sClass} />;
-    } else if (appId === "notes") {
-      bg = "bg-indigo-600";
-      icon = <FileText className={sClass} />;
-    } else if (appId === "terminal") {
-      bg = "bg-zinc-800";
-      icon = <Terminal className={sClass} />;
-    } else if (appId === "settings") {
-      bg = "bg-teal-600";
-      icon = <Settings className={sClass} />;
-    } else if (appId === "weather") {
-      bg = "bg-orange-500";
-      icon = <Sun className={sClass} />;
-    } else if (appId === "telegram") {
-      bg = "bg-sky-500";
-      icon = <MessageSquare className={sClass} />;
-    } else if (appId === "gmail") {
-      bg = "bg-rose-500";
-      icon = <Mail className={sClass} />;
-    } else if (appId === "trash") {
-      bg = "bg-red-500";
-      icon = <Trash2 className={sClass} />;
-    }
+    const bgMap: Record<string, string> = {
+      explorer: "bg-amber-600",
+      notes: "bg-indigo-600",
+      terminal: "bg-zinc-800",
+      settings: "bg-teal-600",
+      weather: "bg-orange-500",
+      telegram: "bg-sky-500",
+      gmail: "bg-rose-500",
+      dashboard: "bg-cyan-700",
+      trash: "bg-red-500",
+    };
+    const bg = bgMap[appId] || "bg-indigo-600";
 
     return (
       <div
         className={`rounded-full ${bg} flex items-center justify-center shrink-0 shadow-md ${className}`}
-        style={{ width: size * 2.2, height: size * 2.2 }}
+        style={{ width: size, height: size }}
       >
-        {icon}
+        {iconFor(appId, sClass)}
+      </div>
+    );
+  }
+});
+
+// 6. Iris Glass — refined frosted glass-pane squircle, matching the
+// iris-glass theme's specular sheen + rim highlight language.
+iconPackRegistry.set("iris", {
+  id: "iris",
+  name: "Iris Glass",
+  renderIcon(appId, size, className) {
+    const accent = APP_ACCENTS[appId] || "violet";
+    const sClass = `w-1/2 h-1/2 text-white/90 select-none pointer-events-none drop-shadow-sm`;
+    const accentGlow: Record<string, string> = {
+      amber: "shadow-[0_0_18px_-4px_rgba(251,191,36,0.55)]",
+      blue: "shadow-[0_0_18px_-4px_rgba(96,165,250,0.55)]",
+      zinc: "shadow-[0_0_18px_-4px_rgba(161,161,170,0.4)]",
+      violet: "shadow-[0_0_18px_-4px_rgba(167,139,250,0.6)]",
+      yellow: "shadow-[0_0_18px_-4px_rgba(250,204,21,0.55)]",
+      sky: "shadow-[0_0_18px_-4px_rgba(56,189,248,0.55)]",
+      rose: "shadow-[0_0_18px_-4px_rgba(251,113,133,0.55)]",
+      cyan: "shadow-[0_0_18px_-4px_rgba(34,211,238,0.55)]",
+      red: "shadow-[0_0_18px_-4px_rgba(248,113,113,0.55)]",
+    };
+
+    return (
+      <div
+        className={`glass-pane relative rounded-[28%] flex items-center justify-center shrink-0 overflow-hidden ${accentGlow[accent]} ${className}`}
+        style={{ width: size, height: size, borderRadius: size * 0.6 }}
+      >
+        {iconFor(appId, sClass)}
       </div>
     );
   }
 });
 
 interface IconThemeContextValue {
-  iconTheme: string;
-  setIconTheme: (theme: string) => void;
+  iconTheme: IconTheme;
+  setIconTheme: (theme: IconTheme) => void;
 }
 
 const IconThemeContext = createContext<IconThemeContextValue | null>(null);
@@ -265,18 +254,32 @@ export function useIconTheme() {
 
 export function IconThemeProvider({ children }: { children: React.ReactNode }) {
   const { theme } = useTheme();
-  const [iconTheme, setIconThemeState] = useState<string>("windows11");
+  const [iconTheme, setIconThemeState] = useState<IconTheme>("windows11");
+  const [userOverride, setUserOverride] = useState(false);
 
-  // Sync iconTheme automatically with theme presets unless customized
+  // On mount, respect a manually-picked icon pack if the user set one.
   useEffect(() => {
-    const activePreset = themePresets[theme];
-    if (activePreset && activePreset.iconPack) {
-      setIconThemeState(activePreset.iconPack);
+    if (typeof window === "undefined") return;
+    const saved = localStorage.getItem("iris_icon_theme") as IconTheme | null;
+    if (saved && iconPackRegistry.has(saved)) {
+      setIconThemeState(saved);
+      setUserOverride(true);
     }
-  }, [theme]);
+  }, []);
 
-  const setIconTheme = (newTheme: string) => {
+  // Sync iconTheme automatically with the active theme preset's iconPack,
+  // unless the user has explicitly overridden it in Settings.
+  useEffect(() => {
+    if (userOverride) return;
+    const activePreset = themePresets[theme];
+    if (activePreset && activePreset.iconPack && iconPackRegistry.has(activePreset.iconPack)) {
+      setIconThemeState(activePreset.iconPack as IconTheme);
+    }
+  }, [theme, userOverride]);
+
+  const setIconTheme = (newTheme: IconTheme) => {
     setIconThemeState(newTheme);
+    setUserOverride(true);
     if (typeof window !== "undefined") {
       localStorage.setItem("iris_icon_theme", newTheme);
     }
@@ -290,4 +293,3 @@ export function IconThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 export { AppIcon } from "@/components/icons/AppIcon";
-

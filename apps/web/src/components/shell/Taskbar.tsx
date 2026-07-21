@@ -189,7 +189,59 @@ export function Taskbar() {
     );
   }
 
-  // 4. WINDOWS 11 MODERN (Default): Centered icons, clean right tray
+  // 4. IRIS GLASS: Refined frosted-glass floating dock, ported from the
+  // glass-pane aesthetic (specular sheen, rim highlight, frosted backdrop).
+  if (osStyle === "iris-glass") {
+    return (
+      <div className="absolute bottom-3 left-0 right-0 flex justify-center z-50 pointer-events-none select-none">
+        <div className="glass-pane pointer-events-auto flex items-center gap-1.5 rounded-2xl px-2.5 py-2">
+          <button
+            onClick={handleLauncherClick}
+            className="relative p-2 rounded-xl hover:bg-white/10 transition-all cursor-pointer"
+            title="Start"
+          >
+            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-violet-400 to-fuchsia-500 shadow-[0_0_12px_-2px_rgba(167,139,250,0.8)] flex items-center justify-center">
+              <span className="text-white text-xs font-bold">✦</span>
+            </div>
+          </button>
+          <div className="h-7 w-px bg-white/10 mx-1" />
+          {apps.map((app) => {
+            const window = Object.values(windows).find(w => w.appId === app);
+            const isRunning = !!window;
+            const isFocused = window?.isFocused;
+            return (
+              <button
+                key={app}
+                onClick={() => handleAppClick(app)}
+                className={`relative p-1.5 rounded-xl transition-all group cursor-pointer hover:bg-white/10 ${
+                  isFocused ? "bg-white/10" : ""
+                }`}
+                title={app}
+              >
+                <AppIcon appId={app} size={32} />
+                <div
+                  className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 h-1 rounded-full bg-violet-300 transition-all ${
+                    isFocused ? "w-4 opacity-100" : isRunning ? "w-1.5 opacity-70" : "w-0 opacity-0 group-hover:opacity-100 group-hover:w-1.5"
+                  }`}
+                />
+              </button>
+            );
+          })}
+          <div className="h-7 w-px bg-white/10 mx-1" />
+          <div
+            onClick={handleLauncherClick}
+            className="flex items-center gap-2.5 px-2.5 py-1 rounded-xl hover:bg-white/10 transition-all cursor-pointer text-xs"
+          >
+            <Wifi className="w-4 h-4 opacity-80" />
+            <Volume2 className="w-4 h-4 opacity-80" />
+            <span className="glass-clock font-semibold text-sm leading-none">{timeStr}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 5. WINDOWS 11 MODERN (Default): Centered icons, clean right tray
   return (
     <div className="absolute bottom-0 left-0 right-0 h-12 bg-slate-900/70 backdrop-blur-xl border-t border-white/10 flex items-center justify-between px-4 z-50 select-none text-white">
       <div className="w-32" /> {/* Left spacer for strict center balance */}

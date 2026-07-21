@@ -33,7 +33,7 @@ export async function POST(request: Request) {
       });
     }
 
-    writeDB({ telegramChats: updatedChats });
+    await writeDB({ telegramChats: updatedChats });
     return NextResponse.json(updatedChats);
   } catch (e) {
     return NextResponse.json({ error: "Invalid Telegram message payload" }, { status: 400 });

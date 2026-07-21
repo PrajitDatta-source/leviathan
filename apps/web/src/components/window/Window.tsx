@@ -27,16 +27,6 @@ export function Window({ window: initialWindow }: Props) {
     const belongsToActiveWorkspace = (windowWorkspaces[window.id] || 1) === activeWorkspace;
     const { osStyle, colorMode } = useThemeStore();
 
-    console.log(`[PIPELINE] React Render for Window: ${window.id}`, {
-        focused: window.isFocused,
-        minimized: window.isMinimized,
-        maximized: window.isMaximized,
-        x: window.position.x,
-        y: window.position.y,
-        width: window.size.width,
-        height: window.size.height
-    });
-
     const [isDragging, setIsDragging] = useState(false);
     const [isResizing, setIsResizing] = useState(false);
     const [resizeDirection, setResizeDirection] = useState<'se' | 'sw' | 'ne' | 'nw' | 'n' | 's' | 'e' | 'w' | null>(null);
@@ -302,6 +292,9 @@ export function Window({ window: initialWindow }: Props) {
       themeHeaderClasses = colorMode === "light"
         ? "bg-slate-100/60 border-b border-slate-200 text-slate-800"
         : "bg-white/5 border-b border-white/5 text-white";
+    } else if (osStyle === "iris-glass") {
+      themeContainerClasses = "glass-pane text-[var(--text)] rounded-2xl";
+      themeHeaderClasses = "bg-white/[0.04] border-b border-white/10 text-[var(--text)] rounded-t-2xl";
     } else {
       // win95-retro
       themeContainerClasses = "bg-[#c0c0c0] text-black border-2 border-t-white border-l-white border-b-black border-r-black p-[3px] select-none rounded-none";
@@ -319,6 +312,8 @@ export function Window({ window: initialWindow }: Props) {
         activeHighlightClasses = "shadow-[0_25px_55px_rgba(0,0,0,0.6)] border-zinc-600";
       } else if (osStyle === "win11") {
         activeHighlightClasses = "shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-white/20 ring-1 ring-white/15";
+      } else if (osStyle === "iris-glass") {
+        activeHighlightClasses = "ring-1 ring-violet-300/30 shadow-[0_25px_60px_-15px_rgba(139,92,246,0.45)]";
       } else {
         // win95-retro
         activeHighlightClasses = "";
@@ -330,6 +325,8 @@ export function Window({ window: initialWindow }: Props) {
         activeHighlightClasses = "shadow-md opacity-90";
       } else if (osStyle === "win11") {
         activeHighlightClasses = "shadow-lg border-white/5 opacity-90";
+      } else if (osStyle === "iris-glass") {
+        activeHighlightClasses = "opacity-90";
       } else {
         // win95-retro
         activeHighlightClasses = "";

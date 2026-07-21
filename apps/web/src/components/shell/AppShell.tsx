@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useThemeStore } from "@/modules/theme/useThemeStore";
 import { Taskbar } from "@/components/shell/Taskbar";
-import { AppIcon } from "@/components/icons/AppIcon";
+import { DesktopIcons } from "@/components/shell/DesktopIcons";
+import { ToastHost } from "@/components/shell/Toast";
 import { Desktop } from "@/components/window/Desktop";
 import { CommandPalette } from "@/components/command/CommandPalette";
 import { ContextMenu } from "./ContextMenu";
@@ -279,17 +280,14 @@ export function AppShell() {
     if (osStyle === "win95-retro") return { background: "#008080" }; // Classic Teal
     if (osStyle === "macos") return { background: "linear-gradient(135deg, #4f3961 0%, #1d2671 100%)" };
     if (osStyle === "win7-aero") return { background: "radial-gradient(circle at center, #0052d4 0%, #4364f7 50%, #6fb1fc 100%)" };
+    if (osStyle === "iris-glass") {
+      return {
+        background:
+          "radial-gradient(circle at 20% 15%, rgba(139,92,246,0.35) 0%, rgba(11,11,18,0) 45%), radial-gradient(circle at 85% 80%, rgba(56,189,248,0.25) 0%, rgba(11,11,18,0) 50%), linear-gradient(160deg, #14121f 0%, #08080d 100%)",
+      };
+    }
     return { background: "radial-gradient(circle at 50% 20%, #1a1c29 0%, #0a0a0c 100%)" }; // Win11 Dark
   };
-
-  const desktopApps = [
-    { id: "explorer", label: "Files" },
-    { id: "notes", label: "Notes" },
-    { id: "terminal", label: "Terminal" },
-    { id: "settings", label: "Settings" },
-    { id: "telegram", label: "Telegram" },
-    { id: "trash", label: "Recycle Bin" },
-  ];
 
   const handleContextMenu = (e: React.MouseEvent) => {
     if (e.target instanceof HTMLElement) {
@@ -344,27 +342,8 @@ export function AppShell() {
         {/* Keyboard Shortcut Event Interceptor */}
         <KeyboardManager setOpenPalette={setOpenPalette} />
 
-        {/* Free-Standing Desktop Icons (No dark wrapping boxes!) */}
-        <div className={`absolute top-8 left-4 flex flex-col space-y-4 z-10 ${osStyle === "macos" ? "top-10" : ""}`}>
-          {desktopApps.map((app) => (
-            <div
-              key={app.id}
-              onClick={() => openWindow(app.id)}
-              className="group flex flex-col items-center justify-center w-20 p-1.5 rounded-lg hover:bg-white/10 transition-all cursor-pointer"
-            >
-              <AppIcon appId={app.id} size={42} />
-              <span
-                className={`mt-1 text-center font-medium leading-tight drop-shadow-md truncate w-full ${
-                  osStyle === "win95-retro"
-                    ? "bg-white text-black px-1 border border-dotted border-black font-sans text-xs"
-                    : "text-white text-xs"
-                }`}
-              >
-                {app.label}
-              </span>
-            </div>
-          ))}
-        </div>
+        {/* Draggable, multi-select, renameable Desktop Icons */}
+        <DesktopIcons />
 
         {/* Active Window Rendering Loop */}
         <Desktop />
@@ -383,6 +362,9 @@ export function AppShell() {
             onClose={() => setContextMenu(null)}
           />
         )}
+
+        {/* Transient notifications (e.g. "Recycle Bin is empty") */}
+        <ToastHost />
       </div>
     </WindowManagerProvider>
   );

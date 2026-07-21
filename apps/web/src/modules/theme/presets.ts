@@ -18,6 +18,8 @@ export const themePresets: Record<string, ThemeConfig> = {
     cursor: "default",
     wallpaper: "linear-gradient(135deg, #09090b 0%, #020205 100%)",
     soundPack: "synthetic",
+    shellStyle: "win11",
+    mode: "dark",
   },
   "iris-light": {
     name: "iris-light",
@@ -36,6 +38,30 @@ export const themePresets: Record<string, ThemeConfig> = {
     cursor: "default",
     wallpaper: "linear-gradient(135deg, #ffffff 0%, #f4f4f5 100%)",
     soundPack: "synthetic",
+    shellStyle: "win11",
+    mode: "light",
+  },
+  "iris-glass": {
+    name: "iris-glass",
+    displayName: "Iris Glass",
+    colors: {
+      background: "#0b0b12",
+      foreground: "#f5f4ff",
+      primary: "#f5f4ff",
+      secondary: "#b9b6d6",
+      accent: "#a78bfa",
+      muted: "rgba(255, 255, 255, 0.05)",
+      border: "rgba(255, 255, 255, 0.14)",
+      card: "rgba(24, 22, 38, 0.45)",
+    },
+    iconPack: "iris",
+    cursor: "default",
+    wallpaper:
+      "radial-gradient(circle at 20% 15%, rgba(139,92,246,0.35) 0%, rgba(11,11,18,0) 45%), radial-gradient(circle at 85% 80%, rgba(56,189,248,0.25) 0%, rgba(11,11,18,0) 50%), linear-gradient(160deg, #14121f 0%, #08080d 100%)",
+    soundPack: "synthetic",
+    shellStyle: "iris-glass",
+    mode: "dark",
+    glass: true,
   },
   "fluent-glass": {
     name: "fluent-glass",
@@ -54,6 +80,9 @@ export const themePresets: Record<string, ThemeConfig> = {
     cursor: "default",
     wallpaper: "linear-gradient(135deg, #1e1b4b 0%, #030712 100%)",
     soundPack: "synthetic",
+    shellStyle: "win7-aero",
+    mode: "dark",
+    glass: true,
   },
   "retro-mac": {
     name: "retro-mac",
@@ -72,6 +101,8 @@ export const themePresets: Record<string, ThemeConfig> = {
     cursor: "crosshair",
     wallpaper: "#55aaaa",
     soundPack: "synthetic",
+    shellStyle: "macos",
+    mode: "light",
   },
   "material-design": {
     name: "material-design",
@@ -90,8 +121,10 @@ export const themePresets: Record<string, ThemeConfig> = {
     cursor: "default",
     wallpaper: "linear-gradient(135deg, #0f172a 0%, #020617 100%)",
     soundPack: "synthetic",
+    shellStyle: "win11",
+    mode: "dark",
   },
-  
+
   // Legacy backups for fallback compatibility
   light: {
     name: "light",
@@ -109,6 +142,8 @@ export const themePresets: Record<string, ThemeConfig> = {
     iconPack: "kde",
     cursor: "default",
     wallpaper: "linear-gradient(135deg, #ffffff 0%, #f5f5f7 100%)",
+    shellStyle: "win11",
+    mode: "light",
   },
   dark: {
     name: "dark",
@@ -126,6 +161,8 @@ export const themePresets: Record<string, ThemeConfig> = {
     iconPack: "windows11",
     cursor: "default",
     wallpaper: "linear-gradient(135deg, #09090b 0%, #020205 100%)",
+    shellStyle: "win11",
+    mode: "dark",
   },
   oled: {
     name: "oled",
@@ -143,6 +180,8 @@ export const themePresets: Record<string, ThemeConfig> = {
     iconPack: "windows11",
     cursor: "default",
     wallpaper: "#000000",
+    shellStyle: "win11",
+    mode: "dark",
   },
   glass: {
     name: "glass",
@@ -160,6 +199,9 @@ export const themePresets: Record<string, ThemeConfig> = {
     iconPack: "windows7",
     cursor: "default",
     wallpaper: "linear-gradient(135deg, #1e1b4b 0%, #030712 100%)",
+    shellStyle: "win7-aero",
+    mode: "dark",
+    glass: true,
   },
   nord: {
     name: "nord",
@@ -177,6 +219,8 @@ export const themePresets: Record<string, ThemeConfig> = {
     iconPack: "kde",
     cursor: "default",
     wallpaper: "linear-gradient(135deg, #2e3440 0%, #1a1c23 100%)",
+    shellStyle: "win11",
+    mode: "dark",
   },
   catppuccin: {
     name: "catppuccin",
@@ -194,6 +238,8 @@ export const themePresets: Record<string, ThemeConfig> = {
     iconPack: "windows11",
     cursor: "default",
     wallpaper: "linear-gradient(135deg, #1e1e2e 0%, #11111b 100%)",
+    shellStyle: "win11",
+    mode: "dark",
   },
   tokyonight: {
     name: "tokyonight",
@@ -211,6 +257,8 @@ export const themePresets: Record<string, ThemeConfig> = {
     iconPack: "windows11",
     cursor: "default",
     wallpaper: "linear-gradient(135deg, #1a1b26 0%, #10101a 100%)",
+    shellStyle: "win11",
+    mode: "dark",
   },
   dracula: {
     name: "dracula",
@@ -228,6 +276,8 @@ export const themePresets: Record<string, ThemeConfig> = {
     iconPack: "windows11",
     cursor: "default",
     wallpaper: "linear-gradient(135deg, #282a36 0%, #181920 100%)",
+    shellStyle: "win11",
+    mode: "dark",
   },
   gruvbox: {
     name: "gruvbox",
@@ -245,5 +295,7 @@ export const themePresets: Record<string, ThemeConfig> = {
     iconPack: "windows11",
     cursor: "default",
     wallpaper: "linear-gradient(135deg, #282828 0%, #1b1b1b 100%)",
+    shellStyle: "win11",
+    mode: "dark",
   },
 };

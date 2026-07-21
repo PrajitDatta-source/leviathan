@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type OSStyle = 'win11' | 'win7-aero' | 'win95-retro' | 'macos';
+export type OSStyle = 'win11' | 'win7-aero' | 'win95-retro' | 'macos' | 'iris-glass';
 export type ColorMode = 'dark' | 'light';
 
 interface ThemeState {

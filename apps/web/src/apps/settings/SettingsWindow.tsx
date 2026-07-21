@@ -2,8 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import { useTheme } from "@/modules/theme/ThemeContext";
-import { Plus, Trash2, Keyboard, RotateCcw, Edit2 } from "lucide-react";
-import { useThemeStore, OSStyle, ColorMode } from "@/modules/theme/useThemeStore";
+import { Plus, Trash2, Keyboard, RotateCcw, Edit2, Check } from "lucide-react";
+import { useThemeStore, OSStyle } from "@/modules/theme/useThemeStore";
+import { themePresets } from "@/modules/theme/presets";
+import { Theme } from "@/modules/theme/types";
+import { useIconTheme, iconPackRegistry } from "@/modules/icons/IconThemeContext";
 import {
   saveWallpaperToDb,
   getAllWallpapersFromDb,
@@ -50,13 +53,26 @@ const WALLPAPER_PRESETS = [
 ];
 
 export function SettingsWindow() {
-  const { wallpaper, setWallpaper } = useTheme();
+  const { wallpaper, setWallpaper, theme, setTheme } = useTheme();
+  const { iconTheme, setIconTheme } = useIconTheme();
   const [activeTab, setActiveTab] = useState<Tab>("appearance");
-  const { osStyle, setOsStyle, colorMode, setColorMode, setWallpaper: setStoreWallpaper, wallpaper: currentStoreWallpaper } = useThemeStore();
+  const { osStyle, setOsStyle, setWallpaper: setStoreWallpaper, wallpaper: currentStoreWallpaper } = useThemeStore();
   
   const [dbWallpapers, setDbWallpapers] = useState<CustomWallpaperItem[]>([]);
   const [shortcutsConfig, setShortcutsConfig] = useState(() => loadShortcutsConfig());
   const [recordingId, setRecordingId] = useState<string | null>(null);
+  const [systemInfo, setSystemInfo] = useState<{
+    environment: string;
+    storage: { adapter: string; persistent: boolean; note: string };
+    counts: { vfsNodes: number; telegramChats: number };
+  } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/system")
+      .then((res) => res.json())
+      .then(setSystemInfo)
+      .catch((e) => console.error("Failed to load system info:", e));
+  }, []);
 
   const loadDbWallpapers = async () => {
     const list = await getAllWallpapersFromDb();
@@ -222,19 +238,69 @@ export function SettingsWindow() {
       <div className="flex-1 p-6 overflow-y-auto bg-[var(--background)]">
         {activeTab === "appearance" && (
           <div className="space-y-8">
-            {/* 1. OS Layout & Style Section */}
+            {/* 1. Theme gallery — this is the primary control. Each theme
+                bundles a real color palette, a default wallpaper, an icon
+                pack and a shell layout, all applied together. */}
             <div>
-              <h3 className="text-lg font-medium mb-1">OS Layout & Window Manager</h3>
+              <h3 className="text-lg font-medium mb-1">Theme</h3>
               <p className="text-xs text-[var(--muted)] mb-4">
-                Select your operating system desktop layout, taskbar behavior, and window frame decorators.
+                Pick a full theme — colors, wallpaper, icon pack and taskbar layout all switch together.
+              </p>
+
+              <div className="grid grid-cols-2 gap-3">
+                {Object.values(themePresets).map((preset) => {
+                  const isActive = theme === preset.name;
+                  return (
+                    <button
+                      key={preset.name}
+                      onClick={() => setTheme(preset.name as Theme)}
+                      className={`relative flex items-center gap-3 p-3 rounded-xl border text-left transition cursor-pointer ${
+                        isActive
+                          ? "border-violet-500 bg-violet-500/10 shadow-md"
+                          : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border)]/80"
+                      }`}
+                    >
+                      <div
+                        className="w-9 h-9 rounded-lg shrink-0 border border-white/10 shadow-inner"
+                        style={{ background: preset.wallpaper }}
+                      />
+                      <div className="min-w-0">
+                        <div className="font-semibold text-sm truncate">{preset.displayName}</div>
+                        <div className="flex items-center gap-1 mt-1">
+                          {[preset.colors.accent, preset.colors.card, preset.colors.foreground].map((c, i) => (
+                            <span
+                              key={i}
+                              className="w-2.5 h-2.5 rounded-full border border-white/10"
+                              style={{ background: c }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      {isActive && (
+                        <Check className="w-4 h-4 text-violet-400 absolute right-3 top-3 shrink-0" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2. Shell layout override — usually set automatically by the
+                theme above, but power users can mix e.g. Dracula colors
+                with the Iris Glass dock. */}
+            <div>
+              <h3 className="text-lg font-medium mb-1">Taskbar & Window Layout</h3>
+              <p className="text-xs text-[var(--muted)] mb-4">
+                Set automatically by your theme — override it here if you want a different taskbar/window layout without changing colors.
               </p>
 
               <div className="grid grid-cols-2 gap-4">
                 {([
-                  { id: "win11", label: "Windows 11 Modern", desc: "Clean translucent layout with strictly centered start menu, centered app dock and high-contrast system tray" },
+                  { id: "win11", label: "Windows 11 Modern", desc: "Clean translucent layout with a centered start menu, centered app dock and high-contrast system tray" },
                   { id: "win7-aero", label: "Windows 7 Aero Glass", desc: "Glossy transparent layout with blue highlights, left-aligned circular Start orb and app tabs" },
-                  { id: "win95-retro", label: "Windows 95 Retro", desc: "Solid classic grey taskbar with raised 3D Start button, sharp 3D beveled windows, and classic pixel styling" },
+                  { id: "win95-retro", label: "Windows 95 Retro", desc: "Solid classic grey taskbar with a raised 3D Start button and beveled windows" },
                   { id: "macos", label: "macOS Big Sur", desc: "Sleek top menu bar, centered floating bottom Dock, graphite windows with traffic light buttons" },
+                  { id: "iris-glass", label: "Iris Glass", desc: "Refined frosted-glass floating dock with specular sheen, rim highlights and a glass clock" },
                 ] as { id: OSStyle; label: string; desc: string }[]).map((t) => (
                   <button
                     key={t.id}
@@ -255,31 +321,29 @@ export function SettingsWindow() {
               </div>
             </div>
 
-            {/* 2. Color Mode (Palette) Section */}
+            {/* 3. Icon pack — also set automatically by the theme, with a
+                manual override that persists in localStorage. */}
             <div>
-              <h3 className="text-lg font-medium mb-1">Color Mode (Palette)</h3>
+              <h3 className="text-lg font-medium mb-1">Icon Pack</h3>
               <p className="text-xs text-[var(--muted)] mb-4">
-                Decoupled theme color scheme. Switch between dark cyber theme and light mode.
+                The look of app icons on the desktop, taskbar and dock.
               </p>
 
-              <div className="grid grid-cols-2 gap-4 max-w-lg">
-                {([
-                  { id: "dark", label: "Dark Mode", desc: "Deep dark background with high-contrast glowing elements" },
-                  { id: "light", label: "Light Mode", desc: "Clean bright backdrop with high readability text" },
-                ] as { id: ColorMode; label: string; desc: string }[]).map((mode) => (
+              <div className="grid grid-cols-3 gap-3 max-w-xl">
+                {Array.from(iconPackRegistry.values()).map((pack) => (
                   <button
-                    key={mode.id}
-                    onClick={() => setColorMode(mode.id)}
-                    className={`relative p-4 rounded-xl border text-left transition cursor-pointer ${
-                      colorMode === mode.id
+                    key={pack.id}
+                    onClick={() => setIconTheme(pack.id as Parameters<typeof setIconTheme>[0])}
+                    className={`relative flex flex-col items-center gap-2 p-3 rounded-xl border transition cursor-pointer ${
+                      iconTheme === pack.id
                         ? "border-violet-500 bg-violet-500/10 shadow-md"
                         : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border)]/80"
                     }`}
                   >
-                    <div className="font-semibold text-sm">{mode.label}</div>
-                    <div className="text-xs text-[var(--muted)] mt-1">{mode.desc}</div>
-                    {colorMode === mode.id && (
-                      <div className="absolute right-3 top-3 w-2.5 h-2.5 rounded-full bg-violet-500" />
+                    {pack.renderIcon("explorer", 32, "")}
+                    <span className="text-xs font-medium">{pack.name}</span>
+                    {iconTheme === pack.id && (
+                      <Check className="w-3.5 h-3.5 text-violet-400 absolute right-2 top-2" />
                     )}
                   </button>
                 ))}
@@ -502,9 +566,26 @@ export function SettingsWindow() {
               </div>
               <div className="flex justify-between p-3.5">
                 <span className="text-[var(--muted)]">Environment</span>
-                <span className="font-mono text-xs">Development (Localhost)</span>
+                <span className="font-mono text-xs">{systemInfo?.environment ?? "Loading…"}</span>
+              </div>
+              <div className="flex justify-between p-3.5">
+                <span className="text-[var(--muted)]">Storage Backend</span>
+                <span className={`font-mono text-xs ${systemInfo && !systemInfo.storage.persistent ? "text-amber-400" : ""}`}>
+                  {systemInfo ? `${systemInfo.storage.adapter} (${systemInfo.storage.persistent ? "persistent" : "ephemeral"})` : "Loading…"}
+                </span>
+              </div>
+              <div className="flex justify-between p-3.5">
+                <span className="text-[var(--muted)]">Synced Files / Chats</span>
+                <span className="font-mono text-xs">
+                  {systemInfo ? `${systemInfo.counts.vfsNodes} nodes · ${systemInfo.counts.telegramChats} messages` : "Loading…"}
+                </span>
               </div>
             </div>
+            {systemInfo && !systemInfo.storage.persistent && (
+              <p className="text-xs text-amber-400/90 mt-3 leading-relaxed">
+                {systemInfo.storage.note}
+              </p>
+            )}
           </div>
         )}
 

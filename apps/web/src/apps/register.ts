@@ -8,6 +8,7 @@ import { DashboardWindow } from "./dashboard/DashboardWindow";
 import { TelegramWindow } from "./telegram/TelegramWindow";
 import { WeatherWindow } from "./weather/WeatherWindow";
 import { GmailWindow } from "./gmail/GmailWindow";
+import { TrashWindow } from "./trash/TrashWindow";
 
 export function registerApps() {
   appRegistry.register({
@@ -86,6 +87,16 @@ export function registerApps() {
     component: GmailWindow,
     width: 850,
     height: 580,
+    resizable: true,
+    multiple: false,
+  });
+
+  appRegistry.register({
+    id: "trash",
+    title: "Recycle Bin",
+    component: TrashWindow,
+    width: 420,
+    height: 360,
     resizable: true,
     multiple: false,
   });

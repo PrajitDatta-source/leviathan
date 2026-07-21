@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Folder, FileText, Terminal, Settings, Trash2, Sun, MessageSquare, Mail } from "lucide-react";
+import { Folder, FileText, Terminal, Settings, Trash2, Sun, MessageSquare, Mail, LayoutDashboard } from "lucide-react";
 import { useWindowStore, useWorkspaceStore, openWindow } from "@/core/window/manager";
 import { appRegistry } from "@/core/app";
 import { AppIcon } from "@/components/icons/AppIcon";
@@ -44,10 +44,11 @@ export function DesktopIcons() {
     { id: "notes", label: "Notes", appId: "notes", icon: FileText, x: 20, y: 116 },
     { id: "terminal", label: "Terminal", appId: "terminal", icon: Terminal, x: 20, y: 212 },
     { id: "settings", label: "Settings", appId: "settings", icon: Settings, x: 20, y: 308 },
-    { id: "weather", label: "Weather", appId: "weather", icon: Sun, x: 20, y: 404 },
-    { id: "gmail", label: "Gmail", appId: "gmail", icon: Mail, x: 20, y: 500 },
-    { id: "telegram", label: "Telegram", appId: "telegram", icon: MessageSquare, x: 20, y: 596 },
-    { id: "trash", label: "Trash", appId: "trash", icon: Trash2, x: 20, y: 692 },
+    { id: "dashboard", label: "Dashboard", appId: "dashboard", icon: LayoutDashboard, x: 20, y: 404 },
+    { id: "weather", label: "Weather", appId: "weather", icon: Sun, x: 20, y: 500 },
+    { id: "gmail", label: "Gmail", appId: "gmail", icon: Mail, x: 20, y: 596 },
+    { id: "telegram", label: "Telegram", appId: "telegram", icon: MessageSquare, x: 20, y: 692 },
+    { id: "trash", label: "Trash", appId: "trash", icon: Trash2, x: 20, y: 788 },
   ]);
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -260,10 +261,6 @@ export function DesktopIcons() {
   }, [activeDragId, icons, selectedIconIds]);
 
   const handleDoubleClick = (appId: string) => {
-    if (appId === "trash") {
-      alert("Trash is currently empty.");
-      return;
-    }
     openWindow(appId);
   };
 
