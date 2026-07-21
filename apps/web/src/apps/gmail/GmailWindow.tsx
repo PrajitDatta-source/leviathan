@@ -27,7 +27,6 @@ interface LabelItem {
   icon?: string;
 }
 
-// Minimalist Geometric Symbols
 const FOLDER_CONFIG: Record<string, { name: string; icon: string }> = {
   INBOX: { name: 'Inbox', icon: '◆' },
   STARRED: { name: 'Starred', icon: '★' },
@@ -37,7 +36,6 @@ const FOLDER_CONFIG: Record<string, { name: string; icon: string }> = {
   TRASH: { name: 'Bin', icon: '✕' },
 };
 
-// Strictly ignore noise categories and system meta-labels
 const IGNORED_LABELS = [
   'CATEGORY_PROMOTIONS',
   'CATEGORY_SOCIAL',
@@ -72,6 +70,46 @@ export function GmailWindow() {
     }
   }, []);
 
+  // Wipes tokens and drops user back to auth screen
+  const handleDisconnect = () => {
+    localStorage.removeItem('iris_gmail_token');
+    localStorage.removeItem('iris_gmail_refresh_token');
+    setIsConnected(false);
+    setEmails([]);
+    setMailboxes([]);
+    setCustomLabels([]);
+  };
+
+  const refreshAccessToken = async (): Promise<string | null> => {
+    const refreshToken = localStorage.getItem('iris_gmail_refresh_token');
+    const clientId = localStorage.getItem('iris_g_client_id');
+    const clientSecret = localStorage.getItem('iris_g_secret');
+
+    if (!refreshToken || !clientId || !clientSecret) return null;
+
+    try {
+      const res = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          refresh_token: refreshToken,
+          grant_type: 'refresh_token',
+        }),
+      });
+
+      const data = await res.json();
+      if (data.access_token) {
+        localStorage.setItem('iris_gmail_token', data.access_token);
+        return data.access_token;
+      }
+    } catch (e) {
+      console.error('Failed to auto-refresh Gmail token:', e);
+    }
+    return null;
+  };
+
   const handleTokenExchange = async (code: string) => {
     setLoading(true);
     const clientId = localStorage.getItem('iris_g_client_id');
@@ -100,20 +138,20 @@ export function GmailWindow() {
 
       if (data.access_token) {
         localStorage.setItem('iris_gmail_token', data.access_token);
-        
-        // Save permanent offline refresh token for device-independent syncing
         if (data.refresh_token) {
           localStorage.setItem('iris_gmail_refresh_token', data.refresh_token);
         }
-
         window.history.replaceState({}, document.title, window.location.pathname);
         setIsConnected(true);
         initializeMailClient(data.access_token, 'INBOX');
       } else {
         console.error('Token Exchange Error:', data);
+        alert('Authentication failed. Please check your Client ID and Secret in Settings.');
+        handleDisconnect();
       }
     } catch (err) {
       console.error('Failed to exchange token:', err);
+      handleDisconnect();
     } finally {
       setLoading(false);
     }
@@ -144,8 +182,18 @@ export function GmailWindow() {
       const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/labels', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await res.json();
 
+      if (res.status === 401 || res.status === 403) {
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          return fetchLabelsAndActivity(newToken);
+        } else {
+          handleDisconnect();
+          return;
+        }
+      }
+
+      const data = await res.json();
       if (!data.labels) return;
 
       const newMap: Record<string, string> = {};
@@ -249,6 +297,17 @@ export function GmailWindow() {
         `https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=${folderId}&maxResults=25`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
+      if (listRes.status === 401 || listRes.status === 403) {
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          return fetchMessages(newToken, folderId);
+        } else {
+          handleDisconnect();
+          return;
+        }
+      }
+
       const listData = await listRes.json();
 
       if (!listData.messages) {
@@ -318,7 +377,6 @@ export function GmailWindow() {
     const redirectUri = encodeURIComponent('https://irissys.vercel.app/api/auth/callback/google');
     const scope = encodeURIComponent('https://www.googleapis.com/auth/gmail.readonly');
     
-    // Request offline access so we receive a permanent refresh token for multi-device sync
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
   };
 
@@ -429,7 +487,7 @@ export function GmailWindow() {
           )}
         </div>
 
-        {/* Sync Footer */}
+        {/* Sync & Disconnect Footer */}
         <div className="pt-3 border-t border-slate-800/80">
           {!isConnected ? (
             <button
@@ -440,7 +498,13 @@ export function GmailWindow() {
             </button>
           ) : (
             <div className="flex items-center justify-between px-2 py-1 bg-slate-950/60 rounded-xl border border-slate-800/60 text-xs">
-              <span className="text-slate-500 truncate text-[11px]">Synced with Google</span>
+              <button
+                onClick={handleDisconnect}
+                className="text-slate-500 hover:text-red-400 font-mono text-[11px] transition-colors"
+                title="Disconnect & clear saved tokens"
+              >
+                ✕ Disconnect
+              </button>
               <button
                 onClick={() => {
                   const token = localStorage.getItem('iris_gmail_token');
