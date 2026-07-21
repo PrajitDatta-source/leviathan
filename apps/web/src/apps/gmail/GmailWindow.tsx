@@ -22,28 +22,38 @@ interface LabelItem {
   name: string;
   type: string;
   unreadCount?: number;
+  latestTimestamp?: number;
+  timeRelative?: string;
+  icon?: string;
 }
 
-// Map Google System IDs to Clean UI Names
-const SYSTEM_LABEL_MAP: Record<string, string> = {
-  INBOX: 'Inbox',
-  STARRED: 'Starred',
-  SENT: 'Sent',
-  DRAFT: 'Drafts',
-  SPAM: 'Spam',
-  TRASH: 'Bin',
-  IMPORTANT: 'Important',
-  CATEGORY_PROMOTIONS: 'Promotions',
-  CATEGORY_SOCIAL: 'Social',
-  CATEGORY_UPDATES: 'Updates',
-  CATEGORY_FORUMS: 'Forums',
-  CATEGORY_PERSONAL: 'Personal',
+// Minimalist Geometric Symbols (No clunky standard emojis)
+const FOLDER_CONFIG: Record<string, { name: string; icon: string }> = {
+  INBOX: { name: 'Inbox', icon: '◆' },
+  STARRED: { name: 'Starred', icon: '★' },
+  SENT: { name: 'Sent', icon: '↗' },
+  DRAFT: { name: 'Drafts', icon: '◈' },
+  SPAM: { name: 'Spam', icon: '⊘' },
+  TRASH: { name: 'Bin', icon: '✕' },
 };
+
+// Strictly ignore noise categories and system meta-labels
+const IGNORED_LABELS = [
+  'CATEGORY_PROMOTIONS',
+  'CATEGORY_SOCIAL',
+  'CATEGORY_UPDATES',
+  'CATEGORY_FORUMS',
+  'CATEGORY_PERSONAL',
+  'IMPORTANT',
+  'CHAT',
+  'UNREAD',
+];
 
 export function GmailWindow() {
   const [emails, setEmails] = useState<EmailItem[]>([]);
-  const [labels, setLabels] = useState<LabelItem[]>([]);
-  const [labelMap, setLabelMap] = useState<Record<string, string>>(SYSTEM_LABEL_MAP);
+  const [mailboxes, setMailboxes] = useState<LabelItem[]>([]);
+  const [customLabels, setCustomLabels] = useState<LabelItem[]>([]);
+  const [labelMap, setLabelMap] = useState<Record<string, string>>({});
   const [activeFolder, setActiveFolder] = useState<string>('INBOX');
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
@@ -105,78 +115,135 @@ export function GmailWindow() {
 
   const initializeMailClient = async (token: string, folderId: string) => {
     setLoading(true);
-    await fetchLabels(token);
+    await fetchLabelsAndActivity(token);
     await fetchMessages(token, folderId);
     setLoading(false);
   };
 
-  // 1. Fetch all user labels to translate ugly IDs to human-readable names
-  const fetchLabels = async (token: string) => {
+  // Helper: Format relative timestamps cleanly (e.g., "2m ago", "3h ago")
+  const getMinimalRelativeTime = (timestampMs?: number) => {
+    if (!timestampMs || timestampMs === 0) return '';
+    const diffMins = Math.floor((Date.now() - timestampMs) / (1000 * 60));
+    if (diffMins < 1) return 'now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+    return `${Math.floor(diffDays / 30)}mo ago`;
+  };
+
+  // 1. Fetch labels, filter out noise, and dynamically sort by latest email received!
+  const fetchLabelsAndActivity = async (token: string) => {
     try {
       const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/labels', {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
 
-      if (data.labels) {
-        const newMap: Record<string, string> = { ...SYSTEM_LABEL_MAP };
-        const parsedLabels: LabelItem[] = [];
-        let inboxUnread = 0;
+      if (!data.labels) return;
 
-        data.labels.forEach((lbl: any) => {
-          const cleanName = SYSTEM_LABEL_MAP[lbl.id] || lbl.name;
-          newMap[lbl.id] = cleanName;
+      const newMap: Record<string, string> = {};
+      const rawCore: LabelItem[] = [];
+      const rawCustom: LabelItem[] = [];
+      let inboxUnread = 0;
 
-          if (lbl.id === 'INBOX' && lbl.messagesUnread) {
-            inboxUnread = lbl.messagesUnread;
-          }
+      // Filter and categorize labels
+      data.labels.forEach((lbl: any) => {
+        if (IGNORED_LABELS.includes(lbl.id)) return;
 
-          // Keep track of custom and category labels for the sidebar
-          if (lbl.type === 'user' || lbl.id.startsWith('CATEGORY_')) {
-            parsedLabels.push({
-              id: lbl.id,
-              name: cleanName,
-              type: lbl.type,
-              unreadCount: lbl.messagesUnread || 0,
-            });
-          }
-        });
+        const cleanName = FOLDER_CONFIG[lbl.id]?.name || lbl.name;
+        newMap[lbl.id] = cleanName;
 
-        setLabelMap(newMap);
-        setLabels(parsedLabels);
-        setUnreadInboxCount(inboxUnread);
-      }
+        if (lbl.id === 'INBOX' && lbl.messagesUnread) {
+          inboxUnread = lbl.messagesUnread;
+        }
+
+        const labelObj: LabelItem = {
+          id: lbl.id,
+          name: cleanName,
+          type: lbl.type,
+          unreadCount: lbl.messagesUnread || 0,
+          icon: FOLDER_CONFIG[lbl.id]?.icon || '▪',
+        };
+
+        if (FOLDER_CONFIG[lbl.id]) {
+          rawCore.push(labelObj);
+        } else if (lbl.type === 'user') {
+          rawCustom.push(labelObj);
+        }
+      });
+
+      setLabelMap(newMap);
+      setUnreadInboxCount(inboxUnread);
+
+      // Parallel fetch the newest 1 message per label to extract activity timestamps
+      const enrichWithTimestamps = async (items: LabelItem[]) => {
+        return Promise.all(
+          items.map(async (item) => {
+            try {
+              const msgRes = await fetch(
+                `https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=${item.id}&maxResults=1`,
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+              const msgData = await msgRes.json();
+
+              if (msgData.messages && msgData.messages.length > 0) {
+                const detailRes = await fetch(
+                  `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgData.messages[0].id}?format=minimal`,
+                  { headers: { Authorization: `Bearer ${token}` } }
+                );
+                const detailData = await detailRes.json();
+                const ts = parseInt(detailData.internalDate || '0', 10);
+                return {
+                  ...item,
+                  latestTimestamp: ts,
+                  timeRelative: getMinimalRelativeTime(ts),
+                };
+              }
+            } catch (e) {
+              console.error(`Failed to sync timestamp for ${item.name}`, e);
+            }
+            return item;
+          })
+        );
+      };
+
+      const [enrichedCore, enrichedCustom] = await Promise.all([
+        enrichWithTimestamps(rawCore),
+        enrichWithTimestamps(rawCustom),
+      ]);
+
+      // Order core mailboxes logically (Inbox first), but add their live timestamps
+      const coreOrder = ['INBOX', 'STARRED', 'SENT', 'DRAFT', 'SPAM', 'TRASH'];
+      enrichedCore.sort((a, b) => coreOrder.indexOf(a.id) - coreOrder.indexOf(b.id));
+
+      // DYNAMIC SORTING: Sort custom labels by most recent email timestamp descending!
+      enrichedCustom.sort((a, b) => (b.latestTimestamp || 0) - (a.latestTimestamp || 0));
+
+      setMailboxes(enrichedCore);
+      setCustomLabels(enrichedCustom);
     } catch (err) {
-      console.error('Failed to fetch labels:', err);
+      console.error('Failed to fetch and sort labels:', err);
     }
   };
 
-  // 2. Format precise and relative Gmail timestamps
+  // 2. Format precise primary time ("13:45" or "Jul 18") and relative tag
   const formatGmailTimestamp = (internalDateMs: number) => {
-    const now = Date.now();
-    const diffMs = now - internalDateMs;
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
     const dateObj = new Date(internalDateMs);
+    const now = Date.now();
+    const diffDays = Math.floor((now - internalDateMs) / (1000 * 60 * 60 * 24));
+
     const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
     const dateStr = dateObj.toLocaleDateString([], { month: 'short', day: 'numeric' });
 
-    let relative = '';
-    if (diffMins < 1) relative = 'Just now';
-    else if (diffMins < 60) relative = `${diffMins}m ago`;
-    else if (diffHours < 24) relative = `${diffHours}h ago`;
-    else if (diffDays < 7) relative = `${diffDays}d ago`;
-    else if (diffDays < 30) relative = `${Math.floor(diffDays / 7)}w ago`;
-    else relative = `${Math.floor(diffDays / 30)}mo ago`;
-
-    // If today, show exact time (13:45). If older, show date (Jul 18).
     const primary = diffDays === 0 ? timeStr : dateStr;
+    const relative = getMinimalRelativeTime(internalDateMs);
     return { primary, relative };
   };
 
-  // 3. Fetch messages for the selected folder & sort by newest first
+  // 3. Fetch mailbox messages and strictly sort descending by newest timestamp
   const fetchMessages = async (token: string, folderId: string) => {
     setLoading(true);
     setActiveFolder(folderId);
@@ -236,7 +303,7 @@ export function GmailWindow() {
         })
       );
 
-      // Explicitly sort by timestamp descending (newest mail at the top!)
+      // Explicit descending timestamp sort (Newest arrived at top)
       detailedMessages.sort((a, b) => b.internalDate - a.internalDate);
       setEmails(detailedMessages);
     } catch (err) {
@@ -257,80 +324,79 @@ export function GmailWindow() {
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}`;
   };
 
-  // Helper to filter out system labels that don't need UI pills (like UNREAD or current folder)
   const getDisplayLabels = (msgLabels: string[]) => {
     return msgLabels.filter(
-      (lbl) => lbl !== 'UNREAD' && lbl !== 'INBOX' && lbl !== 'IMPORTANT' && lbl !== 'SENT' && lbl !== activeFolder
+      (lbl) => !IGNORED_LABELS.includes(lbl) && lbl !== 'INBOX' && lbl !== 'SENT' && lbl !== activeFolder
     );
   };
 
   return (
     <div className="flex h-full w-full bg-slate-950 text-slate-100 font-sans select-none overflow-hidden border border-slate-800/80 rounded-lg shadow-2xl">
       {/* 1. LEFT SIDEBAR NAVIGATION */}
-      <div className="w-56 bg-slate-900/90 border-r border-slate-800/80 flex flex-col justify-between p-3 flex-shrink-0">
+      <div className="w-60 bg-slate-900/90 border-r border-slate-800/80 flex flex-col justify-between p-3 flex-shrink-0">
         <div className="space-y-4 overflow-y-auto pr-1 custom-scrollbar">
-          {/* App Title & Compose Mock */}
+          {/* App Title & Live Pulse */}
           <div className="flex items-center justify-between px-2 py-1">
             <div className="flex items-center gap-2.5">
-              <span className="w-3 h-3 rounded-full bg-red-500 inline-block shadow-lg shadow-red-500/40 animate-pulse"></span>
-              <span className="font-bold tracking-wide text-sm bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block shadow-lg shadow-red-500/50 animate-pulse"></span>
+              <span className="font-semibold tracking-wide text-xs uppercase text-slate-300">
                 Gmail OS
               </span>
             </div>
             {isConnected && (
-              <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono">
+              <span className="text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded font-mono">
                 Live
               </span>
             )}
           </div>
 
-          {/* Primary Folders */}
+          {/* Primary Mailboxes */}
           <div className="space-y-1">
             <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1 block">
               Mailboxes
             </span>
-            {[
-              { id: 'INBOX', label: 'Inbox', icon: '📥', count: unreadInboxCount },
-              { id: 'STARRED', label: 'Starred', icon: '⭐' },
-              { id: 'SENT', label: 'Sent', icon: '📤' },
-              { id: 'DRAFT', label: 'Drafts', icon: '📝' },
-              { id: 'SPAM', label: 'Spam', icon: '⚠️' },
-              { id: 'TRASH', label: 'Bin', icon: '🗑️' },
-            ].map((folder) => (
+            {mailboxes.map((folder) => (
               <button
                 key={folder.id}
                 onClick={() => {
                   const token = localStorage.getItem('iris_gmail_token');
                   if (token) fetchMessages(token, folder.id);
                 }}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all cursor-pointer ${
                   activeFolder === folder.id
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25 font-semibold'
+                    ? 'bg-red-600/90 text-white shadow-lg shadow-red-600/20 font-medium'
                     : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
                 }`}
               >
                 <div className="flex items-center gap-2.5 truncate">
-                  <span className="text-sm">{folder.icon}</span>
-                  <span className="truncate">{folder.label}</span>
+                  <span className="text-xs font-mono text-slate-400">{folder.icon}</span>
+                  <span className="truncate">{folder.name}</span>
                 </div>
-                {folder.count ? (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
-                    activeFolder === folder.id ? 'bg-white text-blue-600' : 'bg-blue-500/20 text-blue-400'
-                  }`}>
-                    {folder.count}
-                  </span>
-                ) : null}
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {folder.timeRelative && (
+                    <span className="text-[9px] font-mono text-slate-400">
+                      {folder.timeRelative}
+                    </span>
+                  )}
+                  {folder.unreadCount ? (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${
+                      activeFolder === folder.id ? 'bg-white text-red-600' : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                    }`}>
+                      {folder.unreadCount}
+                    </span>
+                  ) : null}
+                </div>
               </button>
             ))}
           </div>
 
-          {/* Categories & Custom Labels */}
-          {labels.length > 0 && (
+          {/* Dynamically Sorted Custom Labels */}
+          {customLabels.length > 0 && (
             <div className="space-y-1 pt-2 border-t border-slate-800/60">
               <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1 block">
-                Labels & Categories
+                Labels (Recent Activity)
               </span>
-              {labels.map((lbl) => (
+              {customLabels.map((lbl) => (
                 <button
                   key={lbl.id}
                   onClick={() => {
@@ -339,31 +405,38 @@ export function GmailWindow() {
                   }}
                   className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
                     activeFolder === lbl.id
-                      ? 'bg-slate-800 text-blue-400 font-medium border border-slate-700/60'
+                      ? 'bg-slate-800 text-red-400 font-medium border border-slate-700/60'
                       : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
                   }`}
                 >
                   <div className="flex items-center gap-2 truncate">
-                    <span className="w-1.5 h-1.5 rounded-full bg-slate-500 flex-shrink-0"></span>
+                    <span className="text-[10px] font-mono text-slate-600">▪</span>
                     <span className="truncate text-[11px]">{lbl.name}</span>
                   </div>
-                  {lbl.unreadCount ? (
-                    <span className="text-[9px] font-mono text-slate-400 bg-slate-800 px-1.5 py-0.2 rounded">
-                      {lbl.unreadCount}
-                    </span>
-                  ) : null}
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {lbl.timeRelative && (
+                      <span className="text-[9px] font-mono text-slate-500">
+                        {lbl.timeRelative}
+                      </span>
+                    )}
+                    {lbl.unreadCount ? (
+                      <span className="text-[9px] font-mono text-red-400 bg-red-950/40 border border-red-800/50 px-1.5 py-0.2 rounded">
+                        {lbl.unreadCount}
+                      </span>
+                    ) : null}
+                  </div>
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        {/* Account / Connect Action */}
+        {/* Sync Footer */}
         <div className="pt-3 border-t border-slate-800/80">
           {!isConnected ? (
             <button
               onClick={startLoginFlow}
-              className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-medium transition-all shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-medium transition-all shadow-lg shadow-red-600/20 flex items-center justify-center gap-2 cursor-pointer"
             >
               <span>Connect Gmail</span>
             </button>
@@ -375,7 +448,7 @@ export function GmailWindow() {
                   const token = localStorage.getItem('iris_gmail_token');
                   if (token) initializeMailClient(token, activeFolder);
                 }}
-                className="text-blue-400 hover:text-blue-300 font-medium text-[11px] cursor-pointer"
+                className="text-red-400 hover:text-red-300 font-medium text-[11px] cursor-pointer"
                 title="Refresh Mailbox"
               >
                 ↻ Sync
@@ -390,35 +463,33 @@ export function GmailWindow() {
         {/* Top Search & Action Header */}
         <div className="h-14 border-b border-slate-800/80 px-6 flex items-center justify-between bg-slate-900/40 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <h1 className="text-base font-semibold text-white tracking-tight">
+            <h1 className="text-sm font-semibold text-white tracking-tight">
               {labelMap[activeFolder] || activeFolder}
             </h1>
-            <span className="text-xs text-slate-500 font-mono">
+            <span className="text-[11px] text-slate-500 font-mono">
               ({emails.length} messages)
             </span>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search mail..."
-                className="bg-slate-950/80 border border-slate-800 rounded-full px-4 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500/60 w-64 transition-all"
-              />
-            </div>
+            <input
+              type="text"
+              placeholder="Search mail..."
+              className="bg-slate-950/80 border border-slate-800 rounded-full px-4 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-red-500/60 w-64 transition-all"
+            />
           </div>
         </div>
 
         {/* Mail List View */}
         {loading ? (
           <div className="flex flex-col items-center justify-center flex-1 space-y-3 text-slate-400">
-            <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-xs tracking-wide">Fetching & decrypting mailbox stream...</span>
+            <div className="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-xs tracking-wide">Syncing mailbox stream...</span>
           </div>
         ) : !isConnected ? (
           <div className="flex flex-col items-center justify-center flex-1 text-center p-8">
-            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-3 text-xl">
-              📧
+            <div className="w-10 h-10 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 mb-3 font-mono text-lg">
+              ◆
             </div>
             <h3 className="text-sm font-semibold text-white mb-1">Mirror Not Connected</h3>
             <p className="text-xs text-slate-400 max-w-xs mb-4">
@@ -426,14 +497,14 @@ export function GmailWindow() {
             </p>
             <button
               onClick={startLoginFlow}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-xl shadow-lg shadow-blue-600/30 transition-all cursor-pointer"
+              className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-xl shadow-lg shadow-red-600/20 transition-all cursor-pointer"
             >
               Authorize Gmail Account
             </button>
           </div>
         ) : emails.length === 0 ? (
-          <div className="flex flex-col items-center justify-center flex-1 text-slate-500 text-xs">
-            <span className="text-2xl mb-2">📭</span>
+          <div className="flex flex-col items-center justify-center flex-1 text-slate-600 text-xs">
+            <span className="text-lg mb-1 font-mono">⊘</span>
             <span>No messages found in {labelMap[activeFolder] || 'this folder'}.</span>
           </div>
         ) : (
@@ -446,14 +517,14 @@ export function GmailWindow() {
                   key={msg.id}
                   className={`flex items-center justify-between px-6 py-3.5 transition-all cursor-pointer group ${
                     msg.isUnread
-                      ? 'bg-blue-950/20 hover:bg-blue-900/30 font-semibold text-white border-l-2 border-l-blue-500'
+                      ? 'bg-red-950/15 hover:bg-red-900/25 font-semibold text-white border-l-2 border-l-red-500'
                       : 'hover:bg-slate-800/40 text-slate-300 border-l-2 border-l-transparent'
                   }`}
                 >
-                  {/* Left: Star + Sender + Notification Dot */}
+                  {/* Left: Star + Sender + Red Notification Dot */}
                   <div className="flex items-center gap-3 w-64 flex-shrink-0 pr-4">
                     <button
-                      className={`text-sm transition-transform hover:scale-125 ${
+                      className={`text-xs transition-transform hover:scale-125 ${
                         msg.isStarred ? 'text-yellow-400' : 'text-slate-600 group-hover:text-slate-400'
                       }`}
                       title={msg.isStarred ? 'Starred' : 'Not starred'}
@@ -461,11 +532,11 @@ export function GmailWindow() {
                       ★
                     </button>
                     
-                    {/* Unread Glowing Dot */}
+                    {/* Glowing Crimson Notification Indicator */}
                     {msg.isUnread ? (
-                      <span className="w-2 h-2 rounded-full bg-blue-500 shadow-md shadow-blue-500/50 flex-shrink-0 animate-pulse"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-md shadow-red-500/80 flex-shrink-0 animate-pulse"></span>
                     ) : (
-                      <span className="w-2 h-2 rounded-full bg-transparent flex-shrink-0"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-transparent flex-shrink-0"></span>
                     )}
 
                     <div className="truncate">
@@ -475,7 +546,7 @@ export function GmailWindow() {
                     </div>
                   </div>
 
-                  {/* Middle: Subject + Snippet + Clean Label Pills */}
+                  {/* Middle: Subject + Snippet + Minimal Label Pills */}
                   <div className="flex-1 flex items-center gap-2 overflow-hidden pr-4">
                     <span className={`text-xs truncate flex-shrink-0 max-w-[40%] ${msg.isUnread ? 'text-white font-semibold' : 'text-slate-300'}`}>
                       {msg.subject}
@@ -491,7 +562,7 @@ export function GmailWindow() {
                         {displayLabels.slice(0, 2).map((lblId) => (
                           <span
                             key={lblId}
-                            className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800/80 border border-slate-700/60 text-slate-300 font-medium whitespace-nowrap"
+                            className="text-[10px] px-2 py-0.5 rounded bg-slate-900 border border-slate-700/60 text-slate-400 font-mono whitespace-nowrap"
                           >
                             {labelMap[lblId] || lblId}
                           </span>
@@ -500,9 +571,9 @@ export function GmailWindow() {
                     )}
                   </div>
 
-                  {/* Right: Dual Timestamp Display (e.g. "13:45" + "12m ago" on hover/subtle) */}
+                  {/* Right: Dual Timestamp Display */}
                   <div className="flex flex-col items-end flex-shrink-0 w-24 text-right">
-                    <span className={`text-xs font-mono ${msg.isUnread ? 'text-blue-400 font-bold' : 'text-slate-400'}`}>
+                    <span className={`text-xs font-mono ${msg.isUnread ? 'text-red-400 font-bold' : 'text-slate-400'}`}>
                       {msg.timePrimary}
                     </span>
                     <span className="text-[10px] text-slate-500 font-mono group-hover:text-slate-400 transition-colors">
