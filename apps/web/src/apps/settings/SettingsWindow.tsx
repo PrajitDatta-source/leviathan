@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { useTheme } from "@/modules/theme/ThemeContext";
 import { Plus, Trash2, Keyboard, RotateCcw, Edit2, Check, Lock } from "lucide-react";
-import SyncVault from "@/components/vault/SyncVault";
 import { useThemeStore, OSStyle } from "@/modules/theme/useThemeStore";
 import { themePresets } from "@/modules/theme/presets";
 import { Theme } from "@/modules/theme/types";
@@ -603,8 +602,6 @@ export function SettingsWindow() {
 
         {activeTab === "vault" && (
           <div className="space-y-6">
-            <SyncVault />
-
             <form onSubmit={handleSave} className="space-y-4 max-w-md">
               <h3 className="text-base font-semibold border-b border-[var(--border)] pb-2">Telegram & Hugging Face Vault</h3>
               <p className="text-xs text-[var(--muted)]">Connect your persistent Hugging Face Docker bot to route local OS storage.</p>
@@ -644,7 +641,7 @@ export function SettingsWindow() {
 
         {activeTab === "cloud-vault" && (
           <div className="space-y-6">
-            <SyncVault />
+            <p className="text-xs text-[var(--muted)]">Vault state is automatically encrypted and synced in real-time via Zero-Knowledge AES-256 and the system Lockscreen daemon.</p>
           </div>
         )}
 
