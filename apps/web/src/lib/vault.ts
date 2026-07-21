@@ -18,6 +18,7 @@ export interface IrisOSState {
   gmailRefreshToken?: string;
   telegramToken?: string;
   theme?: string;
+  vfs?: string; // ➔ Holds your serialized filesystem
   lastSynced?: number;
 }
 
@@ -43,6 +44,7 @@ export async function pushStateToCloud(masterPin: string): Promise<{ success: bo
       gmailRefreshToken: localStorage.getItem('iris_gmail_refresh_token') || undefined,
       telegramToken: localStorage.getItem('iris_telegram_token') || undefined,
       theme: localStorage.getItem('iris_theme') || 'slate-cyan',
+      vfs: localStorage.getItem('iris_vfs_data') || localStorage.getItem('iris_vfs_nodes') || undefined,
       lastSynced: Date.now(),
     };
 
@@ -99,6 +101,10 @@ export async function hydrateStateFromCloud(inputPin: string): Promise<{ success
     if (state.gmailRefreshToken) localStorage.setItem('iris_gmail_refresh_token', state.gmailRefreshToken);
     if (state.telegramToken) localStorage.setItem('iris_telegram_token', state.telegramToken);
     if (state.theme) localStorage.setItem('iris_theme', state.theme);
+    if (state.vfs) {
+      localStorage.setItem('iris_vfs_data', state.vfs);
+      localStorage.setItem('iris_vfs_nodes', state.vfs);
+    }
 
     return { success: true, message: 'Unlocked.' };
   } catch (err: any) {

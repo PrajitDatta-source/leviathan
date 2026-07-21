@@ -1,6 +1,7 @@
 "use client";
 
 import { showToast } from "@/components/shell/Toast";
+import { autoSyncToCloud } from "@/lib/vault";
 
 export interface VFSNode {
   id: string;
@@ -36,7 +37,9 @@ class VFSManager {
       const nodes = await res.json();
       if (Array.isArray(nodes) && nodes.length > 0) {
         this.nodes = new Map(nodes.map((node) => [node.id, node]));
-        localStorage.setItem(this.storageKey, JSON.stringify(nodes));
+        const dataStr = JSON.stringify(nodes);
+        localStorage.setItem(this.storageKey, dataStr);
+        localStorage.setItem("iris_vfs_data", dataStr);
         window.dispatchEvent(new CustomEvent("vfs-synced"));
       } else {
         this.pushToBackend();
@@ -66,7 +69,7 @@ class VFSManager {
   private loadFromStorage() {
     if (typeof window === "undefined") return;
     try {
-      const stored = localStorage.getItem(this.storageKey);
+      const stored = localStorage.getItem(this.storageKey) || localStorage.getItem("iris_vfs_data");
       if (stored) {
         const parsed = JSON.parse(stored) as VFSNode[];
         this.nodes = new Map(parsed.map((node) => [node.id, node]));
@@ -94,10 +97,13 @@ class VFSManager {
     if (typeof window === "undefined") return;
     try {
       const array = Array.from(this.nodes.values());
-      localStorage.setItem(this.storageKey, JSON.stringify(array));
+      const dataStr = JSON.stringify(array);
+      localStorage.setItem(this.storageKey, dataStr);
+      localStorage.setItem("iris_vfs_data", dataStr);
       this.pushToBackend();
       window.dispatchEvent(new CustomEvent("vfs-synced"));
       window.dispatchEvent(new CustomEvent("vfs-updated"));
+      autoSyncToCloud();
     } catch (e) {
       console.error("VFS save failed:", e);
     }
