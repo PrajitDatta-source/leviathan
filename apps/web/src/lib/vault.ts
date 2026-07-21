@@ -41,6 +41,8 @@ export function lockVault(): void {
 
 export async function pushStateToCloud(masterPin: string): Promise<{ success: boolean; message: string }> {
   try {
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('iris-sync-start'));
+
     const state: IrisOSState = {
       gmailToken: localStorage.getItem('iris_gmail_token') || undefined,
       gmailRefreshToken: localStorage.getItem('iris_gmail_refresh_token') || undefined,
@@ -63,9 +65,15 @@ export async function pushStateToCloud(masterPin: string): Promise<{ success: bo
         updated_at: new Date().toISOString(),
       });
 
-    if (error) return { success: false, message: error.message };
+    if (error) {
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event('iris-sync-error'));
+      return { success: false, message: error.message };
+    }
+
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('iris-sync-done'));
     return { success: true, message: 'Synced.' };
   } catch (err: any) {
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('iris-sync-error'));
     return { success: false, message: 'Encryption error.' };
   }
 }
@@ -121,6 +129,8 @@ export async function hydrateStateFromCloud(inputPin: string): Promise<{ success
       localStorage.setItem('iris_vfs_nodes', state.vfs);
     }
 
+    enforce90DayTrashPolicy();
+
     return { success: true, message: 'Unlocked.' };
   } catch (err: any) {
     // If anything breaks, force heal the DB so you never get locked out
@@ -133,6 +143,173 @@ export async function autoSyncToCloud(): Promise<void> {
   const pin = getSessionPin();
   if (!pin) return;
   await pushStateToCloud(pin);
+}
+
+/**
+ * Scans the VFS trash on boot and permanently obliterates any files deleted > 90 days ago.
+ */
+export function enforce90DayTrashPolicy(): void {
+  if (typeof window === 'undefined') return;
+  const rawVFS = localStorage.getItem('iris_vfs_data') || localStorage.getItem('iris_vfs_nodes');
+  if (!rawVFS) return;
+
+  try {
+    const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    let filesPurged = false;
+    const parsed = JSON.parse(rawVFS);
+
+    if (Array.isArray(parsed)) {
+      // Array-based VFS format
+      const cleaned = parsed.filter((node: any) => {
+        if (node.isTrash && node.deletedAt) {
+          const deletedTime = new Date(node.deletedAt).getTime();
+          if (now - deletedTime > NINETY_DAYS_MS) {
+            console.log(`🗑️ [Trash Policy] Permanently purging expired file: ${node.name}`);
+            filesPurged = true;
+            return false;
+          }
+        }
+        return true;
+      });
+      if (filesPurged) {
+        const dataStr = JSON.stringify(cleaned);
+        localStorage.setItem('iris_vfs_data', dataStr);
+        localStorage.setItem('iris_vfs_nodes', dataStr);
+        autoSyncToCloud();
+        console.log('✓ [Trash Policy] Cloud DB defragmented and synced.');
+      }
+    } else if (parsed.trash && typeof parsed.trash === 'object') {
+      // Object-based VFS format
+      for (const [filepath, item] of Object.entries<any>(parsed.trash)) {
+        const deletedTime = typeof item.deletedAt === 'number' ? item.deletedAt : new Date(item.deletedAt).getTime();
+        if (deletedTime && (now - deletedTime) > NINETY_DAYS_MS) {
+          console.log(`🗑️ [Trash Policy] Permanently purging expired file: ${filepath}`);
+          delete parsed.trash[filepath];
+          filesPurged = true;
+        }
+      }
+      if (filesPurged) {
+        const dataStr = JSON.stringify(parsed);
+        localStorage.setItem('iris_vfs_data', dataStr);
+        localStorage.setItem('iris_vfs_nodes', dataStr);
+        autoSyncToCloud();
+        console.log('✓ [Trash Policy] Cloud DB defragmented and synced.');
+      }
+    }
+  } catch (e) {
+    console.error('Failed to run 90-day trash policy:', e);
+  }
+}
+
+/**
+ * Downloads your encrypted Postgres payload as a physical offline file
+ */
+export async function downloadOfflineBackup(): Promise<void> {
+  const { data, error } = await supabase
+    .from('iris_vault')
+    .select('encrypted_data')
+    .eq('vault_id', VAULT_ID)
+    .single();
+
+  if (error || !data?.encrypted_data) {
+    if (typeof window !== 'undefined') alert('No cloud vault found to backup!');
+    return;
+  }
+
+  const blob = new Blob([data.encrypted_data], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `iris-vault-backup-${new Date().toISOString().slice(0, 10)}.iris`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Restores an offline .iris file back into your local RAM and pushes to Supabase
+ */
+export async function restoreOfflineBackup(file: File): Promise<{ success: boolean; message: string }> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const ciphertext = e.target?.result as string;
+      if (!ciphertext) return resolve({ success: false, message: 'File is empty.' });
+
+      try {
+        const bytes = CryptoJS.AES.decrypt(ciphertext, HARDCODED_PIN);
+        const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
+        
+        if (!decryptedString) {
+          return resolve({ success: false, message: 'Invalid backup file or wrong PIN!' });
+        }
+
+        const { error } = await supabase
+          .from('iris_vault')
+          .upsert({
+            vault_id: VAULT_ID,
+            encrypted_data: ciphertext,
+            updated_at: new Date().toISOString(),
+          });
+
+        if (error) return resolve({ success: false, message: error.message });
+
+        const state: IrisOSState = JSON.parse(decryptedString);
+        if (state.gmailToken) localStorage.setItem('iris_gmail_token', state.gmailToken);
+        if (state.gmailRefreshToken) localStorage.setItem('iris_gmail_refresh_token', state.gmailRefreshToken);
+        if (state.gmailClientId) {
+          localStorage.setItem('iris_gmail_client_id', state.gmailClientId);
+          localStorage.setItem('iris_g_client_id', state.gmailClientId);
+        }
+        if (state.gmailClientSecret) {
+          localStorage.setItem('iris_gmail_client_secret', state.gmailClientSecret);
+          localStorage.setItem('iris_g_secret', state.gmailClientSecret);
+        }
+        if (state.telegramToken) {
+          localStorage.setItem('iris_telegram_token', state.telegramToken);
+          localStorage.setItem('iris_tg_token', state.telegramToken);
+        }
+        if (state.theme) localStorage.setItem('iris_theme', state.theme);
+        if (state.vfs) {
+          localStorage.setItem('iris_vfs_data', state.vfs);
+          localStorage.setItem('iris_vfs_nodes', state.vfs);
+        }
+        
+        resolve({ success: true, message: 'Backup restored successfully! Reloading...' });
+        setTimeout(() => window.location.reload(), 1500);
+      } catch (err: any) {
+        resolve({ success: false, message: 'Corrupted .iris backup file.' });
+      }
+    };
+    reader.readAsText(file);
+  });
+}
+
+/**
+ * Surgically deletes specific OAuth/API keys and syncs the cleaned state to the cloud
+ */
+export async function revokeServiceAuth(service: 'gmail' | 'telegram'): Promise<void> {
+  if (service === 'gmail') {
+    localStorage.removeItem('iris_gmail_token');
+    localStorage.removeItem('iris_gmail_refresh_token');
+    localStorage.removeItem('iris_gmail_client_id');
+    localStorage.removeItem('iris_gmail_client_secret');
+    localStorage.removeItem('iris_g_client_id');
+    localStorage.removeItem('iris_g_secret');
+    console.log('🔌 [Revoke] Wiped all Gmail OAuth credentials from memory.');
+  } 
+  else if (service === 'telegram') {
+    localStorage.removeItem('iris_telegram_token');
+    localStorage.removeItem('iris_tg_token');
+    console.log('🔌 [Revoke] Wiped Telegram bot token from memory.');
+  }
+
+  await autoSyncToCloud();
+  if (typeof window !== 'undefined') {
+    alert(`${service.toUpperCase()} credentials disconnected and erased from cloud vault.`);
+  }
 }
 
 // ==========================================
@@ -260,4 +437,3 @@ export async function verifyCloudContent(): Promise<{
     return { exists: false, savedKeys: { gmailOAuth: false, gmailToken: false, telegramToken: false, vfsFileCount: 0, trashCount: 0, lastSynced: 'Error' } };
   }
 }
-

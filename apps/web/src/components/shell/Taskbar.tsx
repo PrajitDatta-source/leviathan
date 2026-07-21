@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useThemeStore } from "@/modules/theme/useThemeStore";
 import { AppIcon } from "@/components/icons/AppIcon";
 import { Wifi, Volume2, Battery, Apple } from "lucide-react";
+import SyncDot from "@/components/os/SyncDot";
 import { 
   useWindowStore, 
   useWorkspaceStore, 
@@ -278,16 +279,19 @@ export function Taskbar() {
           );
         })}
       </div>
-      <div
-        onClick={handleLauncherClick}
-        className="flex items-center space-x-3 px-3 py-1 rounded-xl hover:bg-white/5 transition-all cursor-pointer text-xs text-right"
-      >
-        <Wifi className="w-4 h-4 opacity-80"/>
-        <Volume2 className="w-4 h-4 opacity-80"/>
-        <Battery className="w-4 h-4 opacity-80"/>
-        <div className="flex flex-col leading-tight">
-          <span className="font-semibold">{timeStr}</span>
-          <span className="opacity-70 text-[10px]">{dateStr}</span>
+      <div className="flex items-center space-x-3">
+        <SyncDot />
+        <div
+          onClick={handleLauncherClick}
+          className="flex items-center space-x-3 px-3 py-1 rounded-xl hover:bg-white/5 transition-all cursor-pointer text-xs text-right"
+        >
+          <Wifi className="w-4 h-4 opacity-80"/>
+          <Volume2 className="w-4 h-4 opacity-80"/>
+          <Battery className="w-4 h-4 opacity-80"/>
+          <div className="flex flex-col leading-tight">
+            <span className="font-semibold">{timeStr}</span>
+            <span className="opacity-70 text-[10px]">{dateStr}</span>
+          </div>
         </div>
       </div>
     </div>

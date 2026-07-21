@@ -1,13 +1,21 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { getVaultTelemetry, nukeCloudVault, pushStateToCloud, HARDCODED_PIN } from '@/lib/vault';
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  getVaultTelemetry, 
+  nukeCloudVault, 
+  pushStateToCloud, 
+  HARDCODED_PIN, 
+  downloadOfflineBackup, 
+  restoreOfflineBackup 
+} from '@/lib/vault';
 
 export default function DiskUtility() {
   const [loading, setLoading] = useState(true);
   const [telemetry, setTelemetry] = useState<any>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [status, setStatus] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadStats = async () => {
     setLoading(true);
@@ -26,6 +34,22 @@ export default function DiskUtility() {
     setStatus(res.message);
     await loadStats();
     setTimeout(() => setStatus(''), 3000);
+  };
+
+  const handleDownloadBackup = async () => {
+    setStatus('Preparing offline backup download...');
+    await downloadOfflineBackup();
+    setStatus('Backup downloaded successfully!');
+    setTimeout(() => setStatus(''), 3000);
+  };
+
+  const handleFileRestoreChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setStatus('Restoring offline backup file...');
+    const res = await restoreOfflineBackup(file);
+    setStatus(res.message);
+    await loadStats();
   };
 
   const handleNuke = async () => {
@@ -127,6 +151,33 @@ export default function DiskUtility() {
           </div>
         </div>
 
+      </div>
+
+      {/* Offline Backup Controls */}
+      <div className="pt-4 border-t border-slate-800 space-y-2">
+        <div className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Offline Hard Drive Backups (.iris)</div>
+        <div className="flex gap-2">
+          <button
+            onClick={handleDownloadBackup}
+            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded text-[11px] transition-all cursor-pointer"
+          >
+            Download Backup (.iris)
+          </button>
+          
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            accept=".iris" 
+            onChange={handleFileRestoreChange} 
+            className="hidden" 
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded text-[11px] transition-all cursor-pointer"
+          >
+            Restore Backup File
+          </button>
+        </div>
       </div>
 
       {/* Action Controls & Clean Options */}

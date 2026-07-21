@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useTheme } from "@/modules/theme/ThemeContext";
 import { Plus, Trash2, Keyboard, RotateCcw, Edit2, Check, Lock } from "lucide-react";
 import DiskUtility from "@/components/os/DiskUtility";
-import { autoSyncToCloud, verifyCloudContent } from "@/lib/vault";
+import { autoSyncToCloud, verifyCloudContent, revokeServiceAuth } from "@/lib/vault";
 import { useThemeStore, OSStyle } from "@/modules/theme/useThemeStore";
 import { themePresets } from "@/modules/theme/presets";
 import { Theme } from "@/modules/theme/types";
@@ -626,13 +626,27 @@ export function SettingsWindow() {
             </div>
 
             <div className="pt-4 border-t border-[var(--border)] flex items-center justify-between">
-              <span className="text-xs text-emerald-400 font-medium">{saveStatus}</span>
               <button
-                type="submit"
-                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs transition-colors shadow-lg shadow-blue-600/20 cursor-pointer"
+                type="button"
+                onClick={async () => {
+                  await revokeServiceAuth('gmail');
+                  setGoogleClientId('');
+                  setGoogleClientSecret('');
+                  await runVerification();
+                }}
+                className="px-3 py-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-800/50 text-xs transition-colors cursor-pointer"
               >
-                Save Configurations
+                Disconnect & Wipe Keys
               </button>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-emerald-400 font-medium">{saveStatus}</span>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs transition-colors shadow-lg shadow-blue-600/20 cursor-pointer"
+                >
+                  Save Configurations
+                </button>
+              </div>
             </div>
           </form>
         )}
