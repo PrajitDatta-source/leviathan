@@ -23,7 +23,7 @@ import {
   GlobalModifier,
 } from "@/core/window/shortcuts";
 
-type Tab = "appearance" | "wallpaper" | "accounts" | "api" | "vault" | "system" | "shortcuts" | "security";
+type Tab = "appearance" | "wallpaper" | "accounts" | "api" | "vault" | "cloud-vault" | "system" | "shortcuts" | "security";
 
 const WALLPAPER_PRESETS = [
   {
@@ -251,6 +251,17 @@ export function SettingsWindow() {
           }`}
         >
           Telegram Vault
+        </button>
+
+        <button
+          onClick={() => setActiveTab("cloud-vault")}
+          className={`w-full text-left px-3 py-2 rounded-lg transition text-sm ${
+            activeTab === "cloud-vault"
+              ? "bg-[var(--border)] font-medium text-blue-400"
+              : "hover:bg-[var(--border)]/40 text-[var(--muted)] hover:text-[var(--text)]"
+          }`}
+        >
+          Cloud State Vault
         </button>
 
         <button
@@ -628,6 +639,12 @@ export function SettingsWindow() {
                 </button>
               </div>
             </form>
+          </div>
+        )}
+
+        {activeTab === "cloud-vault" && (
+          <div className="space-y-6">
+            <SyncVault />
           </div>
         )}
 
