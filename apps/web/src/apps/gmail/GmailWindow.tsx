@@ -104,6 +104,7 @@ export function GmailWindow() {
     }
   }, []);
 
+  // 2. Catch and store BOTH the access token and the permanent refresh token
   const handleTokenExchange = async (code: string) => {
     setLoading(true);
     const clientId = localStorage.getItem('iris_g_client_id');
@@ -132,9 +133,12 @@ export function GmailWindow() {
 
       if (data.access_token) {
         localStorage.setItem('iris_gmail_token', data.access_token);
+        
+        // Save the permanent refresh token so we can silently re-authenticate forever!
         if (data.refresh_token) {
           localStorage.setItem('iris_gmail_refresh_token', data.refresh_token);
         }
+
         window.history.replaceState({}, document.title, window.location.pathname);
         setIsConnected(true);
         initializeMailClient(data.access_token, 'INBOX');
@@ -359,6 +363,7 @@ export function GmailWindow() {
     }
   };
 
+  // 1. Ask Google for an OFFLINE refresh token in the OAuth URL
   const startLoginFlow = () => {
     const clientId = localStorage.getItem('iris_g_client_id');
     if (!clientId) {
@@ -367,9 +372,9 @@ export function GmailWindow() {
     }
     const redirectUri = encodeURIComponent('https://irissys.vercel.app/api/auth/callback/google');
     const scope = encodeURIComponent('https://www.googleapis.com/auth/gmail.readonly');
-    const accessType = 'offline';
-    const prompt = 'consent';
-    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=${accessType}&prompt=${prompt}`;
+    
+    // access_type=offline and prompt=consent force Google to hand over a permanent refresh_token
+    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
   };
 
   const getDisplayLabels = (msgLabels: string[]) => {
