@@ -1,14 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 import CryptoJS from 'crypto-js';
 
-// Dynamic client creator using local storage credentials
-export function getSupabaseClient() {
-  const url = localStorage.getItem('iris_supabase_url');
-  const key = localStorage.getItem('iris_supabase_anon_key');
-  
-  if (!url || !key) return null;
-  return createClient(url, key);
-}
+// ==========================================
+// 1. CLIENT CREDENTIALS (HARDCODED FOR DEVICE INDEPENDENCE)
+// ==========================================
+const VAULT_CONFIG = {
+  url: 'https://oeanbxyfldivpiufvyez.supabase.co',
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9lYW5ieHlmbGRpdnBpdWZ2eWV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2Mjk2MDQsImV4cCI6MjEwMDIwNTYwNH0.aT6-astS8Drm6X_KQ0wHiAnQp9ziSZtn4s_RZY2WmF8',
+};
+
+const VAULT_ID = 'primary_user_vault';
+
+// Initialize static Supabase client for global OS use
+export const supabase = createClient(VAULT_CONFIG.url, VAULT_CONFIG.anonKey);
 
 export interface IrisOSState {
   gmailToken?: string;
@@ -18,22 +22,43 @@ export interface IrisOSState {
   lastSynced?: number;
 }
 
-const VAULT_ID = 'primary_user_vault';
+// ==========================================
+// 2. RAM-ONLY PIN STORAGE (WIPES ON REFRESH)
+// ==========================================
+// Because this is an in-memory variable, refreshing the browser page
+// completely obliterates the PIN, forcing a re-lock automatically.
+let activeSessionPin: string | null = null;
 
+export function setSessionPin(pin: string): void {
+  activeSessionPin = pin;
+}
+
+export function getSessionPin(): string | null {
+  return activeSessionPin;
+}
+
+export function lockVault(): void {
+  activeSessionPin = null;
+}
+
+// ==========================================
+// 3. ZERO-KNOWLEDGE PUSH & PULL LOGIC
+// ==========================================
+
+/**
+ * Encrypts current localStorage tokens with AES-256 and pushes to Supabase
+ */
 export async function pushStateToCloud(masterPin: string): Promise<{ success: boolean; message: string }> {
-  const supabase = getSupabaseClient();
-  if (!supabase) {
-    return { success: false, message: 'Supabase URL or Key not configured in settings.' };
-  }
-
   try {
     const state: IrisOSState = {
       gmailToken: localStorage.getItem('iris_gmail_token') || undefined,
       gmailRefreshToken: localStorage.getItem('iris_gmail_refresh_token') || undefined,
+      telegramToken: localStorage.getItem('iris_telegram_token') || undefined,
       theme: localStorage.getItem('iris_theme') || 'slate-cyan',
       lastSynced: Date.now(),
     };
 
+    // Encrypt the entire state object into a single AES ciphertext string
     const jsonString = JSON.stringify(state);
     const encryptedData = CryptoJS.AES.encrypt(jsonString, masterPin).toString();
 
@@ -46,23 +71,21 @@ export async function pushStateToCloud(masterPin: string): Promise<{ success: bo
       });
 
     if (error) {
-      console.error('Cloud Push Error:', error.message);
+      console.error('[Vault Push Error]:', error.message);
       return { success: false, message: error.message };
     }
 
-    return { success: true, message: 'OS state securely locked in cloud vault.' };
+    return { success: true, message: 'OS state encrypted and locked in cloud.' };
   } catch (err: any) {
-    console.error('Failed to push vault:', err);
-    return { success: false, message: err.message || 'Encryption error' };
+    console.error('[Vault Push Exception]:', err);
+    return { success: false, message: err.message || 'Encryption error occurred.' };
   }
 }
 
+/**
+ * Pulls ciphertext from Supabase, decrypts with Master PIN, and hydrates localStorage
+ */
 export async function hydrateStateFromCloud(masterPin: string): Promise<{ success: boolean; message: string }> {
-  const supabase = getSupabaseClient();
-  if (!supabase) {
-    return { success: false, message: 'Supabase URL or Key not configured in settings.' };
-  }
-
   try {
     const { data, error } = await supabase
       .from('iris_vault')
@@ -71,9 +94,10 @@ export async function hydrateStateFromCloud(masterPin: string): Promise<{ succes
       .single();
 
     if (error || !data) {
-      return { success: false, message: 'No cloud backup found for this profile.' };
+      return { success: false, message: 'No cloud backup found for this vault.' };
     }
 
+    // Decrypt the cloud ciphertext using the user's PIN
     const bytes = CryptoJS.AES.decrypt(data.encrypted_data, masterPin);
     const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
 
@@ -83,13 +107,39 @@ export async function hydrateStateFromCloud(masterPin: string): Promise<{ succes
 
     const state: IrisOSState = JSON.parse(decryptedString);
 
+    // Hydrate local browser memory with decrypted session tokens & preferences
     if (state.gmailToken) localStorage.setItem('iris_gmail_token', state.gmailToken);
     if (state.gmailRefreshToken) localStorage.setItem('iris_gmail_refresh_token', state.gmailRefreshToken);
+    if (state.telegramToken) localStorage.setItem('iris_telegram_token', state.telegramToken);
     if (state.theme) localStorage.setItem('iris_theme', state.theme);
 
     return { success: true, message: 'OS Hydrated Successfully!' };
   } catch (err: any) {
-    console.error('Hydration error:', err);
-    return { success: false, message: 'Decryption failed. Please check your PIN.' };
+    console.error('[Vault Hydration Error]:', err);
+    return { success: false, message: 'Decryption failed. Check your PIN.' };
+  }
+}
+
+// ==========================================
+// 4. AUTOMATED BACKGROUND SYNC DAEMON
+// ==========================================
+
+/**
+ * Call this helper anywhere in your app whenever a token or setting updates.
+ * It quietly encrypts and syncs your state to Postgres in the background.
+ */
+export async function autoSyncToCloud(): Promise<void> {
+  const pin = getSessionPin();
+  if (!pin) {
+    console.warn('⚠️ [Auto-Sync] Skipped: OS is locked (no PIN in RAM).');
+    return;
+  }
+
+  console.log('⚡ [Auto-Sync] Backing up updated OS state to cloud...');
+  const res = await pushStateToCloud(pin);
+  if (res.success) {
+    console.log('✓ [Auto-Sync] Cloud vault updated seamlessly.');
+  } else {
+    console.error('✕ [Auto-Sync] Failed:', res.message);
   }
 }
