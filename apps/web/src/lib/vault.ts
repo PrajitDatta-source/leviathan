@@ -196,3 +196,68 @@ export async function nukeCloudVault(): Promise<{ success: boolean; message: str
     return { success: false, message: err.message || 'Failed to destroy vault.' };
   }
 }
+
+/**
+ * Pulls the live DB payload, decrypts it, and verifies exactly what is saved in the cloud.
+ */
+export async function verifyCloudContent(): Promise<{
+  exists: boolean;
+  savedKeys: {
+    gmailOAuth: boolean;
+    gmailToken: boolean;
+    telegramToken: boolean;
+    vfsFileCount: number;
+    trashCount: number;
+    lastSynced: string;
+  };
+}> {
+  try {
+    const { data, error } = await supabase
+      .from('iris_vault')
+      .select('encrypted_data, updated_at')
+      .eq('vault_id', 'primary_user_vault')
+      .single();
+
+    if (error || !data?.encrypted_data) {
+      return { exists: false, savedKeys: { gmailOAuth: false, gmailToken: false, telegramToken: false, vfsFileCount: 0, trashCount: 0, lastSynced: 'Never' } };
+    }
+
+    const bytes = CryptoJS.AES.decrypt(data.encrypted_data, HARDCODED_PIN);
+    const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
+    const state: IrisOSState = JSON.parse(decryptedString);
+
+    // Count files in VFS and Trash
+    let vfsFileCount = 0;
+    let trashCount = 0;
+    if (state.vfs) {
+      try {
+        const vfsObj = JSON.parse(state.vfs);
+        if (Array.isArray(vfsObj)) {
+          vfsFileCount = vfsObj.filter((n: any) => !n.isTrash).length;
+          trashCount = vfsObj.filter((n: any) => n.isTrash).length;
+        } else if (vfsObj.files || vfsObj.trash) {
+          vfsFileCount = Object.keys(vfsObj.files || {}).length;
+          trashCount = Object.keys(vfsObj.trash || {}).length;
+        } else {
+          vfsFileCount = Object.keys(vfsObj).length;
+        }
+      } catch (e) {}
+    }
+
+    return {
+      exists: true,
+      savedKeys: {
+        gmailOAuth: !!(state.gmailClientId && state.gmailClientSecret),
+        gmailToken: !!state.gmailToken,
+        telegramToken: !!state.telegramToken,
+        vfsFileCount,
+        trashCount,
+        lastSynced: new Date(data.updated_at).toLocaleTimeString(),
+      },
+    };
+  } catch (err) {
+    console.error('Verification failed:', err);
+    return { exists: false, savedKeys: { gmailOAuth: false, gmailToken: false, telegramToken: false, vfsFileCount: 0, trashCount: 0, lastSynced: 'Error' } };
+  }
+}
+

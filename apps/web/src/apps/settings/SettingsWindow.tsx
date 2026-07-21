@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useTheme } from "@/modules/theme/ThemeContext";
 import { Plus, Trash2, Keyboard, RotateCcw, Edit2, Check, Lock } from "lucide-react";
 import DiskUtility from "@/components/os/DiskUtility";
-import { autoSyncToCloud } from "@/lib/vault";
+import { autoSyncToCloud, verifyCloudContent } from "@/lib/vault";
 import { useThemeStore, OSStyle } from "@/modules/theme/useThemeStore";
 import { themePresets } from "@/modules/theme/presets";
 import { Theme } from "@/modules/theme/types";
@@ -72,6 +72,20 @@ export function SettingsWindow() {
   const [tgBotToken, setTgBotToken] = useState("");
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
 
+  const [cloudVerification, setCloudVerification] = useState<{
+    exists: boolean;
+    savedKeys: { gmailOAuth: boolean; gmailToken: boolean; telegramToken: boolean; vfsFileCount: number; trashCount: number; lastSynced: string };
+  } | null>(null);
+
+  const runVerification = async () => {
+    const res = await verifyCloudContent();
+    setCloudVerification(res);
+  };
+
+  useEffect(() => {
+    runVerification();
+  }, []);
+
   const [systemInfo, setSystemInfo] = useState<{
     environment: string;
     storage: { adapter: string; persistent: boolean; note: string };
@@ -87,7 +101,7 @@ export function SettingsWindow() {
     setTgBotToken(localStorage.getItem("iris_telegram_token") || localStorage.getItem("iris_tg_token") || "");
   }, []);
 
-  const handleSave = (e?: React.FormEvent) => {
+  const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (masterPin) localStorage.setItem("iris_master_pin", masterPin);
     localStorage.setItem("iris_gmail_client_id", googleClientId);
@@ -98,7 +112,8 @@ export function SettingsWindow() {
     localStorage.setItem("iris_telegram_token", tgBotToken);
     localStorage.setItem("iris_tg_token", tgBotToken);
 
-    autoSyncToCloud();
+    await autoSyncToCloud();
+    await runVerification();
 
     setSaveStatus("System settings updated & synced to encrypted vault!");
     setTimeout(() => setSaveStatus(null), 3000);
@@ -572,7 +587,22 @@ export function SettingsWindow() {
 
         {activeTab === "api" && (
           <form onSubmit={handleSave} className="space-y-4 max-w-md">
-            <h3 className="text-base font-semibold border-b border-[var(--border)] pb-2">Google OAuth Credentials</h3>
+            <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
+              <h3 className="text-base font-semibold">Google OAuth Credentials</h3>
+              {cloudVerification && (
+                <div
+                  className={`text-[11px] font-mono px-2.5 py-1 rounded-md border flex items-center gap-1.5 ${
+                    cloudVerification.savedKeys.gmailOAuth
+                      ? "bg-emerald-950/40 text-emerald-400 border-emerald-800/60"
+                      : "bg-rose-950/40 text-rose-400 border-rose-800/60"
+                  }`}
+                >
+                  {cloudVerification.savedKeys.gmailOAuth
+                    ? "Google OAuth: ✓ Confirmed in Cloud DB"
+                    : "Google OAuth: ✕ Local Only (Press Save)"}
+                </div>
+              )}
+            </div>
             <p className="text-xs text-[var(--muted)]">Configure client credentials from Google Cloud Console to enable Gmail mirroring.</p>
             <div>
               <label className="block text-xs font-medium text-[var(--muted)] mb-1">Client ID</label>

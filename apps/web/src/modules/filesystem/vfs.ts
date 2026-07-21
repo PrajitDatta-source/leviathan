@@ -12,6 +12,8 @@ export interface VFSNode {
   mimeType?: string;
   createdAt: string;
   updatedAt: string;
+  isTrash?: boolean;
+  deletedAt?: string;
 }
 
 class VFSManager {
@@ -190,6 +192,7 @@ class VFSManager {
       content,
       createdAt: now,
       updatedAt: now,
+      isTrash: false,
     };
     this.nodes.set(id, node);
     this.saveToStorage();
@@ -197,11 +200,15 @@ class VFSManager {
   }
 
   getRootNodes(): VFSNode[] {
-    return Array.from(this.nodes.values()).filter((n) => n.parentId === null);
+    return Array.from(this.nodes.values()).filter((n) => !n.isTrash && n.parentId === null);
   }
 
   getChildren(parentId: string | null): VFSNode[] {
-    return Array.from(this.nodes.values()).filter((n) => n.parentId === parentId);
+    return Array.from(this.nodes.values()).filter((n) => !n.isTrash && n.parentId === parentId);
+  }
+
+  getTrashNodes(): VFSNode[] {
+    return Array.from(this.nodes.values()).filter((n) => !!n.isTrash);
   }
 
   getNode(id: string): VFSNode | undefined {
@@ -234,17 +241,46 @@ class VFSManager {
     }
   }
 
-  deleteNode(id: string): void {
-    // Delete descendants if it's a folder
+  deleteNode(id: string, permanent = false): void {
     const node = this.nodes.get(id);
     if (!node) return;
 
-    if (node.type === "folder") {
-      const children = this.getChildren(id);
-      children.forEach((child) => this.deleteNode(child.id));
+    if (permanent) {
+      if (node.type === "folder") {
+        const children = Array.from(this.nodes.values()).filter((c) => c.parentId === id);
+        children.forEach((child) => this.deleteNode(child.id, true));
+      }
+      this.nodes.delete(id);
+    } else {
+      if (node.type === "folder") {
+        const children = this.getChildren(id);
+        children.forEach((child) => this.deleteNode(child.id, false));
+      }
+      node.isTrash = true;
+      node.deletedAt = new Date().toISOString();
     }
 
-    this.nodes.delete(id);
+    this.saveToStorage();
+  }
+
+  restoreNode(id: string): void {
+    const node = this.nodes.get(id);
+    if (node) {
+      node.isTrash = false;
+      delete node.deletedAt;
+      if (node.type === "folder") {
+        const children = Array.from(this.nodes.values()).filter((c) => c.parentId === id);
+        children.forEach((child) => this.restoreNode(child.id));
+      }
+      this.saveToStorage();
+    }
+  }
+
+  emptyTrash(): void {
+    const trashed = this.getTrashNodes();
+    trashed.forEach((node) => {
+      this.nodes.delete(node.id);
+    });
     this.saveToStorage();
   }
 
