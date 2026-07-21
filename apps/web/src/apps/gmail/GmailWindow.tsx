@@ -27,7 +27,7 @@ interface LabelItem {
   icon?: string;
 }
 
-// Minimalist Geometric Symbols (No clunky standard emojis)
+// Minimalist Geometric Symbols
 const FOLDER_CONFIG: Record<string, { name: string; icon: string }> = {
   INBOX: { name: 'Inbox', icon: '◆' },
   STARRED: { name: 'Starred', icon: '★' },
@@ -49,7 +49,7 @@ const IGNORED_LABELS = [
   'UNREAD',
 ];
 
-export function GmailWindow() {
+export default function GmailWindow() {
   const [emails, setEmails] = useState<EmailItem[]>([]);
   const [mailboxes, setMailboxes] = useState<LabelItem[]>([]);
   const [customLabels, setCustomLabels] = useState<LabelItem[]>([]);
@@ -59,52 +59,19 @@ export function GmailWindow() {
   const [loading, setLoading] = useState<boolean>(false);
   const [unreadInboxCount, setUnreadInboxCount] = useState<number>(0);
 
-  const refreshAccessToken = async () => {
-    const refreshToken = localStorage.getItem('iris_gmail_refresh_token');
-    const clientId = localStorage.getItem('iris_g_client_id');
-    const clientSecret = localStorage.getItem('iris_g_secret');
-
-    if (!refreshToken || !clientId || !clientSecret) return null;
-
-    try {
-      const response = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          refresh_token: refreshToken,
-          client_id: clientId,
-          client_secret: clientSecret,
-          grant_type: 'refresh_token',
-        }),
-      });
-
-      const data = await response.json();
-      if (data.access_token) {
-        localStorage.setItem('iris_gmail_token', data.access_token);
-        return data.access_token;
-      }
-    } catch (err) {
-      console.error('Failed to refresh access token:', err);
-    }
-    return null;
-  };
-
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('gmail_code');
     const existingToken = localStorage.getItem('iris_gmail_token');
-    const refreshToken = localStorage.getItem('iris_gmail_refresh_token');
 
     if (code) {
       handleTokenExchange(code);
-    } else if (existingToken || refreshToken) {
+    } else if (existingToken) {
       setIsConnected(true);
-      const tokenToUse = existingToken || '';
-      initializeMailClient(tokenToUse, 'INBOX');
+      initializeMailClient(existingToken, 'INBOX');
     }
   }, []);
 
-  // 2. Catch and store BOTH the access token and the permanent refresh token
   const handleTokenExchange = async (code: string) => {
     setLoading(true);
     const clientId = localStorage.getItem('iris_g_client_id');
@@ -134,7 +101,7 @@ export function GmailWindow() {
       if (data.access_token) {
         localStorage.setItem('iris_gmail_token', data.access_token);
         
-        // Save the permanent refresh token so we can silently re-authenticate forever!
+        // Save permanent offline refresh token for device-independent syncing
         if (data.refresh_token) {
           localStorage.setItem('iris_gmail_refresh_token', data.refresh_token);
         }
@@ -154,23 +121,11 @@ export function GmailWindow() {
 
   const initializeMailClient = async (token: string, folderId: string) => {
     setLoading(true);
-    let activeToken = token;
-
-    if (!activeToken) {
-      const refreshed = await refreshAccessToken();
-      if (refreshed) {
-        activeToken = refreshed;
-      }
-    }
-
-    if (activeToken) {
-      await fetchLabelsAndActivity(activeToken);
-      await fetchMessages(activeToken, folderId);
-    }
+    await fetchLabelsAndActivity(token);
+    await fetchMessages(token, folderId);
     setLoading(false);
   };
 
-  // Helper: Format relative timestamps cleanly (e.g., "2m ago", "3h ago")
   const getMinimalRelativeTime = (timestampMs?: number) => {
     if (!timestampMs || timestampMs === 0) return '';
     const diffMins = Math.floor((Date.now() - timestampMs) / (1000 * 60));
@@ -184,7 +139,6 @@ export function GmailWindow() {
     return `${Math.floor(diffDays / 30)}mo ago`;
   };
 
-  // 1. Fetch labels, filter out noise, and dynamically sort by latest email received!
   const fetchLabelsAndActivity = async (token: string) => {
     try {
       const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/labels', {
@@ -199,7 +153,6 @@ export function GmailWindow() {
       const rawCustom: LabelItem[] = [];
       let inboxUnread = 0;
 
-      // Filter and categorize labels
       data.labels.forEach((lbl: any) => {
         if (IGNORED_LABELS.includes(lbl.id)) return;
 
@@ -228,7 +181,6 @@ export function GmailWindow() {
       setLabelMap(newMap);
       setUnreadInboxCount(inboxUnread);
 
-      // Parallel fetch the newest 1 message per label to extract activity timestamps
       const enrichWithTimestamps = async (items: LabelItem[]) => {
         return Promise.all(
           items.map(async (item) => {
@@ -265,11 +217,8 @@ export function GmailWindow() {
         enrichWithTimestamps(rawCustom),
       ]);
 
-      // Order core mailboxes logically (Inbox first), but add their live timestamps
       const coreOrder = ['INBOX', 'STARRED', 'SENT', 'DRAFT', 'SPAM', 'TRASH'];
       enrichedCore.sort((a, b) => coreOrder.indexOf(a.id) - coreOrder.indexOf(b.id));
-
-      // DYNAMIC SORTING: Sort custom labels by most recent email timestamp descending!
       enrichedCustom.sort((a, b) => (b.latestTimestamp || 0) - (a.latestTimestamp || 0));
 
       setMailboxes(enrichedCore);
@@ -279,7 +228,6 @@ export function GmailWindow() {
     }
   };
 
-  // 2. Format precise primary time ("13:45" or "Jul 18") and relative tag
   const formatGmailTimestamp = (internalDateMs: number) => {
     const dateObj = new Date(internalDateMs);
     const now = Date.now();
@@ -293,7 +241,6 @@ export function GmailWindow() {
     return { primary, relative };
   };
 
-  // 3. Fetch mailbox messages and strictly sort descending by newest timestamp
   const fetchMessages = async (token: string, folderId: string) => {
     setLoading(true);
     setActiveFolder(folderId);
@@ -353,7 +300,6 @@ export function GmailWindow() {
         })
       );
 
-      // Explicit descending timestamp sort (Newest arrived at top)
       detailedMessages.sort((a, b) => b.internalDate - a.internalDate);
       setEmails(detailedMessages);
     } catch (err) {
@@ -363,7 +309,6 @@ export function GmailWindow() {
     }
   };
 
-  // 1. Ask Google for an OFFLINE refresh token in the OAuth URL
   const startLoginFlow = () => {
     const clientId = localStorage.getItem('iris_g_client_id');
     if (!clientId) {
@@ -373,7 +318,7 @@ export function GmailWindow() {
     const redirectUri = encodeURIComponent('https://irissys.vercel.app/api/auth/callback/google');
     const scope = encodeURIComponent('https://www.googleapis.com/auth/gmail.readonly');
     
-    // access_type=offline and prompt=consent force Google to hand over a permanent refresh_token
+    // Request offline access so we receive a permanent refresh token for multi-device sync
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
   };
 
@@ -388,16 +333,16 @@ export function GmailWindow() {
       {/* 1. LEFT SIDEBAR NAVIGATION */}
       <div className="w-60 bg-slate-900/90 border-r border-slate-800/80 flex flex-col justify-between p-3 flex-shrink-0">
         <div className="space-y-4 overflow-y-auto pr-1 custom-scrollbar">
-          {/* App Title & Live Pulse */}
+          {/* App Title & Clean Live Indicator */}
           <div className="flex items-center justify-between px-2 py-1">
             <div className="flex items-center gap-2.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block shadow-lg shadow-red-500/50 animate-pulse"></span>
-              <span className="font-semibold tracking-wide text-xs uppercase text-slate-300">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 inline-block shadow-lg shadow-cyan-400/50 animate-pulse"></span>
+              <span className="font-semibold tracking-wide text-xs uppercase text-slate-200">
                 Gmail OS
               </span>
             </div>
             {isConnected && (
-              <span className="text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded font-mono">
+              <span className="text-[10px] bg-slate-800 text-cyan-400 border border-slate-700/60 px-2 py-0.5 rounded font-mono">
                 Live
               </span>
             )}
@@ -415,25 +360,25 @@ export function GmailWindow() {
                   const token = localStorage.getItem('iris_gmail_token');
                   if (token) fetchMessages(token, folder.id);
                 }}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all cursor-pointer ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all ${
                   activeFolder === folder.id
-                    ? 'bg-red-600/90 text-white shadow-lg shadow-red-600/20 font-medium'
-                    : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
+                    ? 'bg-slate-800 text-white shadow-md border border-slate-700/80 font-medium'
+                    : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
                 }`}
               >
                 <div className="flex items-center gap-2.5 truncate">
-                  <span className="text-xs font-mono text-slate-400">{folder.icon}</span>
+                  <span className="text-xs font-mono text-slate-500">{folder.icon}</span>
                   <span className="truncate">{folder.name}</span>
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
                   {folder.timeRelative && (
-                    <span className="text-[9px] font-mono text-slate-400">
+                    <span className="text-[9px] font-mono text-slate-500">
                       {folder.timeRelative}
                     </span>
                   )}
                   {folder.unreadCount ? (
                     <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${
-                      activeFolder === folder.id ? 'bg-white text-red-600' : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                      activeFolder === folder.id ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'bg-slate-800 text-slate-300'
                     }`}>
                       {folder.unreadCount}
                     </span>
@@ -456,9 +401,9 @@ export function GmailWindow() {
                     const token = localStorage.getItem('iris_gmail_token');
                     if (token) fetchMessages(token, lbl.id);
                   }}
-                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition-all ${
                     activeFolder === lbl.id
-                      ? 'bg-slate-800 text-red-400 font-medium border border-slate-700/60'
+                      ? 'bg-slate-800 text-cyan-300 font-medium border border-slate-700/80'
                       : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
                   }`}
                 >
@@ -473,7 +418,7 @@ export function GmailWindow() {
                       </span>
                     )}
                     {lbl.unreadCount ? (
-                      <span className="text-[9px] font-mono text-red-400 bg-red-950/40 border border-red-800/50 px-1.5 py-0.2 rounded">
+                      <span className="text-[9px] font-mono text-cyan-300 bg-slate-800/80 border border-slate-700 px-1.5 py-0.2 rounded">
                         {lbl.unreadCount}
                       </span>
                     ) : null}
@@ -489,19 +434,19 @@ export function GmailWindow() {
           {!isConnected ? (
             <button
               onClick={startLoginFlow}
-              className="w-full py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-medium transition-all shadow-lg shadow-red-600/20 flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700/80 rounded-xl text-xs font-medium transition-all shadow-md flex items-center justify-center gap-2"
             >
               <span>Connect Gmail</span>
             </button>
           ) : (
             <div className="flex items-center justify-between px-2 py-1 bg-slate-950/60 rounded-xl border border-slate-800/60 text-xs">
-              <span className="text-slate-400 truncate text-[11px]">Synced with Google</span>
+              <span className="text-slate-500 truncate text-[11px]">Synced with Google</span>
               <button
                 onClick={() => {
                   const token = localStorage.getItem('iris_gmail_token');
                   if (token) initializeMailClient(token, activeFolder);
                 }}
-                className="text-red-400 hover:text-red-300 font-medium text-[11px] cursor-pointer"
+                className="text-slate-400 hover:text-cyan-300 font-medium text-[11px] transition-colors"
                 title="Refresh Mailbox"
               >
                 ↻ Sync
@@ -528,7 +473,7 @@ export function GmailWindow() {
             <input
               type="text"
               placeholder="Search mail..."
-              className="bg-slate-950/80 border border-slate-800 rounded-full px-4 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-red-500/60 w-64 transition-all"
+              className="bg-slate-950/80 border border-slate-800 rounded-full px-4 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-slate-600 w-64 transition-all"
             />
           </div>
         </div>
@@ -536,12 +481,12 @@ export function GmailWindow() {
         {/* Mail List View */}
         {loading ? (
           <div className="flex flex-col items-center justify-center flex-1 space-y-3 text-slate-400">
-            <div className="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-5 h-5 border-2 border-slate-500 border-t-transparent rounded-full animate-spin"></div>
             <span className="text-xs tracking-wide">Syncing mailbox stream...</span>
           </div>
         ) : !isConnected ? (
           <div className="flex flex-col items-center justify-center flex-1 text-center p-8">
-            <div className="w-10 h-10 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 mb-3 font-mono text-lg">
+            <div className="w-10 h-10 rounded-2xl bg-slate-800/60 border border-slate-700/80 flex items-center justify-center text-slate-300 mb-3 font-mono text-lg">
               ◆
             </div>
             <h3 className="text-sm font-semibold text-white mb-1">Mirror Not Connected</h3>
@@ -550,7 +495,7 @@ export function GmailWindow() {
             </p>
             <button
               onClick={startLoginFlow}
-              className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-xl shadow-lg shadow-red-600/20 transition-all cursor-pointer"
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-medium rounded-xl shadow-md transition-all"
             >
               Authorize Gmail Account
             </button>
@@ -570,11 +515,11 @@ export function GmailWindow() {
                   key={msg.id}
                   className={`flex items-center justify-between px-6 py-3.5 transition-all cursor-pointer group ${
                     msg.isUnread
-                      ? 'bg-red-950/15 hover:bg-red-900/25 font-semibold text-white border-l-2 border-l-red-500'
-                      : 'hover:bg-slate-800/40 text-slate-300 border-l-2 border-l-transparent'
+                      ? 'bg-slate-800/40 hover:bg-slate-800/60 font-semibold text-white border-l-2 border-l-cyan-400'
+                      : 'hover:bg-slate-800/30 text-slate-300 border-l-2 border-l-transparent'
                   }`}
                 >
-                  {/* Left: Star + Sender + Red Notification Dot */}
+                  {/* Left: Star + Sender + Cyan Notification Dot */}
                   <div className="flex items-center gap-3 w-64 flex-shrink-0 pr-4">
                     <button
                       className={`text-xs transition-transform hover:scale-125 ${
@@ -585,9 +530,9 @@ export function GmailWindow() {
                       ★
                     </button>
                     
-                    {/* Glowing Crimson Notification Indicator */}
+                    {/* Glowing Cyan/White Notification Indicator */}
                     {msg.isUnread ? (
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-md shadow-red-500/80 flex-shrink-0 animate-pulse"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-md shadow-cyan-400/80 flex-shrink-0 animate-pulse"></span>
                     ) : (
                       <span className="w-1.5 h-1.5 rounded-full bg-transparent flex-shrink-0"></span>
                     )}
@@ -626,7 +571,7 @@ export function GmailWindow() {
 
                   {/* Right: Dual Timestamp Display */}
                   <div className="flex flex-col items-end flex-shrink-0 w-24 text-right">
-                    <span className={`text-xs font-mono ${msg.isUnread ? 'text-red-400 font-bold' : 'text-slate-400'}`}>
+                    <span className={`text-xs font-mono ${msg.isUnread ? 'text-cyan-300 font-bold' : 'text-slate-400'}`}>
                       {msg.timePrimary}
                     </span>
                     <span className="text-[10px] text-slate-500 font-mono group-hover:text-slate-400 transition-colors">
@@ -642,5 +587,3 @@ export function GmailWindow() {
     </div>
   );
 }
-
-export default GmailWindow;
