@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   try {
     const contentType = request.headers.get('content-type') || '';
     let token = '';
-    let target_sheet = '';
+    let target_sheet = ''; // TG_DMS, TG_DELETIONS, TG_UNSENT, etc.
     let sender = '';
     let payload = '';
 
@@ -28,14 +28,19 @@ export async function POST(request: Request) {
       payload = body.payload || body.text || '';
     }
 
-    // 1. Verify the bootstrap token so unauthorized users cannot spam the OS
     if (process.env.HF_BOOTSTRAP_TOKEN && token && token !== process.env.HF_BOOTSTRAP_TOKEN) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log(`[Telegram INBOX] ${target_sheet || 'default'} | ${sender}: ${payload}`);
+    const isGhostIntercept = target_sheet.toUpperCase().includes('DELETE') || target_sheet.toUpperCase().includes('UNSENT');
 
-    // 2. Record the incoming message into Iris OS Telegram chat history
+    if (isGhostIntercept) {
+      console.log(`[Telegram Intercept] Type: ${target_sheet} | From: ${sender} | Text: ${payload}`);
+    } else {
+      console.log(`[Telegram INBOX] ${target_sheet || 'default'} | ${sender}: ${payload}`);
+    }
+
+    // Save to DB
     if (payload) {
       const db = readDB();
       const newChat = {
@@ -43,13 +48,14 @@ export async function POST(request: Request) {
         sender: sender || "Telegram Bot",
         text: payload,
         timestamp: new Date().toISOString(),
+        isIntercepted: isGhostIntercept
       };
       await writeDB({ telegramChats: [...db.telegramChats, newChat] });
     }
 
-    return NextResponse.json({ success: true, message: 'Payload received by Iris OS' });
+    return NextResponse.json({ success: true, message: isGhostIntercept ? 'Message intercepted and archived.' : 'Payload received by Iris OS' });
   } catch (error) {
     console.error('Telegram Gateway Error:', error);
-    return NextResponse.json({ error: 'Gateway failure' }, { status: 500 });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
