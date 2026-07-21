@@ -18,6 +18,8 @@ export interface IrisOSState {
   gmailRefreshToken?: string;
   gmailClientId?: string;
   gmailClientSecret?: string;
+  telegramBotToken?: string;
+  hfSpaceEndpoint?: string;
   telegramToken?: string;
   theme?: string;
   vfs?: string; // ➔ Holds your serialized filesystem
@@ -48,6 +50,8 @@ export async function pushStateToCloud(masterPin: string): Promise<{ success: bo
       gmailRefreshToken: localStorage.getItem('iris_gmail_refresh_token') || undefined,
       gmailClientId: localStorage.getItem('iris_gmail_client_id') || localStorage.getItem('iris_g_client_id') || undefined,
       gmailClientSecret: localStorage.getItem('iris_gmail_client_secret') || localStorage.getItem('iris_g_secret') || undefined,
+      telegramBotToken: localStorage.getItem('iris_tg_bot_token') || localStorage.getItem('iris_telegram_token') || localStorage.getItem('iris_tg_token') || undefined,
+      hfSpaceEndpoint: localStorage.getItem('iris_hf_endpoint') || localStorage.getItem('iris_hf_url') || undefined,
       telegramToken: localStorage.getItem('iris_telegram_token') || localStorage.getItem('iris_tg_token') || undefined,
       theme: localStorage.getItem('iris_theme') || 'slate-cyan',
       vfs: localStorage.getItem('iris_vfs_data') || localStorage.getItem('iris_vfs_nodes') || undefined,
@@ -119,9 +123,15 @@ export async function hydrateStateFromCloud(inputPin: string): Promise<{ success
       localStorage.setItem('iris_gmail_client_secret', state.gmailClientSecret);
       localStorage.setItem('iris_g_secret', state.gmailClientSecret);
     }
-    if (state.telegramToken) {
-      localStorage.setItem('iris_telegram_token', state.telegramToken);
-      localStorage.setItem('iris_tg_token', state.telegramToken);
+    if (state.telegramBotToken || state.telegramToken) {
+      const tgToken = state.telegramBotToken || state.telegramToken;
+      localStorage.setItem('iris_tg_bot_token', tgToken!);
+      localStorage.setItem('iris_telegram_token', tgToken!);
+      localStorage.setItem('iris_tg_token', tgToken!);
+    }
+    if (state.hfSpaceEndpoint) {
+      localStorage.setItem('iris_hf_endpoint', state.hfSpaceEndpoint);
+      localStorage.setItem('iris_hf_url', state.hfSpaceEndpoint);
     }
     if (state.theme) localStorage.setItem('iris_theme', state.theme);
     if (state.vfs) {
@@ -267,9 +277,15 @@ export async function restoreOfflineBackup(file: File): Promise<{ success: boole
           localStorage.setItem('iris_gmail_client_secret', state.gmailClientSecret);
           localStorage.setItem('iris_g_secret', state.gmailClientSecret);
         }
-        if (state.telegramToken) {
-          localStorage.setItem('iris_telegram_token', state.telegramToken);
-          localStorage.setItem('iris_tg_token', state.telegramToken);
+        if (state.telegramBotToken || state.telegramToken) {
+          const tgToken = state.telegramBotToken || state.telegramToken;
+          localStorage.setItem('iris_tg_bot_token', tgToken!);
+          localStorage.setItem('iris_telegram_token', tgToken!);
+          localStorage.setItem('iris_tg_token', tgToken!);
+        }
+        if (state.hfSpaceEndpoint) {
+          localStorage.setItem('iris_hf_endpoint', state.hfSpaceEndpoint);
+          localStorage.setItem('iris_hf_url', state.hfSpaceEndpoint);
         }
         if (state.theme) localStorage.setItem('iris_theme', state.theme);
         if (state.vfs) {

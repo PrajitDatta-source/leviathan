@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { readDB, writeDB } from "@/core/backend/db";
+import { NextResponse } from 'next/server';
+import { readDB, writeDB } from '@/core/backend/db';
 
 export async function GET() {
   const db = readDB();
@@ -8,34 +8,48 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    if (!body.text) {
-      return NextResponse.json({ error: "Message text is required" }, { status: 400 });
+    const contentType = request.headers.get('content-type') || '';
+    let token = '';
+    let target_sheet = '';
+    let sender = '';
+    let payload = '';
+
+    if (contentType.includes('multipart/form-data') || contentType.includes('application/x-www-form-urlencoded')) {
+      const body = await request.formData();
+      token = body.get('token')?.toString() || '';
+      target_sheet = body.get('target_sheet')?.toString() || '';
+      sender = body.get('sender')?.toString() || '';
+      payload = body.get('payload')?.toString() || '';
+    } else {
+      const body = await request.json();
+      token = body.token || '';
+      target_sheet = body.target_sheet || '';
+      sender = body.sender || '';
+      payload = body.payload || body.text || '';
     }
 
-    const db = readDB();
-    const newChat = {
-      id: `tg_${Date.now()}`,
-      sender: body.sender || "You (Owner)",
-      text: body.text,
-      timestamp: new Date().toISOString(),
-    };
+    // 1. Verify the bootstrap token so unauthorized users cannot spam the OS
+    if (process.env.HF_BOOTSTRAP_TOKEN && token && token !== process.env.HF_BOOTSTRAP_TOKEN) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    const updatedChats = [...db.telegramChats, newChat];
+    console.log(`[Telegram INBOX] ${target_sheet || 'default'} | ${sender}: ${payload}`);
 
-    // Simulate an automatic response from Telegram bot after 1.5 seconds
-    if (body.sender !== "Telegram Bot") {
-      updatedChats.push({
-        id: `tg_reply_${Date.now()}`,
-        sender: "Telegram Bot",
-        text: `Echo: Received "${body.text}". Server transaction committed.`,
+    // 2. Record the incoming message into Iris OS Telegram chat history
+    if (payload) {
+      const db = readDB();
+      const newChat = {
+        id: `tg_${Date.now()}`,
+        sender: sender || "Telegram Bot",
+        text: payload,
         timestamp: new Date().toISOString(),
-      });
+      };
+      await writeDB({ telegramChats: [...db.telegramChats, newChat] });
     }
 
-    await writeDB({ telegramChats: updatedChats });
-    return NextResponse.json(updatedChats);
-  } catch (e) {
-    return NextResponse.json({ error: "Invalid Telegram message payload" }, { status: 400 });
+    return NextResponse.json({ success: true, message: 'Payload received by Iris OS' });
+  } catch (error) {
+    console.error('Telegram Gateway Error:', error);
+    return NextResponse.json({ error: 'Gateway failure' }, { status: 500 });
   }
 }

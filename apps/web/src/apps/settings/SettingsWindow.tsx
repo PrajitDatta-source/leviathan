@@ -97,8 +97,8 @@ export function SettingsWindow() {
     setMasterPin(localStorage.getItem("iris_master_pin") || "@@#:");
     setGoogleClientId(localStorage.getItem("iris_gmail_client_id") || localStorage.getItem("iris_g_client_id") || "");
     setGoogleClientSecret(localStorage.getItem("iris_gmail_client_secret") || localStorage.getItem("iris_g_secret") || "");
-    setHfSpaceUrl(localStorage.getItem("iris_hf_url") || "");
-    setTgBotToken(localStorage.getItem("iris_telegram_token") || localStorage.getItem("iris_tg_token") || "");
+    setHfSpaceUrl(localStorage.getItem("iris_hf_endpoint") || localStorage.getItem("iris_hf_url") || "");
+    setTgBotToken(localStorage.getItem("iris_tg_bot_token") || localStorage.getItem("iris_telegram_token") || localStorage.getItem("iris_tg_token") || "");
   }, []);
 
   const handleSave = async (e?: React.FormEvent) => {
@@ -108,7 +108,9 @@ export function SettingsWindow() {
     localStorage.setItem("iris_g_client_id", googleClientId);
     localStorage.setItem("iris_gmail_client_secret", googleClientSecret);
     localStorage.setItem("iris_g_secret", googleClientSecret);
+    localStorage.setItem("iris_hf_endpoint", hfSpaceUrl);
     localStorage.setItem("iris_hf_url", hfSpaceUrl);
+    localStorage.setItem("iris_tg_bot_token", tgBotToken);
     localStorage.setItem("iris_telegram_token", tgBotToken);
     localStorage.setItem("iris_tg_token", tgBotToken);
 
