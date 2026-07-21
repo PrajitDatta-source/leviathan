@@ -49,7 +49,7 @@ const IGNORED_LABELS = [
   'UNREAD',
 ];
 
-export default function GmailWindow() {
+export function GmailWindow() {
   const [emails, setEmails] = useState<EmailItem[]>([]);
   const [mailboxes, setMailboxes] = useState<LabelItem[]>([]);
   const [customLabels, setCustomLabels] = useState<LabelItem[]>([]);
@@ -587,3 +587,5 @@ export default function GmailWindow() {
     </div>
   );
 }
+
+export default GmailWindow;
