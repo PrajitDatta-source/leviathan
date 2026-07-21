@@ -59,16 +59,48 @@ export function GmailWindow() {
   const [loading, setLoading] = useState<boolean>(false);
   const [unreadInboxCount, setUnreadInboxCount] = useState<number>(0);
 
+  const refreshAccessToken = async () => {
+    const refreshToken = localStorage.getItem('iris_gmail_refresh_token');
+    const clientId = localStorage.getItem('iris_g_client_id');
+    const clientSecret = localStorage.getItem('iris_g_secret');
+
+    if (!refreshToken || !clientId || !clientSecret) return null;
+
+    try {
+      const response = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          refresh_token: refreshToken,
+          client_id: clientId,
+          client_secret: clientSecret,
+          grant_type: 'refresh_token',
+        }),
+      });
+
+      const data = await response.json();
+      if (data.access_token) {
+        localStorage.setItem('iris_gmail_token', data.access_token);
+        return data.access_token;
+      }
+    } catch (err) {
+      console.error('Failed to refresh access token:', err);
+    }
+    return null;
+  };
+
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('gmail_code');
     const existingToken = localStorage.getItem('iris_gmail_token');
+    const refreshToken = localStorage.getItem('iris_gmail_refresh_token');
 
     if (code) {
       handleTokenExchange(code);
-    } else if (existingToken) {
+    } else if (existingToken || refreshToken) {
       setIsConnected(true);
-      initializeMailClient(existingToken, 'INBOX');
+      const tokenToUse = existingToken || '';
+      initializeMailClient(tokenToUse, 'INBOX');
     }
   }, []);
 
@@ -118,8 +150,19 @@ export function GmailWindow() {
 
   const initializeMailClient = async (token: string, folderId: string) => {
     setLoading(true);
-    await fetchLabelsAndActivity(token);
-    await fetchMessages(token, folderId);
+    let activeToken = token;
+
+    if (!activeToken) {
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        activeToken = refreshed;
+      }
+    }
+
+    if (activeToken) {
+      await fetchLabelsAndActivity(activeToken);
+      await fetchMessages(activeToken, folderId);
+    }
     setLoading(false);
   };
 
