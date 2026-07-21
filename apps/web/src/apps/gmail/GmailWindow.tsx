@@ -42,14 +42,14 @@ interface LabelItem {
   icon?: string;
 }
 
-// Clean Minimalist Icons
+// Ultra-Clean Monochrome Geometric Symbols (ZERO Emojis)
 const FOLDER_CONFIG: Record<string, { name: string; icon: string }> = {
-  INBOX: { name: 'Inbox', icon: '📥' },
-  STARRED: { name: 'Starred', icon: '⭐' },
-  SENT: { name: 'Sent', icon: '↗️' },
-  DRAFT: { name: 'Drafts', icon: '📄' },
-  SPAM: { name: 'Spam', icon: '⚠️' },
-  TRASH: { name: 'Bin', icon: '🗑️' },
+  INBOX: { name: 'Inbox', icon: '▪' },
+  STARRED: { name: 'Starred', icon: '★' },
+  SENT: { name: 'Sent', icon: '↗' },
+  DRAFT: { name: 'Drafts', icon: '▫' },
+  SPAM: { name: 'Spam', icon: '⊘' },
+  TRASH: { name: 'Bin', icon: '✕' },
 };
 
 const IGNORED_LABELS = [
@@ -75,10 +75,10 @@ export function GmailWindow() {
   const [loading, setLoading] = useState<boolean>(false);
   const [unreadInboxCount, setUnreadInboxCount] = useState<number>(0);
 
-  // FULL READER STATE
+  // FULL READER STATE (Images displayed by default!)
   const [selectedEmail, setSelectedEmail] = useState<FullEmail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
-  const [showImages, setShowImages] = useState<boolean>(false);
+  const [showImages, setShowImages] = useState<boolean>(true);
   const [otpCopied, setOtpCopied] = useState<boolean>(false);
 
   const cacheRef = useRef<Record<string, { timestamp: number; items: EmailItem[] }>>({});
@@ -463,7 +463,7 @@ export function GmailWindow() {
     if (!token) return;
 
     setLoadingDetail(true);
-    setShowImages(false);
+    setShowImages(true); // Default to viewing images out of the box!
     setOtpCopied(false);
 
     try {
@@ -610,7 +610,7 @@ export function GmailWindow() {
     if (!showImages) {
       content = content.replace(
         /<img\b([^>]*)src\s*=\s*(["']?)([^"'\s>]+)\2([^>]*)>/gi,
-        '<div style="border: 1px dashed #334155; padding: 16px; border-radius: 8px; text-align: center; color: #94a3b8; font-family: -apple-system, sans-serif; font-size: 12px; background: #131314; margin: 12px 0;">🖼️ Image hidden for privacy — Click "Load Images" in the header to view</div>'
+        '<div style="border: 1px dashed #334155; padding: 16px; border-radius: 8px; text-align: center; color: #94a3b8; font-family: -apple-system, sans-serif; font-size: 12px; background: #131314; margin: 12px 0;">[ Image hidden for privacy — Click "Display Images" in the header to view ]</div>'
       );
       content = content.replace(/background(-image)?\s*:\s*url\([^)]+\)/gi, 'background: none');
     }
@@ -647,17 +647,17 @@ export function GmailWindow() {
 
   return (
     <div className="flex h-full w-full bg-[#131314] text-slate-200 font-sans select-none overflow-hidden border border-slate-800/80 rounded-xl shadow-2xl">
-      {/* 1. LEFT SIDEBAR (MD3 Pill Navigation) */}
+      {/* 1. LEFT SIDEBAR (MD3 Pill Navigation + Timestamps) */}
       <div className="w-64 bg-[#1a1a1c] border-r border-slate-800/60 flex flex-col justify-between py-3 pr-3 flex-shrink-0">
         <div className="space-y-6 overflow-y-auto pl-3 pr-1 custom-scrollbar">
-          {/* Authentic Gmail Logo Header */}
+          {/* Authentic Clean Title */}
           <div className="flex items-center gap-3 px-3 py-2">
             <span className="text-xl font-bold tracking-tight text-white font-sans">
-              Gmail <span className="text-xs font-normal text-slate-400">OS</span>
+              Gmail
             </span>
           </div>
 
-          {/* MD3 Rounded-R-Full Mailboxes */}
+          {/* MD3 Mailboxes with Activity Timestamps */}
           <div className="space-y-1 -ml-3">
             {mailboxes.map((folder) => {
               const isActive = activeFolder === folder.id;
@@ -668,27 +668,34 @@ export function GmailWindow() {
                     const token = localStorage.getItem('iris_gmail_token');
                     if (token) fetchMessages(token, folder.id, false);
                   }}
-                  className={`w-full flex items-center justify-between px-6 py-2 rounded-r-full text-sm font-normal transition-colors ${
+                  className={`w-full flex items-center justify-between px-6 py-2 rounded-r-full text-sm font-normal transition-colors group ${
                     isActive
                       ? 'bg-slate-800/80 font-semibold text-slate-100'
                       : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
                   }`}
                 >
-                  <div className="flex items-center gap-4 truncate">
-                    <span className="text-base font-normal">{folder.icon}</span>
+                  <div className="flex items-center gap-3 truncate pr-2">
+                    <span className="text-sm font-mono text-slate-500 group-hover:text-slate-300">{folder.icon}</span>
                     <span className="truncate">{folder.name}</span>
                   </div>
-                  {folder.unreadCount ? (
-                    <span className={`text-xs font-semibold ${isActive ? 'text-white' : 'text-slate-400'}`}>
-                      {folder.unreadCount}
-                    </span>
-                  ) : null}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {folder.timeRelative && (
+                      <span className="text-[11px] font-mono text-slate-500 font-normal">
+                        {folder.timeRelative}
+                      </span>
+                    )}
+                    {folder.unreadCount ? (
+                      <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${isActive ? 'text-white' : 'text-slate-300'}`}>
+                        {folder.unreadCount}
+                      </span>
+                    ) : null}
+                  </div>
                 </button>
               );
             })}
           </div>
 
-          {/* Custom Labels Section */}
+          {/* Custom Labels Section with Activity Timestamps */}
           {customLabels.length > 0 && (
             <div className="space-y-1 pt-4 border-t border-slate-800/60 -ml-3">
               <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider px-6 mb-2 block">
@@ -703,19 +710,26 @@ export function GmailWindow() {
                       const token = localStorage.getItem('iris_gmail_token');
                       if (token) fetchMessages(token, lbl.id, false);
                     }}
-                    className={`w-full flex items-center justify-between px-6 py-1.5 rounded-r-full text-xs transition-colors ${
+                    className={`w-full flex items-center justify-between px-6 py-1.5 rounded-r-full text-xs transition-colors group ${
                       isActive
                         ? 'bg-slate-800/80 font-semibold text-slate-100'
                         : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
                     }`}
                   >
-                    <div className="flex items-center gap-3 truncate">
-                      <span className="text-slate-500 font-mono">▪</span>
+                    <div className="flex items-center gap-3 truncate pr-2">
+                      <span className="text-slate-600 font-mono text-[10px] group-hover:text-slate-400">▪</span>
                       <span className="truncate">{lbl.name}</span>
                     </div>
-                    {lbl.unreadCount ? (
-                      <span className="text-[11px] font-mono text-slate-400">{lbl.unreadCount}</span>
-                    ) : null}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {lbl.timeRelative && (
+                        <span className="text-[10px] font-mono text-slate-500 font-normal">
+                          {lbl.timeRelative}
+                        </span>
+                      )}
+                      {lbl.unreadCount ? (
+                        <span className="text-[11px] font-mono text-slate-300 font-semibold">{lbl.unreadCount}</span>
+                      ) : null}
+                    </div>
                   </button>
                 );
               })}
@@ -736,7 +750,7 @@ export function GmailWindow() {
             <div className="flex items-center justify-between px-3 py-2 bg-slate-900/50 rounded-lg border border-slate-800/60 text-xs">
               <button
                 onClick={handleDisconnect}
-                className="text-slate-400 hover:text-slate-200 transition-colors"
+                className="text-slate-400 hover:text-slate-200 transition-colors font-normal"
                 title="Disconnect Account"
               >
                 Sign out
@@ -746,7 +760,7 @@ export function GmailWindow() {
                   const token = localStorage.getItem('iris_gmail_token');
                   if (token) initializeMailClient(token, activeFolder, true);
                 }}
-                className="text-slate-300 hover:text-white font-medium transition-colors flex items-center gap-1"
+                className="text-slate-300 hover:text-white font-medium transition-colors flex items-center gap-1 font-mono"
                 title="Refresh Mailbox"
               >
                 <span>↻</span> Refresh
@@ -766,22 +780,19 @@ export function GmailWindow() {
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => setSelectedEmail(null)}
-                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-800/60 rounded-full transition-colors text-sm"
+                  className="px-3 py-1.5 text-slate-300 hover:text-white bg-slate-800/60 hover:bg-slate-800 rounded-lg transition-colors text-xs font-mono border border-slate-700/60"
                   title="Back to list"
                 >
-                  ←
+                  ← Back to {labelMap[activeFolder] || activeFolder}
                 </button>
-                <span className="text-xs font-medium text-slate-400">
-                  {labelMap[activeFolder] || activeFolder}
-                </span>
               </div>
 
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setShowImages(!showImages)}
-                  className="text-xs px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/60 hover:bg-slate-800 text-slate-300 transition-colors font-medium flex items-center gap-2"
+                  className="text-xs px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/60 hover:bg-slate-800 text-slate-300 transition-colors font-mono font-medium flex items-center gap-2"
                 >
-                  <span>🖼️</span> {showImages ? 'Hide Images' : 'Display Images'}
+                  <span>{showImages ? '[ - ] Hide Images' : '[ + ] Display Images'}</span>
                 </button>
               </div>
             </div>
@@ -794,8 +805,8 @@ export function GmailWindow() {
 
               <div className="flex items-start justify-between text-xs text-slate-400 pt-2">
                 <div className="flex items-center gap-3">
-                  {/* Classic Gmail Initial Avatar */}
-                  <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-semibold text-slate-300 text-sm flex-shrink-0 uppercase">
+                  {/* Clean Initial Avatar */}
+                  <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-semibold text-slate-300 text-sm flex-shrink-0 uppercase font-mono">
                     {selectedEmail.from.charAt(0) || '?'}
                   </div>
                   <div className="space-y-0.5">
@@ -806,17 +817,17 @@ export function GmailWindow() {
                     <div className="text-xs text-slate-500">to {selectedEmail.to}</div>
                   </div>
                 </div>
-                <div className="text-xs text-slate-500 font-normal">{selectedEmail.date}</div>
+                <div className="text-xs text-slate-500 font-mono">{selectedEmail.date}</div>
               </div>
 
-              {/* 🔑 SLEEK MONOCHROME OTP BANNER */}
+              {/* SLEEK MONOCHROME OTP BANNER (ZERO EMOJIS) */}
               {selectedEmail.otpCode && (
                 <div className="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-xs shadow-sm">
                   <div className="flex items-center gap-3">
-                    <span className="text-base">🔑</span>
+                    <span className="text-xs font-mono px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-300">CODE</span>
                     <div>
-                      <span className="text-slate-400 font-normal block text-[11px] uppercase tracking-wider">Verification Code</span>
-                      <span className="text-lg font-mono font-bold text-white tracking-widest">{selectedEmail.otpCode}</span>
+                      <span className="text-slate-400 font-normal block text-[10px] uppercase tracking-wider">Verification Code Detected</span>
+                      <span className="text-base font-mono font-bold text-white tracking-widest">{selectedEmail.otpCode}</span>
                     </div>
                   </div>
                   <button
@@ -832,37 +843,37 @@ export function GmailWindow() {
                 </div>
               )}
 
-              {/* ⚡ QUICK ACTIONS BAR */}
+              {/* QUICK ACTIONS BAR */}
               {selectedEmail.quickLinks.length > 0 && (
                 <div className="flex items-center gap-2 pt-1 overflow-x-auto">
-                  <span className="text-xs text-slate-500 flex-shrink-0 font-medium">Quick actions:</span>
+                  <span className="text-xs text-slate-500 flex-shrink-0 font-mono uppercase tracking-wider text-[10px]">Quick actions:</span>
                   {selectedEmail.quickLinks.map((link, idx) => (
                     <a
                       key={idx}
                       href={link.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700/80 px-3 py-1.5 rounded transition-colors whitespace-nowrap flex items-center gap-1.5"
+                      className="text-xs bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700/80 px-3 py-1 rounded transition-colors whitespace-nowrap flex items-center gap-1.5 font-mono"
                     >
-                      <span>🔗 {link.text}</span>
+                      <span>↗ {link.text}</span>
                     </a>
                   ))}
                 </div>
               )}
 
-              {/* 📎 ATTACHMENTS PILL LIST */}
+              {/* ATTACHMENTS PILL LIST */}
               {selectedEmail.attachments.length > 0 && (
                 <div className="flex items-center gap-2 pt-3 border-t border-slate-800/60 overflow-x-auto">
-                  <span className="text-xs text-slate-500 flex-shrink-0 font-medium">
+                  <span className="text-xs text-slate-500 flex-shrink-0 font-mono text-[10px] uppercase tracking-wider">
                     Attachments ({selectedEmail.attachments.length}):
                   </span>
                   {selectedEmail.attachments.map((att) => (
                     <button
                       key={att.id}
                       onClick={() => downloadAttachment(att.id, att.filename, att.mimeType)}
-                      className="text-xs bg-slate-800/60 hover:bg-slate-800 text-slate-300 border border-slate-700/60 px-3 py-1 rounded transition-colors flex items-center gap-2 whitespace-nowrap group"
+                      className="text-xs bg-slate-800/60 hover:bg-slate-800 text-slate-300 border border-slate-700/60 px-3 py-1 rounded transition-colors flex items-center gap-2 whitespace-nowrap group font-mono"
                     >
-                      <span>📄</span>
+                      <span>↓</span>
                       <span className="font-medium truncate max-w-[200px]">{att.filename}</span>
                       <span className="text-slate-500">({Math.round(att.size / 1024)} KB)</span>
                     </button>
@@ -876,7 +887,7 @@ export function GmailWindow() {
               {loadingDetail ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center space-y-3 text-slate-400 bg-[#131314] z-10">
                   <div className="w-5 h-5 border-2 border-slate-600 border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-xs font-normal">Loading message...</span>
+                  <span className="text-xs font-mono">Loading message...</span>
                 </div>
               ) : (
                 <iframe
@@ -890,11 +901,13 @@ export function GmailWindow() {
         ) : (
           /* ================= STANDARD GMAIL LIST VIEW ================= */
           <>
-            {/* MD3 Capsule Search Header */}
+            {/* MD3 Capsule Search Header with SVG Icon */}
             <div className="h-16 border-b border-slate-800/60 px-6 flex items-center justify-between bg-[#1a1a1c]/60 flex-shrink-0">
               <div className="flex items-center gap-4 flex-1 max-w-2xl">
                 <div className="flex items-center gap-3 bg-slate-800/50 hover:bg-slate-800 border border-transparent focus-within:border-slate-700 focus-within:bg-[#1a1a1c] rounded-full px-5 py-2 w-full transition-all">
-                  <span className="text-slate-400 text-sm">🔍</span>
+                  <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
                   <input
                     type="text"
                     placeholder="Search in mail"
@@ -904,7 +917,7 @@ export function GmailWindow() {
               </div>
 
               <div className="flex items-center gap-3 pl-4">
-                <span className="text-xs text-slate-400 font-normal">
+                <span className="text-xs text-slate-400 font-mono">
                   {emails.length > 0 ? `1–${emails.length} of ${emails.length}` : '0 messages'}
                 </span>
               </div>
@@ -914,12 +927,12 @@ export function GmailWindow() {
             {loading ? (
               <div className="flex flex-col items-center justify-center flex-1 space-y-3 text-slate-400">
                 <div className="w-5 h-5 border-2 border-slate-600 border-t-transparent rounded-full animate-spin"></div>
-                <span className="text-xs font-normal">Loading...</span>
+                <span className="text-xs font-mono">Loading...</span>
               </div>
             ) : !isConnected ? (
               <div className="flex flex-col items-center justify-center flex-1 text-center p-8">
-                <div className="w-12 h-12 rounded-full bg-slate-800/60 border border-slate-700 flex items-center justify-center text-slate-400 mb-4 text-xl">
-                  📥
+                <div className="w-12 h-12 rounded-full bg-slate-800/60 border border-slate-700 flex items-center justify-center text-slate-400 mb-4 font-mono text-xl">
+                  ▪
                 </div>
                 <h3 className="text-base font-normal text-slate-200 mb-1">Not signed in</h3>
                 <p className="text-xs text-slate-400 max-w-xs mb-6">
@@ -934,7 +947,7 @@ export function GmailWindow() {
               </div>
             ) : emails.length === 0 ? (
               <div className="flex flex-col items-center justify-center flex-1 text-slate-500 text-xs font-normal">
-                <span className="text-2xl mb-2">📄</span>
+                <span className="text-xl mb-2 font-mono">⊘</span>
                 <span>Your {labelMap[activeFolder]?.toLowerCase() || 'mailbox'} is empty.</span>
               </div>
             ) : (
@@ -997,43 +1010,42 @@ export function GmailWindow() {
                         )}
                       </div>
 
-                      {/* Right: Timestamp vs. Gmail Hover Action Toolbar */}
+                      {/* Right: Timestamp vs. Minimal Hover Action Toolbar */}
                       <div className="flex items-center justify-end flex-shrink-0 w-28 text-right">
-                        {/* Normal State: Date/Time */}
-                        <span className={`text-xs font-normal group-hover:hidden ${msg.isUnread ? 'text-white font-semibold' : 'text-slate-400'}`}>
+                        <span className={`text-xs font-mono group-hover:hidden ${msg.isUnread ? 'text-white font-semibold' : 'text-slate-400'}`}>
                           {msg.timePrimary}
                         </span>
 
-                        {/* Hover State: MD3 Action Icons */}
-                        <div className="hidden group-hover:flex items-center gap-2 text-slate-400">
+                        {/* Hover State: Ultra-Clean Monochrome Action Symbols */}
+                        <div className="hidden group-hover:flex items-center gap-2 text-slate-400 font-mono text-xs">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               alert('Archive action mapped.');
                             }}
-                            className="p-1 hover:text-white hover:bg-slate-800 rounded transition-colors"
+                            className="w-6 h-6 flex items-center justify-center hover:text-white hover:bg-slate-800 rounded transition-colors"
                             title="Archive"
                           >
-                            📥
+                            ↓
                           </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               alert('Delete action mapped.');
                             }}
-                            className="p-1 hover:text-white hover:bg-slate-800 rounded transition-colors"
+                            className="w-6 h-6 flex items-center justify-center hover:text-white hover:bg-slate-800 rounded transition-colors"
                             title="Delete"
                           >
-                            🗑️
+                            ✕
                           </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                             }}
-                            className="p-1 hover:text-white hover:bg-slate-800 rounded transition-colors"
+                            className="w-6 h-6 flex items-center justify-center hover:text-white hover:bg-slate-800 rounded transition-colors"
                             title="Mark as read"
                           >
-                            ✉️
+                            ▪
                           </button>
                         </div>
                       </div>
