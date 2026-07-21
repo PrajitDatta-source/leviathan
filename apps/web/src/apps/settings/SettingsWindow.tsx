@@ -22,7 +22,7 @@ import {
   GlobalModifier,
 } from "@/core/window/shortcuts";
 
-type Tab = "appearance" | "wallpaper" | "accounts" | "api" | "system" | "shortcuts" | "security";
+type Tab = "appearance" | "wallpaper" | "accounts" | "api" | "vault" | "system" | "shortcuts" | "security";
 
 const WALLPAPER_PRESETS = [
   {
@@ -55,19 +55,47 @@ const WALLPAPER_PRESETS = [
 export function SettingsWindow() {
   const { wallpaper, setWallpaper, theme, setTheme } = useTheme();
   const { iconTheme, setIconTheme } = useIconTheme();
-  const [activeTab, setActiveTab] = useState<Tab>("appearance");
+  const [activeTab, setActiveTab] = useState<Tab>("api");
   const { osStyle, setOsStyle, setWallpaper: setStoreWallpaper, wallpaper: currentStoreWallpaper } = useThemeStore();
   
   const [dbWallpapers, setDbWallpapers] = useState<CustomWallpaperItem[]>([]);
   const [shortcutsConfig, setShortcutsConfig] = useState(() => loadShortcutsConfig());
   const [recordingId, setRecordingId] = useState<string | null>(null);
-  const [newPasscode, setNewPasscode] = useState("");
-  const [passcodeSuccess, setPasscodeSuccess] = useState(false);
+  
+  // Persistent Storage Form States
+  const [masterPin, setMasterPin] = useState("");
+  const [googleClientId, setGoogleClientId] = useState("");
+  const [googleClientSecret, setGoogleClientSecret] = useState("");
+  const [hfSpaceUrl, setHfSpaceUrl] = useState("");
+  const [tgBotToken, setTgBotToken] = useState("");
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+
   const [systemInfo, setSystemInfo] = useState<{
     environment: string;
     storage: { adapter: string; persistent: boolean; note: string };
     counts: { vfsNodes: number; telegramChats: number };
   } | null>(null);
+
+  useEffect(() => {
+    // Load existing settings on mount
+    setMasterPin(localStorage.getItem("iris_master_pin") || "@@#:");
+    setGoogleClientId(localStorage.getItem("iris_g_client_id") || "");
+    setGoogleClientSecret(localStorage.getItem("iris_g_secret") || "");
+    setHfSpaceUrl(localStorage.getItem("iris_hf_url") || "");
+    setTgBotToken(localStorage.getItem("iris_tg_token") || "");
+  }, []);
+
+  const handleSave = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (masterPin) localStorage.setItem("iris_master_pin", masterPin);
+    localStorage.setItem("iris_g_client_id", googleClientId);
+    localStorage.setItem("iris_g_secret", googleClientSecret);
+    localStorage.setItem("iris_hf_url", hfSpaceUrl);
+    localStorage.setItem("iris_tg_token", tgBotToken);
+
+    setSaveStatus("System settings updated successfully!");
+    setTimeout(() => setSaveStatus(null), 3000);
+  };
 
   useEffect(() => {
     fetch("/api/system")
@@ -206,11 +234,22 @@ export function SettingsWindow() {
           onClick={() => setActiveTab("api")}
           className={`w-full text-left px-3 py-2 rounded-lg transition text-sm ${
             activeTab === "api"
-              ? "bg-[var(--border)] font-medium"
+              ? "bg-[var(--border)] font-medium text-blue-400"
               : "hover:bg-[var(--border)]/40 text-[var(--muted)] hover:text-[var(--text)]"
           }`}
         >
-          API Key Settings
+          Gmail OAuth
+        </button>
+
+        <button
+          onClick={() => setActiveTab("vault")}
+          className={`w-full text-left px-3 py-2 rounded-lg transition text-sm ${
+            activeTab === "vault"
+              ? "bg-[var(--border)] font-medium text-blue-400"
+              : "hover:bg-[var(--border)]/40 text-[var(--muted)] hover:text-[var(--text)]"
+          }`}
+        >
+          Telegram Vault
         </button>
 
         <button
@@ -243,7 +282,7 @@ export function SettingsWindow() {
               : "hover:bg-[var(--border)]/40 text-[var(--muted)] hover:text-[var(--text)]"
           }`}
         >
-          Security & Privacy
+          Security & PIN
         </button>
       </div>
 
@@ -514,47 +553,77 @@ export function SettingsWindow() {
         )}
 
         {activeTab === "api" && (
-          <div>
-            <h3 className="text-lg font-medium mb-1">API Key Management</h3>
-            <p className="text-xs text-[var(--muted)] mb-6">
-              Input private API credentials for Gemini, OpenAI and Anthropic services. Keys are safely sandboxed locally.
-            </p>
+          <form onSubmit={handleSave} className="space-y-4 max-w-md">
+            <h3 className="text-base font-semibold border-b border-[var(--border)] pb-2">Google OAuth Credentials</h3>
+            <p className="text-xs text-[var(--muted)]">Configure client credentials from Google Cloud Console to enable Gmail mirroring.</p>
+            <div>
+              <label className="block text-xs font-medium text-[var(--muted)] mb-1">Client ID</label>
+              <input
+                type="text"
+                value={googleClientId}
+                onChange={(e) => setGoogleClientId(e.target.value)}
+                placeholder="xxxx-xxxx.apps.googleusercontent.com"
+                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--text)] focus:border-blue-500 outline-none font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[var(--muted)] mb-1">Client Secret</label>
+              <input
+                type="password"
+                value={googleClientSecret}
+                onChange={(e) => setGoogleClientSecret(e.target.value)}
+                placeholder="GOCSPX-xxxxxxxxxxxxxxxxxxxxx"
+                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--text)] focus:border-blue-500 outline-none font-mono"
+              />
+            </div>
 
-            <div className="space-y-4 max-w-md text-xs">
-              <div>
-                <label className="block font-semibold text-[var(--muted)] mb-1.5">OpenAI API Key</label>
-                <input
-                  type="password"
-                  placeholder="sk-proj-..."
-                  defaultValue="••••••••••••••••••••••••"
-                  className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 outline-none text-zinc-200 placeholder-zinc-600"
-                />
-              </div>
-              <div>
-                <label className="block font-semibold text-[var(--muted)] mb-1.5">Gemini API Key</label>
-                <input
-                  type="password"
-                  placeholder="AIzaSy..."
-                  defaultValue="••••••••••••••••••••••••"
-                  className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 outline-none text-zinc-200 placeholder-zinc-600"
-                />
-              </div>
-              <div>
-                <label className="block font-semibold text-[var(--muted)] mb-1.5">Anthropic API Key</label>
-                <input
-                  type="password"
-                  placeholder="sk-ant-..."
-                  className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 outline-none text-zinc-200 placeholder-zinc-600"
-                />
-              </div>
+            <div className="pt-4 border-t border-[var(--border)] flex items-center justify-between">
+              <span className="text-xs text-emerald-400 font-medium">{saveStatus}</span>
               <button
-                onClick={() => alert("Secure API credentials saved successfully to sandbox storage.")}
-                className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-lg transition"
+                type="submit"
+                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs transition-colors shadow-lg shadow-blue-600/20 cursor-pointer"
               >
-                Save API Settings
+                Save Configurations
               </button>
             </div>
-          </div>
+          </form>
+        )}
+
+        {activeTab === "vault" && (
+          <form onSubmit={handleSave} className="space-y-4 max-w-md">
+            <h3 className="text-base font-semibold border-b border-[var(--border)] pb-2">Telegram & Hugging Face Vault</h3>
+            <p className="text-xs text-[var(--muted)]">Connect your persistent Hugging Face Docker bot to route local OS storage.</p>
+            <div>
+              <label className="block text-xs font-medium text-[var(--muted)] mb-1">Hugging Face Space Endpoint</label>
+              <input
+                type="text"
+                value={hfSpaceUrl}
+                onChange={(e) => setHfSpaceUrl(e.target.value)}
+                placeholder="https://your-username-space-name.hf.space"
+                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--text)] focus:border-blue-500 outline-none font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[var(--muted)] mb-1">Telegram Bot Token</label>
+              <input
+                type="password"
+                value={tgBotToken}
+                onChange={(e) => setTgBotToken(e.target.value)}
+                placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--text)] focus:border-blue-500 outline-none font-mono"
+              />
+            </div>
+
+            <div className="pt-4 border-t border-[var(--border)] flex items-center justify-between">
+              <span className="text-xs text-emerald-400 font-medium">{saveStatus}</span>
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs transition-colors shadow-lg shadow-blue-600/20 cursor-pointer"
+              >
+                Save Configurations
+              </button>
+            </div>
+          </form>
         )}
 
         {activeTab === "system" && (
@@ -766,71 +835,48 @@ export function SettingsWindow() {
         )}
 
         {activeTab === "security" && (
-          <div>
-            <h3 className="text-lg font-medium mb-1">Security & Master Passcode</h3>
-            <p className="text-xs text-[var(--muted)] mb-6">
-              Configure your Master Passcode and lock settings for the Iris OS Privacy Barrier.
-            </p>
-
-            <div className="space-y-6 max-w-md">
-              <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-600/20 text-blue-400">
-                    <Lock className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-zinc-100">Master Passcode</h4>
-                    <p className="text-xs text-[var(--muted)]">Default passcode is <code className="font-mono text-blue-400">@@#:</code></p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-[var(--muted)]">New Passcode</label>
-                  <input
-                    type="password"
-                    value={newPasscode}
-                    onChange={(e) => setNewPasscode(e.target.value)}
-                    placeholder="Enter new passcode..."
-                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-zinc-200 outline-none focus:border-blue-500"
-                  />
-                </div>
-
-                {passcodeSuccess && (
-                  <div className="text-xs text-emerald-400 font-medium flex items-center gap-1.5">
-                    <Check className="w-4 h-4" /> Passcode updated successfully!
-                  </div>
-                )}
-
-                <button
-                  onClick={() => {
-                    if (newPasscode.trim()) {
-                      localStorage.setItem("iris_master_pin", newPasscode.trim());
-                      setPasscodeSuccess(true);
-                      setNewPasscode("");
-                      setTimeout(() => setPasscodeSuccess(false), 3000);
-                    }
-                  }}
-                  className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs rounded-lg transition"
-                >
-                  Save Master Passcode
-                </button>
+          <div className="space-y-6 max-w-md">
+            <form onSubmit={handleSave} className="space-y-4">
+              <h3 className="text-base font-semibold border-b border-[var(--border)] pb-2">System Lock Screen</h3>
+              <p className="text-xs text-[var(--muted)]">Set the Master Passcode required to mount the Iris desktop on boot.</p>
+              <div>
+                <label className="block text-xs font-medium text-[var(--muted)] mb-1">Master Passcode</label>
+                <input
+                  type="text"
+                  value={masterPin}
+                  onChange={(e) => setMasterPin(e.target.value)}
+                  placeholder="Enter PIN"
+                  maxLength={16}
+                  className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--text)] focus:border-blue-500 outline-none font-mono"
+                />
               </div>
 
-              <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] space-y-3">
-                <h4 className="text-sm font-semibold text-zinc-100">Lock OS Session</h4>
-                <p className="text-xs text-[var(--muted)]">
-                  Immediately lock the system session. You will be prompted for your Master Passcode to return to desktop.
-                </p>
+              <div className="pt-4 border-t border-[var(--border)] flex items-center justify-between">
+                <span className="text-xs text-emerald-400 font-medium">{saveStatus}</span>
                 <button
-                  onClick={() => {
-                    sessionStorage.removeItem("iris_unlocked");
-                    window.location.reload();
-                  }}
-                  className="px-4 py-2 bg-rose-600/80 hover:bg-rose-600 text-white font-medium text-xs rounded-lg transition"
+                  type="submit"
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs transition-colors shadow-lg shadow-blue-600/20 cursor-pointer"
                 >
-                  Lock Desktop Now
+                  Save Configurations
                 </button>
               </div>
+            </form>
+
+            <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] space-y-3">
+              <h4 className="text-sm font-semibold text-zinc-100">Lock OS Session</h4>
+              <p className="text-xs text-[var(--muted)]">
+                Immediately lock the system session. You will be prompted for your Master Passcode to return to desktop.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  sessionStorage.removeItem("iris_unlocked");
+                  window.location.reload();
+                }}
+                className="px-4 py-2 bg-rose-600/80 hover:bg-rose-600 text-white font-medium text-xs rounded-lg transition cursor-pointer"
+              >
+                Lock Desktop Now
+              </button>
             </div>
           </div>
         )}
