@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useTheme } from "@/modules/theme/ThemeContext";
 import { Plus, Trash2, Keyboard, RotateCcw, Edit2, Check, Lock } from "lucide-react";
+import SyncVault from "@/components/vault/SyncVault";
 import { useThemeStore, OSStyle } from "@/modules/theme/useThemeStore";
 import { themePresets } from "@/modules/theme/presets";
 import { Theme } from "@/modules/theme/types";
@@ -590,40 +591,44 @@ export function SettingsWindow() {
         )}
 
         {activeTab === "vault" && (
-          <form onSubmit={handleSave} className="space-y-4 max-w-md">
-            <h3 className="text-base font-semibold border-b border-[var(--border)] pb-2">Telegram & Hugging Face Vault</h3>
-            <p className="text-xs text-[var(--muted)]">Connect your persistent Hugging Face Docker bot to route local OS storage.</p>
-            <div>
-              <label className="block text-xs font-medium text-[var(--muted)] mb-1">Hugging Face Space Endpoint</label>
-              <input
-                type="text"
-                value={hfSpaceUrl}
-                onChange={(e) => setHfSpaceUrl(e.target.value)}
-                placeholder="https://your-username-space-name.hf.space"
-                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--text)] focus:border-blue-500 outline-none font-mono"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--muted)] mb-1">Telegram Bot Token</label>
-              <input
-                type="password"
-                value={tgBotToken}
-                onChange={(e) => setTgBotToken(e.target.value)}
-                placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
-                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--text)] focus:border-blue-500 outline-none font-mono"
-              />
-            </div>
+          <div className="space-y-6">
+            <SyncVault />
 
-            <div className="pt-4 border-t border-[var(--border)] flex items-center justify-between">
-              <span className="text-xs text-emerald-400 font-medium">{saveStatus}</span>
-              <button
-                type="submit"
-                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs transition-colors shadow-lg shadow-blue-600/20 cursor-pointer"
-              >
-                Save Configurations
-              </button>
-            </div>
-          </form>
+            <form onSubmit={handleSave} className="space-y-4 max-w-md">
+              <h3 className="text-base font-semibold border-b border-[var(--border)] pb-2">Telegram & Hugging Face Vault</h3>
+              <p className="text-xs text-[var(--muted)]">Connect your persistent Hugging Face Docker bot to route local OS storage.</p>
+              <div>
+                <label className="block text-xs font-medium text-[var(--muted)] mb-1">Hugging Face Space Endpoint</label>
+                <input
+                  type="text"
+                  value={hfSpaceUrl}
+                  onChange={(e) => setHfSpaceUrl(e.target.value)}
+                  placeholder="https://your-username-space-name.hf.space"
+                  className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--text)] focus:border-blue-500 outline-none font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[var(--muted)] mb-1">Telegram Bot Token</label>
+                <input
+                  type="password"
+                  value={tgBotToken}
+                  onChange={(e) => setTgBotToken(e.target.value)}
+                  placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+                  className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--text)] focus:border-blue-500 outline-none font-mono"
+                />
+              </div>
+
+              <div className="pt-4 border-t border-[var(--border)] flex items-center justify-between">
+                <span className="text-xs text-emerald-400 font-medium">{saveStatus}</span>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs transition-colors shadow-lg shadow-blue-600/20 cursor-pointer"
+                >
+                  Save Configurations
+                </button>
+              </div>
+            </form>
+          </div>
         )}
 
         {activeTab === "system" && (
