@@ -16,6 +16,8 @@ export const supabase = createClient(VAULT_CONFIG.url, VAULT_CONFIG.anonKey);
 export interface IrisOSState {
   gmailToken?: string;
   gmailRefreshToken?: string;
+  gmailClientId?: string;
+  gmailClientSecret?: string;
   telegramToken?: string;
   theme?: string;
   vfs?: string; // ➔ Holds your serialized filesystem
@@ -42,7 +44,9 @@ export async function pushStateToCloud(masterPin: string): Promise<{ success: bo
     const state: IrisOSState = {
       gmailToken: localStorage.getItem('iris_gmail_token') || undefined,
       gmailRefreshToken: localStorage.getItem('iris_gmail_refresh_token') || undefined,
-      telegramToken: localStorage.getItem('iris_telegram_token') || undefined,
+      gmailClientId: localStorage.getItem('iris_gmail_client_id') || localStorage.getItem('iris_g_client_id') || undefined,
+      gmailClientSecret: localStorage.getItem('iris_gmail_client_secret') || localStorage.getItem('iris_g_secret') || undefined,
+      telegramToken: localStorage.getItem('iris_telegram_token') || localStorage.getItem('iris_tg_token') || undefined,
       theme: localStorage.getItem('iris_theme') || 'slate-cyan',
       vfs: localStorage.getItem('iris_vfs_data') || localStorage.getItem('iris_vfs_nodes') || undefined,
       lastSynced: Date.now(),
@@ -99,7 +103,18 @@ export async function hydrateStateFromCloud(inputPin: string): Promise<{ success
 
     if (state.gmailToken) localStorage.setItem('iris_gmail_token', state.gmailToken);
     if (state.gmailRefreshToken) localStorage.setItem('iris_gmail_refresh_token', state.gmailRefreshToken);
-    if (state.telegramToken) localStorage.setItem('iris_telegram_token', state.telegramToken);
+    if (state.gmailClientId) {
+      localStorage.setItem('iris_gmail_client_id', state.gmailClientId);
+      localStorage.setItem('iris_g_client_id', state.gmailClientId);
+    }
+    if (state.gmailClientSecret) {
+      localStorage.setItem('iris_gmail_client_secret', state.gmailClientSecret);
+      localStorage.setItem('iris_g_secret', state.gmailClientSecret);
+    }
+    if (state.telegramToken) {
+      localStorage.setItem('iris_telegram_token', state.telegramToken);
+      localStorage.setItem('iris_tg_token', state.telegramToken);
+    }
     if (state.theme) localStorage.setItem('iris_theme', state.theme);
     if (state.vfs) {
       localStorage.setItem('iris_vfs_data', state.vfs);
@@ -181,4 +196,3 @@ export async function nukeCloudVault(): Promise<{ success: boolean; message: str
     return { success: false, message: err.message || 'Failed to destroy vault.' };
   }
 }
-

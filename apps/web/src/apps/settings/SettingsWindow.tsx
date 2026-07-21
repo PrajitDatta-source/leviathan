@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useTheme } from "@/modules/theme/ThemeContext";
 import { Plus, Trash2, Keyboard, RotateCcw, Edit2, Check, Lock } from "lucide-react";
 import DiskUtility from "@/components/os/DiskUtility";
+import { autoSyncToCloud } from "@/lib/vault";
 import { useThemeStore, OSStyle } from "@/modules/theme/useThemeStore";
 import { themePresets } from "@/modules/theme/presets";
 import { Theme } from "@/modules/theme/types";
@@ -80,21 +81,26 @@ export function SettingsWindow() {
   useEffect(() => {
     // Load existing settings on mount
     setMasterPin(localStorage.getItem("iris_master_pin") || "@@#:");
-    setGoogleClientId(localStorage.getItem("iris_g_client_id") || "");
-    setGoogleClientSecret(localStorage.getItem("iris_g_secret") || "");
+    setGoogleClientId(localStorage.getItem("iris_gmail_client_id") || localStorage.getItem("iris_g_client_id") || "");
+    setGoogleClientSecret(localStorage.getItem("iris_gmail_client_secret") || localStorage.getItem("iris_g_secret") || "");
     setHfSpaceUrl(localStorage.getItem("iris_hf_url") || "");
-    setTgBotToken(localStorage.getItem("iris_tg_token") || "");
+    setTgBotToken(localStorage.getItem("iris_telegram_token") || localStorage.getItem("iris_tg_token") || "");
   }, []);
 
   const handleSave = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (masterPin) localStorage.setItem("iris_master_pin", masterPin);
+    localStorage.setItem("iris_gmail_client_id", googleClientId);
     localStorage.setItem("iris_g_client_id", googleClientId);
+    localStorage.setItem("iris_gmail_client_secret", googleClientSecret);
     localStorage.setItem("iris_g_secret", googleClientSecret);
     localStorage.setItem("iris_hf_url", hfSpaceUrl);
+    localStorage.setItem("iris_telegram_token", tgBotToken);
     localStorage.setItem("iris_tg_token", tgBotToken);
 
-    setSaveStatus("System settings updated successfully!");
+    autoSyncToCloud();
+
+    setSaveStatus("System settings updated & synced to encrypted vault!");
     setTimeout(() => setSaveStatus(null), 3000);
   };
 
