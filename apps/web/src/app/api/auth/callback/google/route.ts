@@ -17,7 +17,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/?auth_error=missing_code`);
   }
 
-  // Pass the temporary authorization code back to the Iris desktop interface
-  // where MailService will catch it and initialize the session
+  // Pass the temporary authorization code back to the Iris desktop interface,
+  // where GmailWindow's handleTokenExchange() picks it up from the URL and
+  // completes the OAuth flow.
   return NextResponse.redirect(`${origin}/?gmail_code=${encodeURIComponent(code)}`);
 }

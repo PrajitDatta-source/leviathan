@@ -28,6 +28,10 @@ class TelegramService {
     };
   }
 
+  public listenerCount(): number {
+    return this.listeners.size;
+  }
+
   private notify(msg: TelegramMessage) {
     this.listeners.forEach((listener) => listener(msg));
   }

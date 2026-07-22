@@ -30,6 +30,12 @@ export function TelegramWindow() {
 
     return () => {
       unsubscribe();
+      // Only the last open Telegram window should stop the daemon — if
+      // this was the only one, no more listeners are subscribed and
+      // polling would otherwise run for the rest of the tab's lifetime.
+      if (telegramService.listenerCount() === 0) {
+        telegramService.stopService();
+      }
     };
   }, []);
 

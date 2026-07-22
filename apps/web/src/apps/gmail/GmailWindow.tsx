@@ -65,6 +65,20 @@ const IGNORED_LABELS = [
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
+// Was hardcoded to https://irissys.vercel.app/... which breaks local dev
+// (Google rejects a redirect_uri that wasn't requested) and breaks the
+// moment this gets deployed to any other domain. Derives from wherever the
+// app is actually running instead.
+//
+// NOTE: this only works if the exact URI this resolves to is also added
+// under "Authorized redirect URIs" for your OAuth client in Google Cloud
+// Console — e.g. both https://irissys.vercel.app/api/auth/callback/google
+// AND http://localhost:3000/api/auth/callback/google (or whatever port you
+// dev on) need to be registered there if you want both to work.
+function getGoogleRedirectUri(): string {
+  return `${window.location.origin}/api/auth/callback/google`;
+}
+
 export function GmailWindow() {
   const [emails, setEmails] = useState<EmailItem[]>([]);
   const [mailboxes, setMailboxes] = useState<LabelItem[]>([]);
@@ -156,7 +170,7 @@ export function GmailWindow() {
           code: code,
           client_id: clientId,
           client_secret: clientSecret,
-          redirect_uri: 'https://irissys.vercel.app/api/auth/callback/google',
+          redirect_uri: getGoogleRedirectUri(),
           grant_type: 'authorization_code',
         }),
       });
@@ -592,7 +606,7 @@ export function GmailWindow() {
       alert('Please configure your Client ID in Settings first!');
       return;
     }
-    const redirectUri = encodeURIComponent('https://irissys.vercel.app/api/auth/callback/google');
+    const redirectUri = encodeURIComponent(getGoogleRedirectUri());
     const scope = encodeURIComponent('https://www.googleapis.com/auth/gmail.readonly');
     
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
