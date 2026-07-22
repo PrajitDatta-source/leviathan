@@ -68,11 +68,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing sender or payload' }, { status: 400 });
     }
 
+    const isGhost = target_sheet === 'TG_GHOST_DELETE' || target_sheet === 'TG_GHOST_EDIT';
+
     const supabase = getSupabase();
     const { error } = await supabase.from('telegram_inbox').insert({
       type: target_sheet || 'TG_DMS',
       sender,
       payload,
+      is_ghost: isGhost,
       created_at: new Date().toISOString(),
     });
 
