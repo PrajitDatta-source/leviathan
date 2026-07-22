@@ -1,16 +1,16 @@
 import { NextResponse } from 'next/server';
-import { readDB, writeDB } from '@/core/backend/db';
+import { createClient } from '@supabase/supabase-js';
 
-export async function GET() {
-  const db = readDB();
-  return NextResponse.json(db.telegramChats);
-}
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://oeanbxyfldivpiufvyez.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9lYW5ieHlmbGRpdnBpdWZ2eWV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2Mjk2MDQsImV4cCI6MjEwMDIwNTYwNH0.aT6-astS8Drm6X_KQ0wHiAnQp9ziSZtn4s_RZY2WmF8';
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function POST(request: Request) {
   try {
     const contentType = request.headers.get('content-type') || '';
     let token = '';
-    let target_sheet = ''; // TG_DMS, TG_DELETIONS, TG_UNSENT, etc.
+    let target_sheet = '';
     let sender = '';
     let payload = '';
 
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       sender = body.get('sender')?.toString() || '';
       payload = body.get('payload')?.toString() || '';
     } else {
-      const body = await request.json();
+      const body = await request.json().catch(() => ({}));
       token = body.token || '';
       target_sheet = body.target_sheet || '';
       sender = body.sender || '';
@@ -32,30 +32,48 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const isGhostIntercept = target_sheet.toUpperCase().includes('DELETE') || target_sheet.toUpperCase().includes('UNSENT');
+    // Insert message into Supabase staging table for the UI to fetch
+    const { error } = await supabase.from('telegram_inbox').insert({
+      type: target_sheet || 'TG_DMS',
+      sender: sender || 'Telegram User',
+      payload: payload || '',
+      created_at: new Date().toISOString()
+    });
 
-    if (isGhostIntercept) {
-      console.log(`[Telegram Intercept] Type: ${target_sheet} | From: ${sender} | Text: ${payload}`);
-    } else {
-      console.log(`[Telegram INBOX] ${target_sheet || 'default'} | ${sender}: ${payload}`);
+    if (error) {
+      console.error('Supabase Inbox Insert Error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Save to DB
-    if (payload) {
-      const db = readDB();
-      const newChat = {
-        id: `tg_${Date.now()}`,
-        sender: sender || "Telegram Bot",
-        text: payload,
-        timestamp: new Date().toISOString(),
-        isIntercepted: isGhostIntercept
-      };
-      await writeDB({ telegramChats: [...db.telegramChats, newChat] });
-    }
-
-    return NextResponse.json({ success: true, message: isGhostIntercept ? 'Message intercepted and archived.' : 'Payload received by Iris OS' });
+    return NextResponse.json({ success: true, message: 'Message staged for Iris OS' });
   } catch (error) {
-    console.error('Telegram Gateway Error:', error);
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    console.error('Telegram route processing error:', error);
+    return NextResponse.json({ error: 'Server processing error' }, { status: 500 });
   }
 }
+
+// GET endpoint so the Telegram UI app can poll for unread messages
+export async function GET() {
+  try {
+    const { data, error } = await supabase
+      .from('telegram_inbox')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Clear staged messages after fetching
+    if (data && data.length > 0) {
+      const ids = data.map((item: any) => item.id);
+      await supabase.from('telegram_inbox').delete().in('id', ids);
+    }
+
+    return NextResponse.json({ messages: data || [] });
+  } catch (error) {
+    console.error('Telegram Inbox GET Error:', error);
+    return NextResponse.json({ error: 'Server processing error' }, { status: 500 });
+  }
+}
+

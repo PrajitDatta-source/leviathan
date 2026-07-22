@@ -32,6 +32,17 @@ export function TelegramWindow() {
   const [messageInput, setMessageInput] = useState('');
   const [ghostVault, setGhostVault] = useState<Record<string, GhostItem>>({});
 
+  const chatsRef = React.useRef(chats);
+  const ghostVaultRef = React.useRef(ghostVault);
+
+  useEffect(() => {
+    chatsRef.current = chats;
+  }, [chats]);
+
+  useEffect(() => {
+    ghostVaultRef.current = ghostVault;
+  }, [ghostVault]);
+
   // 1. Hydrate from local VFS / Vault state on boot
   useEffect(() => {
     const rawVFS = localStorage.getItem('iris_vfs_data');
@@ -93,6 +104,87 @@ export function TelegramWindow() {
       window.removeEventListener('vfs-synced', handleRemoteUpdate);
     };
   }, []);
+
+  // 2. Poll /api/connectors/telegram every 3 seconds for incoming staged messages
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/connectors/telegram');
+        if (!res.ok) return;
+        const data = await res.json();
+
+        if (data.messages && data.messages.length > 0) {
+          console.log('Fetched incoming Telegram messages:', data.messages);
+
+          const rawVFS = localStorage.getItem('iris_vfs_data');
+          let currentChats: Record<string, Chat> = {};
+          let currentGhost: Record<string, GhostItem> = {};
+
+          if (rawVFS) {
+            try {
+              const parsed = JSON.parse(rawVFS);
+              if (parsed.telegramData?.chats) currentChats = parsed.telegramData.chats;
+              if (parsed.telegramData?.ghostVault) currentGhost = parsed.telegramData.ghostVault;
+            } catch (e) {}
+          }
+
+          if (Object.keys(currentChats).length === 0) currentChats = chatsRef.current;
+          if (Object.keys(currentGhost).length === 0) currentGhost = ghostVaultRef.current;
+
+          let updatedChats = { ...currentChats };
+          let updatedGhost = { ...currentGhost };
+
+          data.messages.forEach((msg: any) => {
+            const isGhostIntercept =
+              msg.type &&
+              (msg.type.toUpperCase().includes('DELETE') || msg.type.toUpperCase().includes('UNSENT'));
+
+            if (isGhostIntercept) {
+              const ghostKey = `ghost_${msg.id}_${Date.now()}`;
+              updatedGhost[ghostKey] = {
+                path: ghostKey,
+                sender: msg.sender || 'Unknown Intercept',
+                text: msg.payload || '',
+                interceptedAt: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
+                chatId: msg.sender ? msg.sender.toLowerCase().replace(/\s+/g, '_') : 'user_ghost'
+              };
+            } else {
+              const chatId = msg.sender ? msg.sender.toLowerCase().replace(/\s+/g, '_') : 'tg_bot';
+              const chatName = msg.sender || 'Telegram Bot';
+
+              const chat = updatedChats[chatId] || {
+                id: chatId,
+                name: chatName,
+                messages: []
+              };
+
+              const newMsg: Message = {
+                id: `tg_${msg.id}_${Date.now()}`,
+                sender: msg.sender || 'Telegram Bot',
+                text: msg.payload || '',
+                timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now()
+              };
+
+              updatedChats = {
+                ...updatedChats,
+                [chatId]: {
+                  ...chat,
+                  messages: [...chat.messages, newMsg]
+                }
+              };
+            }
+          });
+
+          persistTelegramState(updatedChats, updatedGhost);
+        }
+      } catch (e) {
+        console.error('Failed to poll Telegram inbox:', e);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
+
 
   // 2. Save and Sync helper
   const persistTelegramState = (newChats: Record<string, Chat>, newGhost: Record<string, GhostItem>) => {
