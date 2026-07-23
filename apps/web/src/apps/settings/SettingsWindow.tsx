@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useTheme } from "@/modules/theme/ThemeContext";
 import { Plus, Trash2, Keyboard, RotateCcw, Edit2, Check, Lock } from "lucide-react";
 import DiskUtility from "@/components/os/DiskUtility";
-import { autoSyncToCloud, verifyCloudContent, revokeServiceAuth } from "@/lib/vault";
+import { autoSyncToCloud, verifyCloudContent, revokeServiceAuth, changeMasterPin, lockVault } from "@/lib/vault";
 import { useThemeStore, OSStyle } from "@/modules/theme/useThemeStore";
 import { themePresets } from "@/modules/theme/presets";
 import { Theme } from "@/modules/theme/types";
@@ -65,7 +65,10 @@ export function SettingsWindow() {
   const [recordingId, setRecordingId] = useState<string | null>(null);
   
   // Persistent Storage Form States
-  const [masterPin, setMasterPin] = useState("");
+  const [currentPin, setCurrentPin] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [confirmNewPin, setConfirmNewPin] = useState("");
+  const [pinChangeStatus, setPinChangeStatus] = useState<string | null>(null);
   const [googleClientId, setGoogleClientId] = useState("");
   const [googleClientSecret, setGoogleClientSecret] = useState("");
   const [hfSpaceUrl, setHfSpaceUrl] = useState("");
@@ -89,12 +92,12 @@ export function SettingsWindow() {
   const [systemInfo, setSystemInfo] = useState<{
     environment: string;
     storage: { adapter: string; persistent: boolean; note: string };
-    counts: { vfsNodes: number; telegramChats: number };
+    telegramBridge: { ok: boolean; detail: string; bootstrapTokenConfigured: boolean };
+    counts: { vfsNodes: number };
   } | null>(null);
 
   useEffect(() => {
     // Load existing settings on mount
-    setMasterPin(localStorage.getItem("iris_master_pin") || "@@#:");
     setGoogleClientId(localStorage.getItem("iris_gmail_client_id") || localStorage.getItem("iris_g_client_id") || "");
     setGoogleClientSecret(localStorage.getItem("iris_gmail_client_secret") || localStorage.getItem("iris_g_secret") || "");
     setHfSpaceUrl(localStorage.getItem("iris_hf_endpoint") || localStorage.getItem("iris_hf_url") || "");
@@ -103,7 +106,6 @@ export function SettingsWindow() {
 
   const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (masterPin) localStorage.setItem("iris_master_pin", masterPin);
     localStorage.setItem("iris_gmail_client_id", googleClientId);
     localStorage.setItem("iris_g_client_id", googleClientId);
     localStorage.setItem("iris_gmail_client_secret", googleClientSecret);
@@ -119,6 +121,28 @@ export function SettingsWindow() {
 
     setSaveStatus("System settings updated & synced to encrypted vault!");
     setTimeout(() => setSaveStatus(null), 3000);
+  };
+
+  const handleChangePin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPinChangeStatus(null);
+
+    if (newPin.length < 4) {
+      setPinChangeStatus("New PIN must be at least 4 characters.");
+      return;
+    }
+    if (newPin !== confirmNewPin) {
+      setPinChangeStatus("New PINs don't match.");
+      return;
+    }
+
+    const result = await changeMasterPin(currentPin, newPin);
+    setPinChangeStatus(result.message || (result.success ? "PIN changed." : "Failed to change PIN."));
+    if (result.success) {
+      setCurrentPin("");
+      setNewPin("");
+      setConfirmNewPin("");
+    }
   };
 
   useEffect(() => {
@@ -385,9 +409,6 @@ export function SettingsWindow() {
                 {([
                   { id: "win11", label: "Windows 11 Modern", desc: "Clean translucent layout with a centered start menu, centered app dock and high-contrast system tray" },
                   { id: "win7-aero", label: "Windows 7 Aero Glass", desc: "Glossy transparent layout with blue highlights, left-aligned circular Start orb and app tabs" },
-                  { id: "win95-retro", label: "Windows 95 Retro", desc: "Solid classic grey taskbar with a raised 3D Start button and beveled windows" },
-                  { id: "macos", label: "macOS Big Sur", desc: "Sleek top menu bar, centered floating bottom Dock, graphite windows with traffic light buttons" },
-                  { id: "iris-glass", label: "Iris Glass", desc: "Refined frosted-glass floating dock with specular sheen, rim highlights and a glass clock" },
                 ] as { id: OSStyle; label: string; desc: string }[]).map((t) => (
                   <button
                     key={t.id}
@@ -729,15 +750,29 @@ export function SettingsWindow() {
                 </span>
               </div>
               <div className="flex justify-between p-3.5">
-                <span className="text-[var(--muted)]">Synced Files / Chats</span>
+                <span className="text-[var(--muted)]">Synced Files</span>
                 <span className="font-mono text-xs">
-                  {systemInfo ? `${systemInfo.counts.vfsNodes} nodes · ${systemInfo.counts.telegramChats} messages` : "Loading…"}
+                  {systemInfo ? `${systemInfo.counts.vfsNodes} nodes` : "Loading…"}
+                </span>
+              </div>
+              <div className="flex justify-between p-3.5">
+                <span className="text-[var(--muted)]">Telegram Bridge</span>
+                <span className={`font-mono text-xs ${systemInfo && !systemInfo.telegramBridge.ok ? "text-red-400" : systemInfo ? "text-emerald-400" : ""}`}>
+                  {systemInfo ? (systemInfo.telegramBridge.ok ? "Connected" : "Not working") : "Loading…"}
                 </span>
               </div>
             </div>
             {systemInfo && !systemInfo.storage.persistent && (
               <p className="text-xs text-amber-400/90 mt-3 leading-relaxed">
                 {systemInfo.storage.note}
+              </p>
+            )}
+            {systemInfo && !systemInfo.telegramBridge.ok && (
+              <p className="text-xs text-red-400/90 mt-3 leading-relaxed">
+                {systemInfo.telegramBridge.detail}
+                {!systemInfo.telegramBridge.bootstrapTokenConfigured && (
+                  <> Also: no HF_BOOTSTRAP_TOKEN/BOOTSTRAP_TOKEN is set on Vercel, so the bridge would accept unauthenticated requests even once connected.</>
+                )}
               </p>
             )}
           </div>
@@ -908,28 +943,51 @@ export function SettingsWindow() {
 
         {activeTab === "security" && (
           <div className="space-y-6 max-w-md">
-            <form onSubmit={handleSave} className="space-y-4">
+            <form onSubmit={handleChangePin} className="space-y-4">
               <h3 className="text-base font-semibold border-b border-[var(--border)] pb-2">System Lock Screen</h3>
-              <p className="text-xs text-[var(--muted)]">Set the Master Passcode required to mount the Iris desktop on boot.</p>
+              <p className="text-xs text-[var(--muted)]">
+                Change the PIN required to unlock Iris. This re-encrypts your vault — you'll need the new PIN on every device from now on.
+              </p>
               <div>
-                <label className="block text-xs font-medium text-[var(--muted)] mb-1">Master Passcode</label>
+                <label className="block text-xs font-medium text-[var(--muted)] mb-1">Current PIN</label>
                 <input
-                  type="text"
-                  value={masterPin}
-                  onChange={(e) => setMasterPin(e.target.value)}
-                  placeholder="Enter PIN"
-                  maxLength={16}
+                  type="password"
+                  value={currentPin}
+                  onChange={(e) => setCurrentPin(e.target.value)}
+                  placeholder="Enter current PIN"
+                  className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--text)] focus:border-blue-500 outline-none font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[var(--muted)] mb-1">New PIN</label>
+                <input
+                  type="password"
+                  value={newPin}
+                  onChange={(e) => setNewPin(e.target.value)}
+                  placeholder="Choose a new PIN"
+                  maxLength={32}
+                  className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--text)] focus:border-blue-500 outline-none font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[var(--muted)] mb-1">Confirm New PIN</label>
+                <input
+                  type="password"
+                  value={confirmNewPin}
+                  onChange={(e) => setConfirmNewPin(e.target.value)}
+                  placeholder="Confirm new PIN"
+                  maxLength={32}
                   className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--text)] focus:border-blue-500 outline-none font-mono"
                 />
               </div>
 
               <div className="pt-4 border-t border-[var(--border)] flex items-center justify-between">
-                <span className="text-xs text-emerald-400 font-medium">{saveStatus}</span>
+                <span className="text-xs text-emerald-400 font-medium">{pinChangeStatus}</span>
                 <button
                   type="submit"
                   className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs transition-colors shadow-lg shadow-blue-600/20 cursor-pointer"
                 >
-                  Save Configurations
+                  Change PIN
                 </button>
               </div>
             </form>
@@ -937,12 +995,12 @@ export function SettingsWindow() {
             <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] space-y-3">
               <h4 className="text-sm font-semibold text-zinc-100">Lock OS Session</h4>
               <p className="text-xs text-[var(--muted)]">
-                Immediately lock the system session. You will be prompted for your Master Passcode to return to desktop.
+                Immediately lock the system session. You will be prompted for your PIN to return to desktop.
               </p>
               <button
                 type="button"
                 onClick={() => {
-                  sessionStorage.removeItem("iris_unlocked");
+                  lockVault();
                   window.location.reload();
                 }}
                 className="px-4 py-2 bg-rose-600/80 hover:bg-rose-600 text-white font-medium text-xs rounded-lg transition cursor-pointer"

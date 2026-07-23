@@ -4,8 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   getVaultTelemetry, 
   nukeCloudVault, 
-  pushStateToCloud, 
-  HARDCODED_PIN, 
+  autoSyncToCloud, 
   downloadOfflineBackup, 
   restoreOfflineBackup 
 } from '@/lib/vault';
@@ -30,8 +29,8 @@ export default function DiskUtility() {
 
   const handleForceSync = async () => {
     setStatus('Syncing...');
-    const res = await pushStateToCloud(HARDCODED_PIN);
-    setStatus(res.message);
+    await autoSyncToCloud();
+    setStatus('Synced.');
     await loadStats();
     setTimeout(() => setStatus(''), 3000);
   };

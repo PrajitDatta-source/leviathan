@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { readDB, writeDB } from "@/core/backend/db";
 
 export async function GET() {
-  const db = readDB();
+  const db = await readDB();
   return NextResponse.json(db.vfsNodes);
 }
 

@@ -1,33 +1,21 @@
-import fs from "fs";
-import path from "path";
+import { getSupabase, checkSupabaseConfig } from "@/lib/supabaseClient";
 
 /**
- * Iris's server-side persistence layer.
+ * Iris's server-side persistence layer for settings and the virtual
+ * filesystem — backed by a simple `app_state` key/value table in Supabase
+ * (see apps/web/supabase/schema_app_state.sql).
  *
- * This is a small JSON-file "database" — zero config, works out of the box
- * for local dev and self-hosting. It is intentionally written behind the
- * same shape a real database repository would have (typed schema, atomic
- * writes, one entry point) so swapping in Postgres/Neon/etc. later is a
- * localized change: replace the body of `readDB`/`writeDB` with real
- * queries and nothing that calls them needs to change.
+ * This used to be a local iris_db.json file. That worked for local dev but
+ * silently broke in production: Vercel's filesystem is read-only outside
+ * /tmp and wiped on every redeploy/cold start, so every setting (including
+ * your theme) reset itself constantly. That's the actual root cause of
+ * "it doesn't remember the theme I left it on" — nothing was wrong with
+ * theme selection itself, the file it was saved to just never survived.
  *
- * IMPORTANT — serverless deployments (Vercel, etc.): the filesystem there
- * is read-only outside of /tmp and is wiped on every cold start/deploy, so
- * this adapter's data will NOT persist in that environment. `isPersistent`
- * below reflects that. If you deploy Iris to a serverless platform, swap
- * this file for a real database adapter (see "Adding a real database"
- * below) — everything that imports `readDB`/`writeDB` stays unchanged.
- *
- * Adding a real database:
- *   1. Set DATABASE_URL in your environment (e.g. a Neon/Postgres URL).
- *   2. Implement `readDB`/`writeDB` against it (e.g. with `pg` or an ORM),
- *      keeping the same DBData shape below (or migrate it with a proper
- *      schema/migration tool).
- *   3. Everything in app/api/** keeps working unmodified, since it only
- *      ever calls readDB()/writeDB() from this file.
+ * Credentials (Gmail tokens, Telegram token, etc.) do NOT live here — they
+ * go through the encrypted, PIN-gated vault in lib/vault.ts instead, kept
+ * deliberately separate from plain settings.
  */
-
-const DB_FILE = path.join(process.cwd(), "iris_db.json");
 
 export interface VFSNodeRecord {
   id: string;
@@ -40,13 +28,6 @@ export interface VFSNodeRecord {
   updatedAt: string;
 }
 
-export interface TelegramChatRecord {
-  id: string;
-  sender: string;
-  text: string;
-  timestamp: string;
-}
-
 export interface DBData {
   vfsNodes: VFSNodeRecord[];
   preferences: {
@@ -56,7 +37,6 @@ export interface DBData {
     autoSync: boolean;
     customWallpapers?: string[];
   };
-  telegramChats: TelegramChatRecord[];
 }
 
 const DEFAULT_DB: DBData = {
@@ -68,87 +48,73 @@ const DEFAULT_DB: DBData = {
     autoSync: true,
     customWallpapers: [],
   },
-  telegramChats: [
-    {
-      id: "tg_1",
-      sender: "Telegram Bot",
-      text: "Welcome to Iris OS Telegram integration! Secure connection established.",
-      timestamp: new Date().toISOString(),
-    },
-    {
-      id: "tg_2",
-      sender: "Prajit (Owner)",
-      text: "Is the server-side filesystem sync working?",
-      timestamp: new Date().toISOString(),
-    },
-  ],
 };
 
-/** True when this adapter's writes will actually survive a restart. */
-export const isPersistent = !process.env.VERCEL && !process.env.NOW_REGION;
+/** True when Supabase is configured and this adapter's writes will
+ * actually survive a redeploy. False falls back to in-memory defaults
+ * every request — still lets the app boot and work for a session, but
+ * nothing persists, which /api/system surfaces clearly. */
+export const isPersistent = checkSupabaseConfig().ok;
 
-function readDBFromDisk(): DBData {
+// In-memory fallback only used when Supabase isn't configured, so local
+// dev without any env vars set still boots instead of crashing.
+let memoryDB: DBData = { ...DEFAULT_DB };
+
+async function readRow<T>(key: string, fallback: T): Promise<T> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from("app_state").select("value").eq("key", key).maybeSingle();
+  if (error) {
+    console.error(`Failed to read app_state[${key}]:`, error);
+    return fallback;
+  }
+  return (data?.value as T) ?? fallback;
+}
+
+async function writeRow(key: string, value: unknown): Promise<void> {
+  const supabase = getSupabase();
+  const { error } = await supabase.from("app_state").upsert({ key, value, updated_at: new Date().toISOString() });
+  if (error) {
+    console.error(`Failed to write app_state[${key}]:`, error);
+    throw error;
+  }
+}
+
+export async function readDB(): Promise<DBData> {
+  if (!isPersistent) return memoryDB;
+
   try {
-    if (!fs.existsSync(DB_FILE)) {
-      writeDBToDisk(DEFAULT_DB);
-      return DEFAULT_DB;
-    }
-    const content = fs.readFileSync(DB_FILE, "utf-8");
-    const parsed = JSON.parse(content) as Partial<DBData>;
-    // Merge over defaults so a DB file from an older schema (missing a
-    // newly-added field) never crashes a reader that expects it to exist.
-    return {
-      vfsNodes: parsed.vfsNodes ?? DEFAULT_DB.vfsNodes,
-      preferences: { ...DEFAULT_DB.preferences, ...parsed.preferences },
-      telegramChats: parsed.telegramChats ?? DEFAULT_DB.telegramChats,
-    };
+    const [preferences, vfsNodes] = await Promise.all([
+      readRow("preferences", DEFAULT_DB.preferences),
+      readRow("vfsNodes", DEFAULT_DB.vfsNodes),
+    ]);
+    return { preferences: { ...DEFAULT_DB.preferences, ...preferences }, vfsNodes };
   } catch (e) {
-    console.error("Failed to read backend DB, falling back to defaults:", e);
+    console.error("readDB failed, falling back to defaults:", e);
     return DEFAULT_DB;
   }
 }
 
-function writeDBToDisk(data: DBData): void {
-  // Atomic write: write to a temp file in the same directory, then rename
-  // over the real file. A crash mid-write leaves the old file intact
-  // instead of a truncated/corrupt JSON file that the next read would
-  // silently fall back to defaults for.
-  const tmpFile = `${DB_FILE}.${process.pid}.${Date.now()}.tmp`;
-  fs.writeFileSync(tmpFile, JSON.stringify(data, null, 2), "utf-8");
-  fs.renameSync(tmpFile, DB_FILE);
-}
-
-// Serialize writes within this process so concurrent API requests (e.g. a
-// VFS sync and a Telegram POST landing in the same tick) read-modify-write
-// in order instead of racing and silently dropping one of the updates.
-// This does not protect against multiple server *processes/instances*
-// writing at once — that needs a real database with real transactions.
-let writeQueue: Promise<void> = Promise.resolve();
-
-export function readDB(): DBData {
-  return readDBFromDisk();
-}
-
-export function writeDB(data: Partial<DBData>): Promise<DBData> {
-  const task = writeQueue.then(() => {
-    const current = readDBFromDisk();
-    const updated: DBData = {
-      ...current,
+export async function writeDB(data: Partial<DBData>): Promise<DBData> {
+  if (!isPersistent) {
+    memoryDB = {
+      ...memoryDB,
       ...data,
-      preferences: data.preferences
-        ? { ...current.preferences, ...data.preferences }
-        : current.preferences,
+      preferences: data.preferences ? { ...memoryDB.preferences, ...data.preferences } : memoryDB.preferences,
     };
-    writeDBToDisk(updated);
-    return updated;
-  });
+    return memoryDB;
+  }
 
-  // Keep the queue alive even if this particular write fails, so later
-  // writes still get their turn instead of the whole queue jamming.
-  writeQueue = task.then(
-    () => undefined,
-    () => undefined
-  );
+  const current = await readDB();
+  const updated: DBData = {
+    ...current,
+    ...data,
+    preferences: data.preferences ? { ...current.preferences, ...data.preferences } : current.preferences,
+  };
 
-  return task;
+  const writes: Promise<void>[] = [];
+  if (data.preferences) writes.push(writeRow("preferences", updated.preferences));
+  if (data.vfsNodes) writes.push(writeRow("vfsNodes", updated.vfsNodes));
+  await Promise.all(writes);
+
+  return updated;
 }

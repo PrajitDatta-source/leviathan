@@ -1,28 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-// Required — no hardcoded fallback. A hardcoded anon key in source means
-// anyone who can see this file (including in a public repo diff) can talk
-// to your Supabase project directly, bypassing this route's auth check
-// entirely. Set these in Vercel's environment variables instead:
-//   NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+import { getSupabase } from '@/lib/supabaseClient';
 
 // Accept either name — the HF Space's engine_tg.py reads BOOTSTRAP_TOKEN,
 // this route historically read HF_BOOTSTRAP_TOKEN. Keep both so whichever
 // one you've actually set on Vercel works, but they must be the exact
 // same secret value on both sides.
 const expectedToken = process.env.HF_BOOTSTRAP_TOKEN || process.env.BOOTSTRAP_TOKEN;
-
-function getSupabase() {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error(
-      'Supabase is not configured: set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment.'
-    );
-  }
-  return createClient(supabaseUrl, supabaseAnonKey);
-}
 
 export async function POST(request: Request) {
   try {
@@ -46,14 +29,6 @@ export async function POST(request: Request) {
       payload = body.payload || body.text || '';
     }
 
-    // Previously this only rejected when a token WAS sent and it mismatched
-    // — sending no token at all skipped the check entirely, so anyone
-    // could POST fake Telegram messages into the inbox with zero auth.
-    // Now: if a server-side secret is configured, every request must match
-    // it, full stop. If nothing is configured server-side, warn loudly
-    // instead of silently accepting everything (fail-closed by default is
-    // safer, but breaking your own bot silently is worse than a log line
-    // while you're still wiring this up).
     if (expectedToken) {
       if (token !== expectedToken) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -87,6 +62,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, message: 'Message staged for Iris OS' });
   } catch (error) {
     console.error('Telegram route processing error:', error);
+    // getSupabase() throws a specific, actionable message when env vars are
+    // missing/malformed (e.g. a project ID pasted instead of the full
+    // URL) — surface that instead of a generic "Server processing error".
     const message = error instanceof Error ? error.message : 'Server processing error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -106,15 +84,6 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Clear staged messages after fetching. Note: if the response never
-    // reaches the client (network drop mid-response), these rows are
-    // already gone — acceptable for the "Live Mirror" tab (explicitly
-    // RAM-only/best-effort by design) but means Ghost Vault entries could
-    // theoretically be lost in that narrow window too. A more robust
-    // version would mark rows "delivered" and sweep them on a delay
-    // instead of deleting inline; flagging this rather than silently
-    // leaving it, since it's a real (if rare) way to lose evidence of a
-    // deleted/edited message.
     if (data && data.length > 0) {
       const ids = data.map((item: { id: number }) => item.id);
       await supabase.from('telegram_inbox').delete().in('id', ids);

@@ -1,17 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
 import CryptoJS from 'crypto-js';
-
-const VAULT_CONFIG = {
-  url: 'https://oeanbxyfldivpiufvyez.supabase.co',
-  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9lYW5ieHlmbGRpdnBpdWZ2eWV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2Mjk2MDQsImV4cCI6MjEwMDIwNTYwNH0.aT6-astS8Drm6X_KQ0wHiAnQp9ziSZtn4s_RZY2WmF8',
-};
+import { getSupabase } from './supabaseClient';
 
 const VAULT_ID = 'primary_user_vault';
-
-// ➔ HARDCODE YOUR PERMANENT MASTER PIN HERE
-export const HARDCODED_PIN = '@@#:';
-
-export const supabase = createClient(VAULT_CONFIG.url, VAULT_CONFIG.anonKey);
 
 export interface IrisOSState {
   gmailToken?: string;
@@ -26,7 +16,9 @@ export interface IrisOSState {
   lastSynced?: number;
 }
 
-// RAM storage: wipes to null on every page refresh!
+// RAM storage: wipes to null on every page refresh — that's intentional,
+// it's what makes the lockscreen actually lock instead of just being a
+// speed bump you see once per browser install.
 let activeSessionPin: string | null = null;
 
 export function setSessionPin(pin: string): void {
@@ -41,33 +33,76 @@ export function lockVault(): void {
   activeSessionPin = null;
 }
 
+function collectLocalState(): IrisOSState {
+  return {
+    gmailToken: localStorage.getItem('iris_gmail_token') || undefined,
+    gmailRefreshToken: localStorage.getItem('iris_gmail_refresh_token') || undefined,
+    gmailClientId: localStorage.getItem('iris_gmail_client_id') || localStorage.getItem('iris_g_client_id') || undefined,
+    gmailClientSecret: localStorage.getItem('iris_gmail_client_secret') || localStorage.getItem('iris_g_secret') || undefined,
+    telegramBotToken: localStorage.getItem('iris_tg_bot_token') || localStorage.getItem('iris_telegram_token') || undefined,
+    hfSpaceEndpoint: localStorage.getItem('iris_hf_endpoint') || localStorage.getItem('iris_hf_url') || undefined,
+    telegramToken: localStorage.getItem('iris_telegram_token') || localStorage.getItem('iris_tg_token') || undefined,
+    theme: localStorage.getItem('iris_theme') || undefined,
+    vfs: localStorage.getItem('iris_vfs_data') || localStorage.getItem('iris_vfs_nodes') || undefined,
+    lastSynced: Date.now(),
+  };
+}
+
+function applyStateToLocal(state: IrisOSState): void {
+  if (state.gmailToken) localStorage.setItem('iris_gmail_token', state.gmailToken);
+  if (state.gmailRefreshToken) localStorage.setItem('iris_gmail_refresh_token', state.gmailRefreshToken);
+  if (state.gmailClientId) {
+    localStorage.setItem('iris_gmail_client_id', state.gmailClientId);
+    localStorage.setItem('iris_g_client_id', state.gmailClientId);
+  }
+  if (state.gmailClientSecret) {
+    localStorage.setItem('iris_gmail_client_secret', state.gmailClientSecret);
+    localStorage.setItem('iris_g_secret', state.gmailClientSecret);
+  }
+  if (state.telegramBotToken || state.telegramToken) {
+    const tgToken = state.telegramBotToken || state.telegramToken;
+    localStorage.setItem('iris_tg_bot_token', tgToken!);
+    localStorage.setItem('iris_telegram_token', tgToken!);
+    localStorage.setItem('iris_tg_token', tgToken!);
+  }
+  if (state.hfSpaceEndpoint) {
+    localStorage.setItem('iris_hf_endpoint', state.hfSpaceEndpoint);
+    localStorage.setItem('iris_hf_url', state.hfSpaceEndpoint);
+  }
+  if (state.theme) localStorage.setItem('iris_theme', state.theme);
+  if (state.vfs) {
+    localStorage.setItem('iris_vfs_data', state.vfs);
+    localStorage.setItem('iris_vfs_nodes', state.vfs);
+  }
+}
+
+/** Does a vault row already exist in the cloud? Lockscreen uses this to
+ * decide whether to show "set a PIN to create your vault" (first run) or
+ * "enter your PIN" (returning). */
+export async function checkVaultExists(): Promise<boolean> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from('iris_vault').select('vault_id').eq('vault_id', VAULT_ID).maybeSingle();
+  if (error) {
+    console.error('checkVaultExists failed:', error);
+    return false;
+  }
+  return !!data;
+}
+
 export async function pushStateToCloud(masterPin: string): Promise<{ success: boolean; message: string }> {
   try {
     if (typeof window !== 'undefined') window.dispatchEvent(new Event('iris-sync-start'));
 
-    const state: IrisOSState = {
-      gmailToken: localStorage.getItem('iris_gmail_token') || undefined,
-      gmailRefreshToken: localStorage.getItem('iris_gmail_refresh_token') || undefined,
-      gmailClientId: localStorage.getItem('iris_gmail_client_id') || localStorage.getItem('iris_g_client_id') || undefined,
-      gmailClientSecret: localStorage.getItem('iris_gmail_client_secret') || localStorage.getItem('iris_g_secret') || undefined,
-      telegramBotToken: localStorage.getItem('iris_tg_bot_token') || localStorage.getItem('iris_telegram_token') || localStorage.getItem('iris_tg_token') || undefined,
-      hfSpaceEndpoint: localStorage.getItem('iris_hf_endpoint') || localStorage.getItem('iris_hf_url') || undefined,
-      telegramToken: localStorage.getItem('iris_telegram_token') || localStorage.getItem('iris_tg_token') || undefined,
-      theme: localStorage.getItem('iris_theme') || 'slate-cyan',
-      vfs: localStorage.getItem('iris_vfs_data') || localStorage.getItem('iris_vfs_nodes') || undefined,
-      lastSynced: Date.now(),
-    };
-
+    const state = collectLocalState();
     const jsonString = JSON.stringify(state);
     const encryptedData = CryptoJS.AES.encrypt(jsonString, masterPin).toString();
 
-    const { error } = await supabase
-      .from('iris_vault')
-      .upsert({
-        vault_id: VAULT_ID,
-        encrypted_data: encryptedData,
-        updated_at: new Date().toISOString(),
-      });
+    const supabase = getSupabase();
+    const { error } = await supabase.from('iris_vault').upsert({
+      vault_id: VAULT_ID,
+      encrypted_data: encryptedData,
+      updated_at: new Date().toISOString(),
+    });
 
     if (error) {
       if (typeof window !== 'undefined') window.dispatchEvent(new Event('iris-sync-error'));
@@ -76,77 +111,86 @@ export async function pushStateToCloud(masterPin: string): Promise<{ success: bo
 
     if (typeof window !== 'undefined') window.dispatchEvent(new Event('iris-sync-done'));
     return { success: true, message: 'Synced.' };
-  } catch (err: any) {
+  } catch (err) {
     if (typeof window !== 'undefined') window.dispatchEvent(new Event('iris-sync-error'));
-    return { success: false, message: 'Encryption error.' };
+    const message = err instanceof Error ? err.message : 'Encryption error.';
+    return { success: false, message };
   }
 }
 
-export async function hydrateStateFromCloud(inputPin: string): Promise<{ success: boolean; message: string }> {
-  // 1. Strict check against your hardcoded PIN
-  if (inputPin !== HARDCODED_PIN) {
-    return { success: false, message: 'Wrong PIN.' };
+/** Creates a brand-new vault, encrypted with the PIN the user just chose.
+ * Only call this after confirming (via checkVaultExists) that no vault
+ * exists yet — this intentionally does NOT overwrite an existing one. */
+export async function createVault(pin: string): Promise<{ success: boolean; message: string }> {
+  const exists = await checkVaultExists();
+  if (exists) {
+    return { success: false, message: 'A vault already exists — use Unlock instead.' };
   }
+  const result = await pushStateToCloud(pin);
+  if (result.success) setSessionPin(pin);
+  return result;
+}
 
+export type UnlockResult =
+  | { status: 'unlocked' }
+  | { status: 'wrong-pin' }
+  | { status: 'no-vault' }
+  | { status: 'error'; message: string };
+
+export async function hydrateStateFromCloud(inputPin: string): Promise<UnlockResult> {
   try {
+    const supabase = getSupabase();
     const { data, error } = await supabase
       .from('iris_vault')
       .select('encrypted_data')
       .eq('vault_id', VAULT_ID)
-      .single();
+      .maybeSingle();
 
-    // If DB is completely empty, push fresh state to initialize it
-    if (error || !data) {
-      await pushStateToCloud(HARDCODED_PIN);
-      return { success: true, message: 'Initialized new cloud vault.' };
-    }
+    if (error) return { status: 'error', message: error.message };
+    if (!data) return { status: 'no-vault' };
 
-    const bytes = CryptoJS.AES.decrypt(data.encrypted_data, HARDCODED_PIN);
+    const bytes = CryptoJS.AES.decrypt(data.encrypted_data, inputPin);
     const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
 
-    // 2. AUTO-HEALING: If old DB test data fails to decrypt, silently overwrite it!
+    // A wrong PIN produces garbage bytes that fail to decode as UTF-8/JSON
+    // — that's the ONLY thing that should happen here. Earlier versions of
+    // this function treated that as "corrupt data" and silently wiped and
+    // reinitialized the vault, which meant a single PIN typo permanently
+    // destroyed every saved credential with no warning. Never do that —
+    // a wrong PIN just fails to unlock, exactly like a real password.
     if (!decryptedString) {
-      console.warn('Old DB test data detected. Silently overwriting with hardcoded PIN...');
-      await pushStateToCloud(HARDCODED_PIN);
-      return { success: true, message: 'Vault auto-healed and synced.' };
+      return { status: 'wrong-pin' };
     }
 
-    const state: IrisOSState = JSON.parse(decryptedString);
-
-    if (state.gmailToken) localStorage.setItem('iris_gmail_token', state.gmailToken);
-    if (state.gmailRefreshToken) localStorage.setItem('iris_gmail_refresh_token', state.gmailRefreshToken);
-    if (state.gmailClientId) {
-      localStorage.setItem('iris_gmail_client_id', state.gmailClientId);
-      localStorage.setItem('iris_g_client_id', state.gmailClientId);
-    }
-    if (state.gmailClientSecret) {
-      localStorage.setItem('iris_gmail_client_secret', state.gmailClientSecret);
-      localStorage.setItem('iris_g_secret', state.gmailClientSecret);
-    }
-    if (state.telegramBotToken || state.telegramToken) {
-      const tgToken = state.telegramBotToken || state.telegramToken;
-      localStorage.setItem('iris_tg_bot_token', tgToken!);
-      localStorage.setItem('iris_telegram_token', tgToken!);
-      localStorage.setItem('iris_tg_token', tgToken!);
-    }
-    if (state.hfSpaceEndpoint) {
-      localStorage.setItem('iris_hf_endpoint', state.hfSpaceEndpoint);
-      localStorage.setItem('iris_hf_url', state.hfSpaceEndpoint);
-    }
-    if (state.theme) localStorage.setItem('iris_theme', state.theme);
-    if (state.vfs) {
-      localStorage.setItem('iris_vfs_data', state.vfs);
-      localStorage.setItem('iris_vfs_nodes', state.vfs);
+    let state: IrisOSState;
+    try {
+      state = JSON.parse(decryptedString);
+    } catch {
+      return { status: 'wrong-pin' };
     }
 
+    applyStateToLocal(state);
+    setSessionPin(inputPin);
     enforce90DayTrashPolicy();
-
-    return { success: true, message: 'Unlocked.' };
-  } catch (err: any) {
-    // If anything breaks, force heal the DB so you never get locked out
-    await pushStateToCloud(HARDCODED_PIN);
-    return { success: true, message: 'Vault reset and synced.' };
+    return { status: 'unlocked' };
+  } catch (err) {
+    return { status: 'error', message: err instanceof Error ? err.message : 'Unknown vault error.' };
   }
+}
+
+/** Verifies the old PIN actually unlocks the vault, then re-encrypts and
+ * uploads the same state under the new PIN. This is what Settings > Security
+ * should call — writing straight to localStorage there did nothing, since
+ * the vault's real encryption key was the hardcoded PIN, not that field. */
+export async function changeMasterPin(oldPin: string, newPin: string): Promise<{ success: boolean; message: string }> {
+  const result = await hydrateStateFromCloud(oldPin);
+  if (result.status === 'wrong-pin') return { success: false, message: 'Current PIN is incorrect.' };
+  if (result.status === 'no-vault') return { success: false, message: 'No vault exists yet.' };
+  if (result.status === 'error') return { success: false, message: result.message };
+
+  const push = await pushStateToCloud(newPin);
+  if (push.success) setSessionPin(newPin);
+  return push;
 }
 
 export async function autoSyncToCloud(): Promise<void> {
@@ -170,12 +214,10 @@ export function enforce90DayTrashPolicy(): void {
     const parsed = JSON.parse(rawVFS);
 
     if (Array.isArray(parsed)) {
-      // Array-based VFS format
-      const cleaned = parsed.filter((node: any) => {
+      const cleaned = parsed.filter((node: { isTrash?: boolean; deletedAt?: string; name?: string }) => {
         if (node.isTrash && node.deletedAt) {
           const deletedTime = new Date(node.deletedAt).getTime();
           if (now - deletedTime > NINETY_DAYS_MS) {
-            console.log(`🗑️ [Trash Policy] Permanently purging expired file: ${node.name}`);
             filesPurged = true;
             return false;
           }
@@ -187,14 +229,11 @@ export function enforce90DayTrashPolicy(): void {
         localStorage.setItem('iris_vfs_data', dataStr);
         localStorage.setItem('iris_vfs_nodes', dataStr);
         autoSyncToCloud();
-        console.log('✓ [Trash Policy] Cloud DB defragmented and synced.');
       }
     } else if (parsed.trash && typeof parsed.trash === 'object') {
-      // Object-based VFS format
-      for (const [filepath, item] of Object.entries<any>(parsed.trash)) {
-        const deletedTime = typeof item.deletedAt === 'number' ? item.deletedAt : new Date(item.deletedAt).getTime();
-        if (deletedTime && (now - deletedTime) > NINETY_DAYS_MS) {
-          console.log(`🗑️ [Trash Policy] Permanently purging expired file: ${filepath}`);
+      for (const [filepath, item] of Object.entries<{ deletedAt?: number | string }>(parsed.trash)) {
+        const deletedTime = typeof item.deletedAt === 'number' ? item.deletedAt : new Date(item.deletedAt || 0).getTime();
+        if (deletedTime && now - deletedTime > NINETY_DAYS_MS) {
           delete parsed.trash[filepath];
           filesPurged = true;
         }
@@ -204,7 +243,6 @@ export function enforce90DayTrashPolicy(): void {
         localStorage.setItem('iris_vfs_data', dataStr);
         localStorage.setItem('iris_vfs_nodes', dataStr);
         autoSyncToCloud();
-        console.log('✓ [Trash Policy] Cloud DB defragmented and synced.');
       }
     }
   } catch (e) {
@@ -212,18 +250,13 @@ export function enforce90DayTrashPolicy(): void {
   }
 }
 
-/**
- * Downloads your encrypted Postgres payload as a physical offline file
- */
+/** Downloads your encrypted Supabase payload as a physical offline file. */
 export async function downloadOfflineBackup(): Promise<void> {
-  const { data, error } = await supabase
-    .from('iris_vault')
-    .select('encrypted_data')
-    .eq('vault_id', VAULT_ID)
-    .single();
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from('iris_vault').select('encrypted_data').eq('vault_id', VAULT_ID).maybeSingle();
 
   if (error || !data?.encrypted_data) {
-    if (typeof window !== 'undefined') alert('No cloud vault found to backup!');
+    if (typeof window !== 'undefined') alert('No cloud vault found to back up!');
     return;
   }
 
@@ -238,10 +271,14 @@ export async function downloadOfflineBackup(): Promise<void> {
   URL.revokeObjectURL(url);
 }
 
-/**
- * Restores an offline .iris file back into your local RAM and pushes to Supabase
- */
+/** Restores an offline .iris file, decrypting it with the CURRENT unlocked
+ * session PIN (not a hardcoded one) and pushing it back to Supabase. */
 export async function restoreOfflineBackup(file: File): Promise<{ success: boolean; message: string }> {
+  const pin = getSessionPin();
+  if (!pin) {
+    return { success: false, message: 'Vault is locked — unlock it first.' };
+  }
+
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -249,53 +286,22 @@ export async function restoreOfflineBackup(file: File): Promise<{ success: boole
       if (!ciphertext) return resolve({ success: false, message: 'File is empty.' });
 
       try {
-        const bytes = CryptoJS.AES.decrypt(ciphertext, HARDCODED_PIN);
+        const bytes = CryptoJS.AES.decrypt(ciphertext, pin);
         const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
-        
+
         if (!decryptedString) {
-          return resolve({ success: false, message: 'Invalid backup file or wrong PIN!' });
+          return resolve({ success: false, message: 'This backup was not encrypted with your current PIN.' });
         }
-
-        const { error } = await supabase
-          .from('iris_vault')
-          .upsert({
-            vault_id: VAULT_ID,
-            encrypted_data: ciphertext,
-            updated_at: new Date().toISOString(),
-          });
-
-        if (error) return resolve({ success: false, message: error.message });
 
         const state: IrisOSState = JSON.parse(decryptedString);
-        if (state.gmailToken) localStorage.setItem('iris_gmail_token', state.gmailToken);
-        if (state.gmailRefreshToken) localStorage.setItem('iris_gmail_refresh_token', state.gmailRefreshToken);
-        if (state.gmailClientId) {
-          localStorage.setItem('iris_gmail_client_id', state.gmailClientId);
-          localStorage.setItem('iris_g_client_id', state.gmailClientId);
-        }
-        if (state.gmailClientSecret) {
-          localStorage.setItem('iris_gmail_client_secret', state.gmailClientSecret);
-          localStorage.setItem('iris_g_secret', state.gmailClientSecret);
-        }
-        if (state.telegramBotToken || state.telegramToken) {
-          const tgToken = state.telegramBotToken || state.telegramToken;
-          localStorage.setItem('iris_tg_bot_token', tgToken!);
-          localStorage.setItem('iris_telegram_token', tgToken!);
-          localStorage.setItem('iris_tg_token', tgToken!);
-        }
-        if (state.hfSpaceEndpoint) {
-          localStorage.setItem('iris_hf_endpoint', state.hfSpaceEndpoint);
-          localStorage.setItem('iris_hf_url', state.hfSpaceEndpoint);
-        }
-        if (state.theme) localStorage.setItem('iris_theme', state.theme);
-        if (state.vfs) {
-          localStorage.setItem('iris_vfs_data', state.vfs);
-          localStorage.setItem('iris_vfs_nodes', state.vfs);
-        }
-        
+        applyStateToLocal(state);
+
+        const push = await pushStateToCloud(pin);
+        if (!push.success) return resolve(push);
+
         resolve({ success: true, message: 'Backup restored successfully! Reloading...' });
         setTimeout(() => window.location.reload(), 1500);
-      } catch (err: any) {
+      } catch {
         resolve({ success: false, message: 'Corrupted .iris backup file.' });
       }
     };
@@ -303,9 +309,7 @@ export async function restoreOfflineBackup(file: File): Promise<{ success: boole
   });
 }
 
-/**
- * Surgically deletes specific OAuth/API keys and syncs the cleaned state to the cloud
- */
+/** Surgically deletes specific OAuth/API keys and syncs the cleaned state to the cloud. */
 export async function revokeServiceAuth(service: 'gmail' | 'telegram'): Promise<void> {
   if (service === 'gmail') {
     localStorage.removeItem('iris_gmail_token');
@@ -314,85 +318,64 @@ export async function revokeServiceAuth(service: 'gmail' | 'telegram'): Promise<
     localStorage.removeItem('iris_gmail_client_secret');
     localStorage.removeItem('iris_g_client_id');
     localStorage.removeItem('iris_g_secret');
-    console.log('🔌 [Revoke] Wiped all Gmail OAuth credentials from memory.');
-  } 
-  else if (service === 'telegram') {
+  } else if (service === 'telegram') {
     localStorage.removeItem('iris_telegram_token');
     localStorage.removeItem('iris_tg_token');
-    console.log('🔌 [Revoke] Wiped Telegram bot token from memory.');
   }
 
   await autoSyncToCloud();
-  if (typeof window !== 'undefined') {
-    alert(`${service.toUpperCase()} credentials disconnected and erased from cloud vault.`);
-  }
 }
 
 // ==========================================
-// 5. DISK UTILITY & TELEMETRY HELPERS
+// Disk utility / telemetry helpers
 // ==========================================
 
-/**
- * Fetches raw cloud payload size and returns both ciphertext and decrypted telemetry
- */
 export async function getVaultTelemetry(): Promise<{
   bytes: number;
   formattedSize: string;
   rawData: string | null;
   decryptedState: IrisOSState | null;
 }> {
-  const { data, error } = await supabase
-    .from('iris_vault')
-    .select('encrypted_data, updated_at')
-    .eq('vault_id', 'primary_user_vault')
-    .single();
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from('iris_vault').select('encrypted_data, updated_at').eq('vault_id', VAULT_ID).maybeSingle();
 
   if (error || !data?.encrypted_data) {
     return { bytes: 0, formattedSize: '0 KB', rawData: null, decryptedState: null };
   }
 
-  // Calculate actual UTF-8 byte size of the encrypted cloud string
   const bytes = new Blob([data.encrypted_data]).size;
   const kb = (bytes / 1024).toFixed(2);
   const formattedSize = bytes > 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(2)} MB` : `${kb} KB`;
 
-  // Attempt decryption using active RAM PIN
   let decryptedState: IrisOSState | null = null;
-  try {
-    const decryptedBytes = CryptoJS.AES.decrypt(data.encrypted_data, HARDCODED_PIN);
-    const jsonString = decryptedBytes.toString(CryptoJS.enc.Utf8);
-    if (jsonString) decryptedState = JSON.parse(jsonString);
-  } catch (e) {
-    console.error('Telemetry decryption failed:', e);
+  const pin = getSessionPin();
+  if (pin) {
+    try {
+      const decryptedBytes = CryptoJS.AES.decrypt(data.encrypted_data, pin);
+      const jsonString = decryptedBytes.toString(CryptoJS.enc.Utf8);
+      if (jsonString) decryptedState = JSON.parse(jsonString);
+    } catch (e) {
+      console.error('Telemetry decryption failed:', e);
+    }
   }
 
   return { bytes, formattedSize, rawData: data.encrypted_data, decryptedState };
 }
 
-/**
- * Permanently annihilates cloud database rows and clears local browser memory
- */
 export async function nukeCloudVault(): Promise<{ success: boolean; message: string }> {
   try {
-    const { error } = await supabase
-      .from('iris_vault')
-      .delete()
-      .eq('vault_id', 'primary_user_vault');
-
+    const supabase = getSupabase();
+    const { error } = await supabase.from('iris_vault').delete().eq('vault_id', VAULT_ID);
     if (error) return { success: false, message: error.message };
 
-    // Clear local storage and wipe RAM lock
     localStorage.clear();
     lockVault();
     return { success: true, message: 'Cloud vault and local caches destroyed.' };
-  } catch (err: any) {
-    return { success: false, message: err.message || 'Failed to destroy vault.' };
+  } catch (err) {
+    return { success: false, message: err instanceof Error ? err.message : 'Failed to destroy vault.' };
   }
 }
 
-/**
- * Pulls the live DB payload, decrypts it, and verifies exactly what is saved in the cloud.
- */
 export async function verifyCloudContent(): Promise<{
   exists: boolean;
   savedKeys: {
@@ -404,37 +387,38 @@ export async function verifyCloudContent(): Promise<{
     lastSynced: string;
   };
 }> {
+  const empty = { exists: false, savedKeys: { gmailOAuth: false, gmailToken: false, telegramToken: false, vfsFileCount: 0, trashCount: 0, lastSynced: 'Never' } };
+  const pin = getSessionPin();
+  if (!pin) return empty;
+
   try {
-    const { data, error } = await supabase
-      .from('iris_vault')
-      .select('encrypted_data, updated_at')
-      .eq('vault_id', 'primary_user_vault')
-      .single();
+    const supabase = getSupabase();
+    const { data, error } = await supabase.from('iris_vault').select('encrypted_data, updated_at').eq('vault_id', VAULT_ID).maybeSingle();
 
-    if (error || !data?.encrypted_data) {
-      return { exists: false, savedKeys: { gmailOAuth: false, gmailToken: false, telegramToken: false, vfsFileCount: 0, trashCount: 0, lastSynced: 'Never' } };
-    }
+    if (error || !data?.encrypted_data) return empty;
 
-    const bytes = CryptoJS.AES.decrypt(data.encrypted_data, HARDCODED_PIN);
+    const bytes = CryptoJS.AES.decrypt(data.encrypted_data, pin);
     const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
+    if (!decryptedString) return empty;
     const state: IrisOSState = JSON.parse(decryptedString);
 
-    // Count files in VFS and Trash
     let vfsFileCount = 0;
     let trashCount = 0;
     if (state.vfs) {
       try {
         const vfsObj = JSON.parse(state.vfs);
         if (Array.isArray(vfsObj)) {
-          vfsFileCount = vfsObj.filter((n: any) => !n.isTrash).length;
-          trashCount = vfsObj.filter((n: any) => n.isTrash).length;
+          vfsFileCount = vfsObj.filter((n: { isTrash?: boolean }) => !n.isTrash).length;
+          trashCount = vfsObj.filter((n: { isTrash?: boolean }) => n.isTrash).length;
         } else if (vfsObj.files || vfsObj.trash) {
           vfsFileCount = Object.keys(vfsObj.files || {}).length;
           trashCount = Object.keys(vfsObj.trash || {}).length;
         } else {
           vfsFileCount = Object.keys(vfsObj).length;
         }
-      } catch (e) {}
+      } catch {
+        // ignore malformed vfs blob for counting purposes
+      }
     }
 
     return {
@@ -450,6 +434,6 @@ export async function verifyCloudContent(): Promise<{
     };
   } catch (err) {
     console.error('Verification failed:', err);
-    return { exists: false, savedKeys: { gmailOAuth: false, gmailToken: false, telegramToken: false, vfsFileCount: 0, trashCount: 0, lastSynced: 'Error' } };
+    return empty;
   }
 }

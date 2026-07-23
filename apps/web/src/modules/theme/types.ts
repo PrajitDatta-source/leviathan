@@ -1,25 +1,19 @@
-export type Theme = 
-  | "iris-dark"
-  | "iris-light"
-  | "iris-glass"
-  | "fluent-glass"
-  | "retro-mac"
-  | "material-design"
-  | "light"
-  | "dark"
-  | "oled"
-  | "glass"
-  | "nord"
-  | "catppuccin"
-  | "tokyonight"
-  | "dracula"
-  | "gruvbox";
+// Cut down from 15 themes / 5 shell families to exactly what was asked
+// for: Windows 11, Windows 7 Aero, Light, Dark, Glass. Fewer, better,
+// each one actually distinct instead of 10 near-duplicate dark palettes.
+export type Theme = "windows11" | "windows7-aero" | "light" | "dark" | "glass";
 
-// The four legacy window-chrome / taskbar "shell" families, plus the new
-// refined glass shell. Every theme preset below maps onto exactly one of
-// these so that taskbar, window chrome and desktop icons always have a
-// well-defined layout to render, no matter which color theme is active.
-export type ShellStyle = "win11" | "win7-aero" | "win95-retro" | "macos" | "iris-glass";
+// Only two real taskbar/window-chrome layouts now. Light, Dark and Glass
+// all use the modern "win11" layout (they're color/material variations of
+// the same shell) — Windows 7 Aero is the one genuinely different layout.
+export type ShellStyle = "win11" | "win7-aero";
+
+// Only two icon languages: "modern" (flat glyph, no background tile —
+// used by Windows 11 / Light / Dark / Glass) and "aero" (glossy 3D chip,
+// used only by Windows 7 Aero for period-correct nostalgia). Icons are
+// intentionally decoupled from `glass` — a glass-surfaced theme still
+// renders plain glyph icons, not frosted ones.
+export type IconPack = "modern" | "aero";
 
 export interface ThemeConfig {
   name: Theme;
@@ -34,14 +28,13 @@ export interface ThemeConfig {
     border: string;
     card: string;
   };
-  iconPack: string; // e.g. "windows11", "windows7", "kde", "macos", "papirus", "iris"
-  cursor?: string;   // e.g. "default", "crosshair", "text"
-  wallpaper: string; // Default background color or gradient
+  iconPack: IconPack;
+  cursor?: string;
+  wallpaper: string;
   soundPack?: "synthetic" | "none";
-  /** Which taskbar/window-chrome layout family this theme uses. */
   shellStyle: ShellStyle;
-  /** Whether this theme reads as light or dark, for chrome contrast rules. */
   mode: "light" | "dark";
-  /** True for themes that want frosted glass surfaces (blur + translucency). */
+  /** True for the Glass theme's frosted, translucent surfaces. Never
+   * affects icon rendering — see IconPack above. */
   glass?: boolean;
 }

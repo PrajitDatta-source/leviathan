@@ -25,7 +25,7 @@ export function Window({ window: initialWindow }: Props) {
     const windowWorkspaces = useWorkspaceStore((state) => state.windowWorkspaces);
     const activeWorkspace = useWorkspaceStore((state) => state.activeWorkspace);
     const belongsToActiveWorkspace = (windowWorkspaces[window.id] || 1) === activeWorkspace;
-    const { osStyle, colorMode } = useThemeStore();
+    const { osStyle, glass } = useThemeStore();
 
     const [isDragging, setIsDragging] = useState(false);
     const [isResizing, setIsResizing] = useState(false);
@@ -271,70 +271,56 @@ export function Window({ window: initialWindow }: Props) {
     const appDef = appRegistry.get(window.appId);
     const content = appDef ? createElement(appDef.component) : null;
 
-    // Define theme styling configurations based strictly on osStyle and colorMode
+    // Define theme styling configurations based on osStyle, colorMode and glass
     let themeContainerClasses = "";
     let themeHeaderClasses = "";
 
     if (osStyle === "win7-aero") {
       themeContainerClasses = "bg-slate-900/40 backdrop-blur-2xl border border-white/30 text-white rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.15)]";
       themeHeaderClasses = "bg-white/10 border-b border-white/20 text-white";
-    } else if (osStyle === "macos") {
-      themeContainerClasses = colorMode === "light"
-        ? "bg-slate-100/90 backdrop-blur-xl border border-slate-300 text-slate-900 rounded-xl shadow-2xl"
-        : "bg-[#1e1e1e]/90 backdrop-blur-xl border border-[#323236] text-zinc-100 rounded-xl shadow-2xl";
-      themeHeaderClasses = colorMode === "light"
-        ? "bg-slate-200/80 border-b border-slate-300 text-slate-800"
-        : "bg-[#2c2c2e]/80 border-b border-[#323236] text-zinc-200";
-    } else if (osStyle === "win11") {
-      themeContainerClasses = colorMode === "light"
-        ? "bg-white/85 backdrop-blur-xl border border-slate-200 text-slate-900 rounded-lg shadow-lg"
-        : "bg-slate-900/80 backdrop-blur-xl border border-white/10 text-white rounded-lg shadow-[0_15px_40px_rgba(0,0,0,0.4)]";
-      themeHeaderClasses = colorMode === "light"
-        ? "bg-slate-100/60 border-b border-slate-200 text-slate-800"
-        : "bg-white/5 border-b border-white/5 text-white";
-    } else if (osStyle === "iris-glass") {
+    } else if (glass) {
+      // Glass theme: the refined frosted glass-pane treatment.
       themeContainerClasses = "glass-pane text-[var(--text)] rounded-2xl";
       themeHeaderClasses = "bg-white/[0.04] border-b border-white/10 text-[var(--text)] rounded-t-2xl";
     } else {
-      // win95-retro
-      themeContainerClasses = "bg-[#c0c0c0] text-black border-2 border-t-white border-l-white border-b-black border-r-black p-[3px] select-none rounded-none";
-      themeHeaderClasses = window.isFocused 
-        ? "bg-[#000080] text-white font-bold tracking-wide text-sm px-2 py-1" 
-        : "bg-[#808080] text-[#c0c0c0] font-bold tracking-wide text-sm px-2 py-1";
+      // Windows 11 / Light / Dark all share this — driven entirely by CSS
+      // vars so Light actually renders light and Dark actually renders
+      // dark, instead of every theme getting the same hardcoded slate chrome.
+      themeContainerClasses = "border rounded-lg shadow-[0_15px_40px_rgba(0,0,0,0.25)] backdrop-blur-xl";
+      themeHeaderClasses = "border-b";
     }
+
+    const themeChromeStyle: React.CSSProperties =
+      osStyle === "win7-aero" || glass
+        ? {}
+        : { background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" };
+    const themeHeaderStyle: React.CSSProperties =
+      osStyle === "win7-aero" || glass
+        ? {}
+        : { background: "var(--muted)", borderColor: "var(--border)", color: "var(--text)" };
 
     // Add active shadow/highlight classes
     let activeHighlightClasses = "";
     if (window.isFocused) {
       if (osStyle === "win7-aero") {
         activeHighlightClasses = "border-sky-400/40 shadow-[0_0_25px_rgba(255,255,255,0.25)] ring-1 ring-sky-400/20";
-      } else if (osStyle === "macos") {
-        activeHighlightClasses = "shadow-[0_25px_55px_rgba(0,0,0,0.6)] border-zinc-600";
-      } else if (osStyle === "win11") {
-        activeHighlightClasses = "shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-white/20 ring-1 ring-white/15";
-      } else if (osStyle === "iris-glass") {
+      } else if (glass) {
         activeHighlightClasses = "ring-1 ring-violet-300/30 shadow-[0_25px_60px_-15px_rgba(139,92,246,0.45)]";
       } else {
-        // win95-retro
-        activeHighlightClasses = "";
+        activeHighlightClasses = "shadow-[0_20px_50px_rgba(0,0,0,0.35)] ring-1 ring-[var(--border)]";
       }
     } else {
       if (osStyle === "win7-aero") {
         activeHighlightClasses = "shadow-[0_0_10px_rgba(255,255,255,0.05)] opacity-85";
-      } else if (osStyle === "macos") {
-        activeHighlightClasses = "shadow-md opacity-90";
-      } else if (osStyle === "win11") {
-        activeHighlightClasses = "shadow-lg border-white/5 opacity-90";
-      } else if (osStyle === "iris-glass") {
+      } else if (glass) {
         activeHighlightClasses = "opacity-90";
       } else {
-        // win95-retro
-        activeHighlightClasses = "";
+        activeHighlightClasses = "shadow-lg opacity-90";
       }
     }
 
-    const isMac = osStyle === "macos";
-    const isRetro = osStyle === "win95-retro";
+    const isMac = false;
+    const isRetro = false;
 
     return (
         <div
@@ -360,6 +346,7 @@ export function Window({ window: initialWindow }: Props) {
                 zIndex: window.isFocused
                     ? Z_INDEX.ACTIVE_WINDOW_BASE + window.zIndex
                     : Z_INDEX.WINDOWS_BASE + window.zIndex,
+                ...themeChromeStyle,
             }}
             onPointerDownCapture={(e) => {
                 if (e.target instanceof HTMLElement && e.target.closest('button')) {
@@ -423,6 +410,7 @@ export function Window({ window: initialWindow }: Props) {
                 <div
                     onPointerDown={handlePointerDown}
                     className={`flex items-center justify-between px-3 py-1.5 cursor-grab select-none shrink-0 ${themeHeaderClasses} ${isDragging ? 'cursor-grabbing' : ''}`}
+                    style={themeHeaderStyle}
                 >
                     <span className={`font-semibold text-xs tracking-wide ${isRetro ? 'font-sans font-bold text-white' : ''}`}>
                         {window.title}

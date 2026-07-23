@@ -75,39 +75,31 @@ export function ContextMenu({ x, y, onClose }: ContextMenuProps) {
     onClose();
   };
 
-  const isRetro = osStyle === "win95-retro";
   const isAero = osStyle === "win7-aero";
-  const isMac = osStyle === "macos";
 
   // Container styling per osStyle
   let containerClasses = "";
   let itemHoverClasses = "";
   let dividerClasses = "";
+  let containerStyle: React.CSSProperties = {};
 
-  if (isMac) {
-    containerClasses = "bg-slate-900/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl py-1 text-xs text-white";
-    itemHoverClasses = "hover:bg-blue-600 hover:text-white rounded-lg transition-colors";
-    dividerClasses = "my-1 border-t border-white/10";
-  } else if (isAero) {
+  if (isAero) {
     containerClasses = "bg-sky-950/70 backdrop-blur-2xl rounded-lg border border-white/40 shadow-[0_0_15px_rgba(255,255,255,0.2)] p-1 text-xs text-white";
     itemHoverClasses = "hover:bg-white/20 hover:shadow-sm rounded-md transition-all";
     dividerClasses = "my-1 border-t border-white/20";
-  } else if (isRetro) {
-    containerClasses = "bg-[#c0c0c0] border-2 border-t-white border-l-white border-b-black border-r-black p-1 text-xs text-black font-sans shadow-none rounded-none";
-    itemHoverClasses = "hover:bg-[#000080] hover:text-white rounded-none transition-none";
-    dividerClasses = "my-1 border-t border-zinc-500 border-b border-white";
   } else {
-    // win11
-    containerClasses = "bg-slate-900/90 backdrop-blur-2xl rounded-lg border border-white/10 shadow-xl p-1 text-xs text-white";
-    itemHoverClasses = "hover:bg-white/10 rounded-md transition-all";
-    dividerClasses = "my-1 border-t border-white/10";
+    // win11 / light / dark / glass — theme-aware instead of hardcoded slate
+    containerClasses = "backdrop-blur-2xl rounded-lg border shadow-xl p-1 text-xs";
+    itemHoverClasses = "hover:bg-[var(--muted)] rounded-md transition-all";
+    dividerClasses = "my-1 border-t border-[var(--border)]";
+    containerStyle = { background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" };
   }
 
   return (
     <div
       ref={menuRef}
       className={`fixed min-w-[210px] select-none z-50 animate-in fade-in zoom-in-95 duration-100 ${containerClasses}`}
-      style={{ left: posX, top: posY, zIndex: Z_INDEX.CONTEXT_MENUS }}
+      style={{ left: posX, top: posY, zIndex: Z_INDEX.CONTEXT_MENUS, ...containerStyle }}
     >
       {/* 1. View Submenu Option */}
       <div 

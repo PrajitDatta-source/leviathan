@@ -277,16 +277,8 @@ export function AppShell() {
       }
       return { background: wallpaper };
     }
-    if (osStyle === "win95-retro") return { background: "#008080" }; // Classic Teal
-    if (osStyle === "macos") return { background: "linear-gradient(135deg, #4f3961 0%, #1d2671 100%)" };
     if (osStyle === "win7-aero") return { background: "radial-gradient(circle at center, #0052d4 0%, #4364f7 50%, #6fb1fc 100%)" };
-    if (osStyle === "iris-glass") {
-      return {
-        background:
-          "radial-gradient(circle at 20% 15%, rgba(139,92,246,0.35) 0%, rgba(11,11,18,0) 45%), radial-gradient(circle at 85% 80%, rgba(56,189,248,0.25) 0%, rgba(11,11,18,0) 50%), linear-gradient(160deg, #14121f 0%, #08080d 100%)",
-      };
-    }
-    return { background: "radial-gradient(circle at 50% 20%, #1a1c29 0%, #0a0a0c 100%)" }; // Win11 Dark
+    return { background: "radial-gradient(circle at 50% 20%, #1a1c29 0%, #0a0a0c 100%)" }; // Win11 family fallback
   };
 
   const handleContextMenu = (e: React.MouseEvent) => {

@@ -10,6 +10,11 @@ import { useThemeStore, OSStyle } from "@/core/theme/useThemeStore";
 export function playThemeSound(type: "startup" | "click" | "error") {
   if (typeof window === "undefined") return;
   try {
+    const muted = localStorage.getItem("iris_muted") === "true";
+    if (muted) return;
+    const savedVolume = Number(localStorage.getItem("iris_volume") ?? "70");
+    const volumeScale = Math.max(0, Math.min(100, savedVolume)) / 100;
+
     const AudioContextClass = window.AudioContext || (window as Window & typeof globalThis & { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     const audioCtx = new AudioContextClass();
     
@@ -18,7 +23,7 @@ export function playThemeSound(type: "startup" | "click" | "error") {
       const gain = audioCtx.createGain();
       osc.type = "sine";
       osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.04 * volumeScale, audioCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
       osc.connect(gain);
       gain.connect(audioCtx.destination);
@@ -32,7 +37,7 @@ export function playThemeSound(type: "startup" | "click" | "error") {
         osc.type = "sine";
         osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
         gain.gain.setValueAtTime(0, audioCtx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.02, audioCtx.currentTime + 0.05 + idx * 0.02);
+        gain.gain.linearRampToValueAtTime(0.02 * volumeScale, audioCtx.currentTime + 0.05 + idx * 0.02);
         gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.65);
         osc.connect(gain);
         gain.connect(audioCtx.destination);
@@ -44,7 +49,7 @@ export function playThemeSound(type: "startup" | "click" | "error") {
       const gain = audioCtx.createGain();
       osc.type = "sawtooth";
       osc.frequency.setValueAtTime(140, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.05 * volumeScale, audioCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.22);
       osc.connect(gain);
       gain.connect(audioCtx.destination);
@@ -68,22 +73,23 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-// Resolve a theme name safely, always falling back to iris-dark if the
+// Resolve a theme name safely, always falling back to windows11 if the
 // stored/fetched value doesn't match a known preset (e.g. after a preset
 // was renamed or removed).
 function resolvePreset(theme: Theme) {
-  return themePresets[theme] || themePresets["iris-dark"];
+  return themePresets[theme] || themePresets["windows11"];
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("iris-dark");
+  const [theme, setThemeState] = useState<Theme>("windows11");
   const [wallpaper, setWallpaperState] = useState<string>(
-    themePresets["iris-dark"].wallpaper
+    themePresets["windows11"].wallpaper
   );
   const [customWallpapers, setCustomWallpapers] = useState<string[]>([]);
   
   const setPreset = useThemeStore((state) => state.setOsStyle);
   const setColorMode = useThemeStore((state) => state.setColorMode);
+  const setGlass = useThemeStore((state) => state.setGlass);
 
   // Keep the lightweight shell-family store (osStyle/colorMode) in sync
   // with whatever the active rich theme preset declares. This is the only
@@ -92,6 +98,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const preset = resolvePreset(t);
     setPreset(preset.shellStyle as OSStyle);
     setColorMode(preset.mode);
+    setGlass(!!preset.glass);
   };
 
   // Load initial theme, wallpaper and custom wallpapers from backend DB on mount
@@ -152,11 +159,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     // profileManager only understands a narrower legacy vocabulary; map
     // onto it for anything that reads preferences.theme directly.
-    let prefTheme: "light" | "dark" | "oled" | "custom" = preset.mode;
-    if (newTheme === "oled") prefTheme = "oled";
-    else if (preset.glass || !["light", "dark", "iris-light", "iris-dark"].includes(newTheme)) {
-      prefTheme = "custom";
-    }
+    const prefTheme: "light" | "dark" | "oled" | "custom" = preset.glass ? "custom" : preset.mode;
     profileManager.updatePreferences({ theme: prefTheme });
 
     syncShellFromTheme(newTheme);

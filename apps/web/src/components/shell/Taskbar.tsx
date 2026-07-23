@@ -1,54 +1,141 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useThemeStore } from "@/modules/theme/useThemeStore";
 import { AppIcon } from "@/components/icons/AppIcon";
-import { Wifi, Volume2, Battery, Apple } from "lucide-react";
+import { Wifi, Volume2, VolumeX, Search } from "lucide-react";
 import SyncDot from "@/components/os/SyncDot";
-import { 
-  useWindowStore, 
-  useWorkspaceStore, 
-  focusWindow, 
-  minimizeWindow, 
-  restoreWindow, 
-  openWindow 
+import {
+  useWindowStore,
+  useWorkspaceStore,
+  focusWindow,
+  minimizeWindow,
+  restoreWindow,
+  openWindow
 } from "@/core/window/manager";
 
+// Tiny month calendar, driven by the real current date — used by the
+// clock's popover. No external dependency needed for something this small.
+function MiniCalendar() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const monthName = now.toLocaleDateString([], { month: "long", year: "numeric" });
+  const cells = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+
+  return (
+    <div className="w-56">
+      <div className="text-xs font-semibold mb-2 text-center">{monthName}</div>
+      <div className="grid grid-cols-7 gap-1 text-[10px] text-center opacity-60 mb-1">
+        {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => <div key={i}>{d}</div>)}
+      </div>
+      <div className="grid grid-cols-7 gap-1 text-[11px] text-center">
+        {cells.map((day, i) => (
+          <div
+            key={i}
+            className={`h-6 flex items-center justify-center rounded-md ${
+              day === now.getDate() ? "bg-[var(--accent)] text-white font-semibold" : day ? "opacity-80" : ""
+            }`}
+          >
+            {day || ""}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Shared quick-settings popover shell — click-outside and Escape both close it.
+function TrayPopover({ anchor, onClose, children }: { anchor: string; onClose: () => void; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      ref={ref}
+      className="absolute bottom-14 z-[60] rounded-2xl border border-[var(--border)] bg-[var(--surface)]/95 backdrop-blur-2xl shadow-2xl p-4 text-[var(--text)]"
+      style={{ [anchor]: "0.75rem" } as React.CSSProperties}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function Taskbar() {
-  const { osStyle } = useThemeStore();
+  const { osStyle, glass } = useThemeStore();
   const windows = useWindowStore((state) => state.windows);
   const windowWorkspaces = useWorkspaceStore((state) => state.windowWorkspaces);
   const activeWorkspace = useWorkspaceStore((state) => state.activeWorkspace);
 
   const [timeStr, setTimeStr] = useState("");
   const [dateStr, setDateStr] = useState("");
+  const [openPopover, setOpenPopover] = useState<"clock" | "wifi" | "volume" | null>(null);
+  const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(70);
 
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
       setTimeStr(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-      setDateStr(now.toLocaleDateString([], { month: 'short', day: 'numeric' }));
+      setDateStr(now.toLocaleDateString([], { weekday: "short", month: 'short', day: 'numeric' }));
     };
     updateTime();
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
   }, []);
 
-  const apps = ["explorer", "terminal", "notes", "settings", "telegram", "trash"];
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = localStorage.getItem("iris_muted");
+    if (saved) setMuted(saved === "true");
+    const savedVol = localStorage.getItem("iris_volume");
+    if (savedVol) setVolume(Number(savedVol));
+  }, []);
+
+  const toggleMute = () => {
+    const next = !muted;
+    setMuted(next);
+    localStorage.setItem("iris_muted", String(next));
+    window.dispatchEvent(new CustomEvent("iris-volume-change", { detail: { muted: next, volume } }));
+  };
+
+  const handleVolumeChange = (v: number) => {
+    setVolume(v);
+    localStorage.setItem("iris_volume", String(v));
+    window.dispatchEvent(new CustomEvent("iris-volume-change", { detail: { muted, volume: v } }));
+  };
+
+  const apps = ["explorer", "terminal", "notes", "gmail", "telegram", "dashboard", "weather", "settings", "trash"];
 
   const handleAppClick = (appId: string) => {
-    const window = Object.values(windows).find(w => w.appId === appId || w.id === appId);
-    if (window) {
-      const workspace = windowWorkspaces[window.id] || 1;
+    const win = Object.values(windows).find(w => w.appId === appId || w.id === appId);
+    if (win) {
+      const workspace = windowWorkspaces[win.id] || 1;
       if (workspace !== activeWorkspace) {
         useWorkspaceStore.getState().setActiveWorkspace(workspace);
-        focusWindow(window.id);
-      } else if (window.isMinimized) {
-        restoreWindow(window.id);
-      } else if (window.isFocused) {
-        minimizeWindow(window.id);
+        focusWindow(win.id);
+      } else if (win.isMinimized) {
+        restoreWindow(win.id);
+      } else if (win.isFocused) {
+        minimizeWindow(win.id);
       } else {
-        focusWindow(window.id);
+        focusWindow(win.id);
       }
     } else {
       openWindow(appId);
@@ -59,101 +146,23 @@ export function Taskbar() {
     window.dispatchEvent(new CustomEvent("toggle-command-palette"));
   };
 
-  // 1. macOS BIG SUR: Thin Top Menu Bar + Bottom Floating Dock
-  if (osStyle === "macos") {
-    return (
-      <>
-        {/* Top Status Bar */}
-        <div className="absolute top-0 left-0 right-0 h-6 bg-slate-900/60 backdrop-blur-md border-b border-white/10 px-4 flex items-center justify-between text-white text-xs z-50 select-none">
-          <div className="flex items-center space-x-4 font-medium">
-            <Apple className="w-3.5 h-3.5 fill-current cursor-pointer" onClick={handleLauncherClick}/>
-            <span className="font-bold cursor-pointer" onClick={handleLauncherClick}>Finder</span>
-            <span className="opacity-80 hover:opacity-100 cursor-pointer">File</span>
-            <span className="opacity-80 hover:opacity-100 cursor-pointer">Edit</span>
-            <span className="opacity-80 hover:opacity-100 cursor-pointer">View</span>
-            <span className="opacity-80 hover:opacity-100 cursor-pointer">Go</span>
-            <span className="opacity-80 hover:opacity-100 cursor-pointer">Window</span>
-          </div>
-          <div className="flex items-center space-x-3 opacity-90">
-            <Wifi className="w-3.5 h-3.5 cursor-pointer"/>
-            <Volume2 className="w-3.5 h-3.5 cursor-pointer"/>
-            <Battery className="w-3.5 h-3.5 cursor-pointer"/>
-            <span>{dateStr}</span>
-            <span className="font-semibold">{timeStr}</span>
-          </div>
-        </div>
+  const togglePopover = (which: "clock" | "wifi" | "volume") => {
+    setOpenPopover((prev) => (prev === which ? null : which));
+  };
 
-        {/* Bottom Floating Dock */}
-        <div className="absolute bottom-3 left-0 right-0 flex justify-center pointer-events-none z-50">
-          <div className="bg-slate-900/40 backdrop-blur-2xl border border-white/20 p-2 rounded-2xl shadow-2xl flex items-center space-x-3 pointer-events-auto">
-            {apps.map((app) => {
-              const isRunning = Object.values(windows).some(w => w.appId === app);
-              return (
-                <button
-                  key={app}
-                  onClick={() => handleAppClick(app)}
-                  className="group relative focus:outline-none cursor-pointer"
-                  title={app}
-                >
-                  <AppIcon appId={app} size={48} />
-                  {isRunning && (
-                    <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-white rounded-full opacity-90" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  // 2. WINDOWS 95 RETRO: Solid grey bottom bar with 3D raised start button
-  if (osStyle === "win95-retro") {
-    return (
-      <div className="absolute bottom-0 left-0 right-0 h-10 bg-[#c0c0c0] border-t-2 border-white flex items-center justify-between px-1 z-50 select-none text-black font-sans text-sm">
-        <div className="flex items-center space-x-1">
-          <button
-            onClick={handleLauncherClick}
-            className="h-8 px-3 bg-[#c0c0c0] border-2 border-t-white border-l-white border-b-black border-r-black font-bold flex items-center space-x-1 active:border-t-black active:border-l-black active:border-b-white active:border-r-white cursor-pointer"
-          >
-            <span className="font-extrabold text-blue-800">田</span>
-            <span>Start</span>
-          </button>
-          <div className="h-7 w-[2px] bg-zinc-400 mx-1 border-r border-white" />
-          {apps.slice(0, 4).map((app) => {
-            const window = Object.values(windows).find(w => w.appId === app);
-            const isFocused = window?.isFocused;
-            return (
-              <button
-                key={app}
-                onClick={() => handleAppClick(app)}
-                className={`h-8 px-3 bg-[#c0c0c0] border-2 font-semibold flex items-center space-x-2 min-w-[110px] text-left cursor-pointer ${
-                  isFocused
-                    ? "border-t-black border-l-black border-b-white border-r-white bg-[#e0e0e0] font-bold"
-                    : "border-t-white border-l-white border-b-black border-r-black"
-                }`}
-              >
-                <AppIcon appId={app} size={20} />
-                <span className="capitalize text-xs truncate">{app}</span>
-              </button>
-            );
-          })}
-        </div>
-        <div className="h-8 px-3 bg-[#c0c0c0] border-2 border-t-black border-l-black border-b-white border-r-white flex items-center space-x-2 text-xs font-semibold">
-          <Volume2 className="w-3.5 h-3.5 text-zinc-700"/>
-          <span>{timeStr}</span>
-        </div>
-      </div>
-    );
-  }
-
-  // 3. WINDOWS 7 AERO GLASS: Left-aligned glossy translucent bar
+  // WINDOWS 7 AERO: left-aligned glossy translucent bar, orb start button.
   if (osStyle === "win7-aero") {
     return (
-      <div className="absolute bottom-0 left-0 right-0 h-12 bg-sky-950/50 backdrop-blur-2xl border-t border-white/30 shadow-[0_-2px_15px_rgba(0,0,0,0.5)] flex items-center justify-between px-2 z-50 select-none text-white">
+      <div
+        className="absolute bottom-0 left-0 right-0 h-12 backdrop-blur-2xl border-t flex items-center justify-between px-2 z-50 select-none"
+        style={{
+          background: "linear-gradient(180deg, rgba(9,20,35,0.55) 0%, rgba(9,20,35,0.75) 100%)",
+          borderColor: "var(--border)",
+          color: "var(--text)",
+          boxShadow: "0 -2px 15px rgba(0,0,0,0.4)",
+        }}
+      >
         <div className="flex items-center space-x-2">
-          {/* Glowing Windows 7 Orb */}
           <button
             onClick={handleLauncherClick}
             className="w-10 h-10 rounded-full bg-gradient-to-b from-sky-300 via-blue-600 to-blue-900 border-2 border-white/80 shadow-[0_0_15px_rgba(0,180,255,0.8)] flex items-center justify-center hover:brightness-125 transition-all cursor-pointer"
@@ -161,117 +170,145 @@ export function Taskbar() {
           >
             <span className="font-extrabold text-lg text-white drop-shadow">❖</span>
           </button>
+          <button
+            onClick={handleLauncherClick}
+            className="h-9 px-3 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 flex items-center gap-2 text-xs transition-all cursor-pointer"
+          >
+            <Search className="w-3.5 h-3.5" />
+            <span className="opacity-80">Search</span>
+          </button>
           <div className="h-8 w-[1px] bg-white/20 mx-1" />
           {apps.map((app) => {
             const isRunning = Object.values(windows).some(w => w.appId === app);
+            const isFocused = Object.values(windows).some(w => w.appId === app && w.isFocused);
             return (
               <button
                 key={app}
                 onClick={() => handleAppClick(app)}
                 className={`p-1.5 rounded-lg hover:bg-white/20 hover:shadow-[0_0_10px_rgba(255,255,255,0.3)] transition-all border cursor-pointer ${
-                  isRunning ? "bg-white/15 border-white/40 shadow-inner" : "border-transparent"
+                  isFocused ? "bg-white/20 border-white/50 shadow-inner" : isRunning ? "bg-white/10 border-white/25" : "border-transparent"
                 }`}
                 title={app}
               >
-                <AppIcon appId={app} size={32} />
+                <AppIcon appId={app} size={30} />
               </button>
             );
           })}
         </div>
-        <div className="flex items-center space-x-3 px-3 py-1 bg-black/20 rounded border border-white/10 text-xs text-right">
-          <Wifi className="w-4 h-4"/>
-          <Volume2 className="w-4 h-4"/>
-          <div className="flex flex-col leading-tight font-medium">
+
+        <div className="flex items-center gap-1 relative">
+          <button
+            onClick={() => togglePopover("wifi")}
+            className="p-2 rounded hover:bg-white/10 cursor-pointer"
+            title="Network"
+          >
+            <Wifi className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => togglePopover("volume")}
+            className="p-2 rounded hover:bg-white/10 cursor-pointer"
+            title="Volume"
+          >
+            {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+          </button>
+          <button
+            onClick={() => togglePopover("clock")}
+            className="flex flex-col leading-tight font-medium text-right px-3 py-1 rounded hover:bg-white/10 cursor-pointer text-xs"
+          >
             <span>{timeStr}</span>
             <span className="opacity-75 text-[10px]">{dateStr}</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // 4. IRIS GLASS: Refined frosted-glass floating dock, ported from the
-  // glass-pane aesthetic (specular sheen, rim highlight, frosted backdrop).
-  if (osStyle === "iris-glass") {
-    return (
-      <div className="absolute bottom-3 left-0 right-0 flex justify-center z-50 pointer-events-none select-none">
-        <div className="glass-pane pointer-events-auto flex items-center gap-1.5 rounded-2xl px-2.5 py-2">
-          <button
-            onClick={handleLauncherClick}
-            className="relative p-2 rounded-xl hover:bg-white/10 transition-all cursor-pointer"
-            title="Start"
-          >
-            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-violet-400 to-fuchsia-500 shadow-[0_0_12px_-2px_rgba(167,139,250,0.8)] flex items-center justify-center">
-              <span className="text-white text-xs font-bold">✦</span>
-            </div>
           </button>
-          <div className="h-7 w-px bg-white/10 mx-1" />
-          {apps.map((app) => {
-            const window = Object.values(windows).find(w => w.appId === app);
-            const isRunning = !!window;
-            const isFocused = window?.isFocused;
-            return (
-              <button
-                key={app}
-                onClick={() => handleAppClick(app)}
-                className={`relative p-1.5 rounded-xl transition-all group cursor-pointer hover:bg-white/10 ${
-                  isFocused ? "bg-white/10" : ""
-                }`}
-                title={app}
-              >
-                <AppIcon appId={app} size={32} />
-                <div
-                  className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 h-1 rounded-full bg-violet-300 transition-all ${
-                    isFocused ? "w-4 opacity-100" : isRunning ? "w-1.5 opacity-70" : "w-0 opacity-0 group-hover:opacity-100 group-hover:w-1.5"
-                  }`}
+
+          {openPopover === "wifi" && (
+            <TrayPopover anchor="right" onClose={() => setOpenPopover(null)}>
+              <div className="text-xs font-semibold mb-1">Network</div>
+              <div className="flex items-center gap-2 text-xs opacity-80">
+                <Wifi className="w-3.5 h-3.5 text-emerald-400" /> Connected
+              </div>
+            </TrayPopover>
+          )}
+          {openPopover === "volume" && (
+            <TrayPopover anchor="right" onClose={() => setOpenPopover(null)}>
+              <div className="flex items-center gap-3 w-44">
+                <button onClick={toggleMute} className="cursor-pointer">
+                  {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                </button>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={muted ? 0 : volume}
+                  onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                  className="flex-1 accent-[var(--accent)] cursor-pointer"
                 />
-              </button>
-            );
-          })}
-          <div className="h-7 w-px bg-white/10 mx-1" />
-          <div
-            onClick={handleLauncherClick}
-            className="flex items-center gap-2.5 px-2.5 py-1 rounded-xl hover:bg-white/10 transition-all cursor-pointer text-xs"
-          >
-            <Wifi className="w-4 h-4 opacity-80" />
-            <Volume2 className="w-4 h-4 opacity-80" />
-            <span className="glass-clock font-semibold text-sm leading-none">{timeStr}</span>
-          </div>
+              </div>
+            </TrayPopover>
+          )}
+          {openPopover === "clock" && (
+            <TrayPopover anchor="right" onClose={() => setOpenPopover(null)}>
+              <MiniCalendar />
+            </TrayPopover>
+          )}
         </div>
       </div>
     );
   }
 
-  // 5. WINDOWS 11 MODERN (Default): Centered icons, clean right tray
+  // WINDOWS 11 MODERN (default) — used by Windows 11, Light, Dark, Glass.
+  // The only visual difference between those four is CSS vars + whether
+  // `glass` adds extra blur; the layout and every interaction below is
+  // identical and fully theme-aware (no hardcoded slate colors).
   return (
-    <div className="absolute bottom-0 left-0 right-0 h-12 bg-slate-900/70 backdrop-blur-xl border-t border-white/10 flex items-center justify-between px-4 z-50 select-none text-white">
-      <div className="w-32" /> {/* Left spacer for strict center balance */}
-      <div className="flex items-center space-x-1.5">
+    <div
+      className={`absolute bottom-0 left-0 right-0 h-14 border-t flex items-center justify-between px-3 z-50 select-none ${glass ? "glass-pane" : ""}`}
+      style={
+        glass
+          ? { color: "var(--text)" }
+          : { background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)", backdropFilter: "blur(20px)" }
+      }
+    >
+      <div className="w-40 flex items-center">
+        <SyncDot />
+      </div>
+
+      <div className="flex items-center gap-1.5">
         <button
           onClick={handleLauncherClick}
-          className="p-2 rounded-xl hover:bg-white/10 transition-all cursor-pointer"
+          className="p-2 rounded-xl hover:bg-[var(--muted)] transition-all cursor-pointer"
           title="Start"
         >
-          <div className="w-6 h-6 bg-gradient-to-br from-blue-400 to-blue-600 rounded-md flex items-center justify-center shadow-md">
+          <div className="w-6 h-6 bg-gradient-to-br from-[var(--accent)] to-[var(--accent)]/70 rounded-md flex items-center justify-center shadow-md">
             <span className="text-white text-xs font-bold">❖</span>
           </div>
         </button>
+
+        <button
+          onClick={handleLauncherClick}
+          className="h-9 px-3 rounded-xl hover:bg-[var(--muted)] border border-[var(--border)] flex items-center gap-2 text-xs transition-all cursor-pointer opacity-80 hover:opacity-100"
+          title="Search (or press Ctrl+K)"
+        >
+          <Search className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Search</span>
+        </button>
+
+        <div className="h-7 w-px bg-[var(--border)] mx-1" />
+
         {apps.map((app) => {
-          const window = Object.values(windows).find(w => w.appId === app);
-          const isRunning = !!window;
-          const isFocused = window?.isFocused;
+          const win = Object.values(windows).find(w => w.appId === app);
+          const isRunning = !!win;
+          const isFocused = win?.isFocused;
           return (
             <button
               key={app}
               onClick={() => handleAppClick(app)}
-              className={`p-1.5 rounded-xl hover:bg-white/10 transition-all relative group cursor-pointer ${
-                isFocused ? "bg-white/15" : ""
+              className={`p-1.5 rounded-xl hover:bg-[var(--muted)] transition-all relative group cursor-pointer ${
+                isFocused ? "bg-[var(--muted)]" : ""
               }`}
               title={app}
             >
-              <AppIcon appId={app} size={32} />
+              <AppIcon appId={app} size={30} />
               <div
-                className={`absolute bottom-0.5 left-1/2 transform -translate-x-1/2 h-1 bg-cyan-400 rounded-full transition-all ${
+                className={`absolute bottom-0.5 left-1/2 -translate-x-1/2 h-1 rounded-full bg-[var(--accent)] transition-all ${
                   isFocused ? "w-4 opacity-100" : isRunning ? "w-1.5 opacity-70" : "w-0 opacity-0 group-hover:opacity-100 group-hover:w-1.5"
                 }`}
               />
@@ -279,20 +316,60 @@ export function Taskbar() {
           );
         })}
       </div>
-      <div className="flex items-center space-x-3">
-        <SyncDot />
-        <div
-          onClick={handleLauncherClick}
-          className="flex items-center space-x-3 px-3 py-1 rounded-xl hover:bg-white/5 transition-all cursor-pointer text-xs text-right"
+
+      <div className="w-40 flex items-center justify-end gap-1 relative">
+        <button
+          onClick={() => togglePopover("wifi")}
+          className="p-2 rounded-lg hover:bg-[var(--muted)] cursor-pointer"
+          title="Network"
         >
-          <Wifi className="w-4 h-4 opacity-80"/>
-          <Volume2 className="w-4 h-4 opacity-80"/>
-          <Battery className="w-4 h-4 opacity-80"/>
-          <div className="flex flex-col leading-tight">
-            <span className="font-semibold">{timeStr}</span>
-            <span className="opacity-70 text-[10px]">{dateStr}</span>
-          </div>
-        </div>
+          <Wifi className="w-4 h-4 opacity-80" />
+        </button>
+        <button
+          onClick={() => togglePopover("volume")}
+          className="p-2 rounded-lg hover:bg-[var(--muted)] cursor-pointer"
+          title="Volume"
+        >
+          {muted ? <VolumeX className="w-4 h-4 opacity-80" /> : <Volume2 className="w-4 h-4 opacity-80" />}
+        </button>
+        <button
+          onClick={() => togglePopover("clock")}
+          className="flex flex-col leading-tight px-2.5 py-1 rounded-lg hover:bg-[var(--muted)] cursor-pointer text-right"
+        >
+          <span className="font-semibold text-xs">{timeStr}</span>
+          <span className="opacity-70 text-[10px]">{dateStr}</span>
+        </button>
+
+        {openPopover === "wifi" && (
+          <TrayPopover anchor="right" onClose={() => setOpenPopover(null)}>
+            <div className="text-xs font-semibold mb-1">Network</div>
+            <div className="flex items-center gap-2 text-xs opacity-80">
+              <Wifi className="w-3.5 h-3.5 text-emerald-400" /> Connected
+            </div>
+          </TrayPopover>
+        )}
+        {openPopover === "volume" && (
+          <TrayPopover anchor="right" onClose={() => setOpenPopover(null)}>
+            <div className="flex items-center gap-3 w-44">
+              <button onClick={toggleMute} className="cursor-pointer">
+                {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              </button>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={muted ? 0 : volume}
+                onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                className="flex-1 accent-[var(--accent)] cursor-pointer"
+              />
+            </div>
+          </TrayPopover>
+        )}
+        {openPopover === "clock" && (
+          <TrayPopover anchor="right" onClose={() => setOpenPopover(null)}>
+            <MiniCalendar />
+          </TrayPopover>
+        )}
       </div>
     </div>
   );
