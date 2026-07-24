@@ -18,9 +18,9 @@ export function registerBuiltinCommands() {
   commandRegistry.register({
     id: "theme",
     title: "Toggle Theme",
-    description: "Cycle between Windows 11, Windows 7 Aero, Light, Dark, and Glass themes",
+    description: "Cycle between Windows 11, Windows 7 Aero, and Iris Glass themes",
     category: "Appearance",
-    keywords: ["windows11", "windows7", "aero", "light", "dark", "glass", "appearance"],
+    keywords: ["windows11", "windows7", "aero", "glass", "appearance"],
 
     run: (context: CommandContext) => {
       const themeCtx = context.themeContext;
@@ -29,7 +29,7 @@ export function registerBuiltinCommands() {
         return;
       }
       
-      const themes = ["windows11", "windows7-aero", "light", "dark", "glass"] as const;
+      const themes = ["windows11", "windows7-aero", "glass"] as const;
       const currentIndex = themes.indexOf(themeCtx.theme as (typeof themes)[number]);
       const nextIndex = (currentIndex + 1) % themes.length;
       themeCtx.setTheme(themes[nextIndex]);

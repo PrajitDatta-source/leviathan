@@ -42,7 +42,7 @@ export interface DBData {
 const DEFAULT_DB: DBData = {
   vfsNodes: [],
   preferences: {
-    theme: "iris-dark",
+    theme: "windows11",
     wallpaper: "linear-gradient(135deg, #09090b 0%, #020205 100%)",
     notifications: true,
     autoSync: true,

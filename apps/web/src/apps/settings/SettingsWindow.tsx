@@ -5,10 +5,10 @@ import { useTheme } from "@/modules/theme/ThemeContext";
 import { Plus, Trash2, Keyboard, RotateCcw, Edit2, Check, Lock } from "lucide-react";
 import DiskUtility from "@/components/os/DiskUtility";
 import { autoSyncToCloud, verifyCloudContent, revokeServiceAuth, changeMasterPin, lockVault } from "@/lib/vault";
-import { useThemeStore, OSStyle } from "@/modules/theme/useThemeStore";
+import { useThemeStore } from "@/modules/theme/useThemeStore";
 import { themePresets } from "@/modules/theme/presets";
 import { Theme } from "@/modules/theme/types";
-import { useIconTheme, iconPackRegistry } from "@/modules/icons/IconThemeContext";
+import { showToast } from "@/components/shell/Toast";
 import {
   saveWallpaperToDb,
   getAllWallpapersFromDb,
@@ -56,9 +56,8 @@ const WALLPAPER_PRESETS = [
 
 export function SettingsWindow() {
   const { wallpaper, setWallpaper, theme, setTheme } = useTheme();
-  const { iconTheme, setIconTheme } = useIconTheme();
-  const [activeTab, setActiveTab] = useState<Tab>("api");
-  const { osStyle, setOsStyle, setWallpaper: setStoreWallpaper, wallpaper: currentStoreWallpaper } = useThemeStore();
+  const [activeTab, setActiveTab] = useState<Tab>("appearance");
+  const { setWallpaper: setStoreWallpaper, wallpaper: currentStoreWallpaper } = useThemeStore();
   
   const [dbWallpapers, setDbWallpapers] = useState<CustomWallpaperItem[]>([]);
   const [shortcutsConfig, setShortcutsConfig] = useState(() => loadShortcutsConfig());
@@ -223,10 +222,15 @@ export function SettingsWindow() {
           dataUrl: dataUri,
           createdAt: Date.now(),
         };
-        await saveWallpaperToDb(item);
-        setWallpaper(dataUri);
-        setStoreWallpaper(dataUri);
-        loadDbWallpapers();
+        try {
+          await saveWallpaperToDb(item);
+          setWallpaper(dataUri);
+          setStoreWallpaper(dataUri);
+          loadDbWallpapers();
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Failed to save wallpaper.";
+          showToast(message);
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -393,68 +397,6 @@ export function SettingsWindow() {
                     </button>
                   );
                 })}
-              </div>
-            </div>
-
-            {/* 2. Shell layout override — usually set automatically by the
-                theme above, but power users can mix e.g. Dracula colors
-                with the Iris Glass dock. */}
-            <div>
-              <h3 className="text-lg font-medium mb-1">Taskbar & Window Layout</h3>
-              <p className="text-xs text-[var(--muted)] mb-4">
-                Set automatically by your theme — override it here if you want a different taskbar/window layout without changing colors.
-              </p>
-
-              <div className="grid grid-cols-2 gap-4">
-                {([
-                  { id: "win11", label: "Windows 11 Modern", desc: "Clean translucent layout with a centered start menu, centered app dock and high-contrast system tray" },
-                  { id: "win7-aero", label: "Windows 7 Aero Glass", desc: "Glossy transparent layout with blue highlights, left-aligned circular Start orb and app tabs" },
-                ] as { id: OSStyle; label: string; desc: string }[]).map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => setOsStyle(t.id)}
-                    className={`relative p-4 rounded-xl border text-left transition cursor-pointer ${
-                      osStyle === t.id
-                        ? "border-violet-500 bg-violet-500/10 shadow-md"
-                        : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border)]/80"
-                    }`}
-                  >
-                    <div className="font-semibold text-sm">{t.label}</div>
-                    <div className="text-xs text-[var(--muted)] mt-1">{t.desc}</div>
-                    {osStyle === t.id && (
-                      <div className="absolute right-3 top-3 w-2.5 h-2.5 rounded-full bg-violet-500" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 3. Icon pack — also set automatically by the theme, with a
-                manual override that persists in localStorage. */}
-            <div>
-              <h3 className="text-lg font-medium mb-1">Icon Pack</h3>
-              <p className="text-xs text-[var(--muted)] mb-4">
-                The look of app icons on the desktop, taskbar and dock.
-              </p>
-
-              <div className="grid grid-cols-3 gap-3 max-w-xl">
-                {Array.from(iconPackRegistry.values()).map((pack) => (
-                  <button
-                    key={pack.id}
-                    onClick={() => setIconTheme(pack.id as Parameters<typeof setIconTheme>[0])}
-                    className={`relative flex flex-col items-center gap-2 p-3 rounded-xl border transition cursor-pointer ${
-                      iconTheme === pack.id
-                        ? "border-violet-500 bg-violet-500/10 shadow-md"
-                        : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border)]/80"
-                    }`}
-                  >
-                    {pack.renderIcon("explorer", 32, "")}
-                    <span className="text-xs font-medium">{pack.name}</span>
-                    {iconTheme === pack.id && (
-                      <Check className="w-3.5 h-3.5 text-violet-400 absolute right-2 top-2" />
-                    )}
-                  </button>
-                ))}
               </div>
             </div>
           </div>

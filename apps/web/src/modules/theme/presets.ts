@@ -42,49 +42,9 @@ export const themePresets: Record<string, ThemeConfig> = {
     mode: "dark",
     glass: true,
   },
-  light: {
-    name: "light",
-    displayName: "Light",
-    colors: {
-      background: "#ffffff",
-      foreground: "#0a0a0a",
-      primary: "#0a0a0a",
-      secondary: "#6b6b70",
-      accent: "#2563eb",
-      muted: "#f2f2f4",
-      border: "#e2e2e6",
-      card: "#ffffff",
-    },
-    iconPack: "modern",
-    cursor: "default",
-    wallpaper: "linear-gradient(135deg, #ffffff 0%, #eef0f5 100%)",
-    soundPack: "synthetic",
-    shellStyle: "win11",
-    mode: "light",
-  },
-  dark: {
-    name: "dark",
-    displayName: "Dark",
-    colors: {
-      background: "#08080a",
-      foreground: "#f2f2f3",
-      primary: "#f2f2f3",
-      secondary: "#8b8b91",
-      accent: "#6366f1",
-      muted: "#141416",
-      border: "#1f1f22",
-      card: "#101012",
-    },
-    iconPack: "modern",
-    cursor: "default",
-    wallpaper: "#08080a",
-    soundPack: "synthetic",
-    shellStyle: "win11",
-    mode: "dark",
-  },
   glass: {
     name: "glass",
-    displayName: "Glass",
+    displayName: "Iris Glass",
     colors: {
       background: "#0b0b12",
       foreground: "#f5f4ff",
@@ -95,8 +55,8 @@ export const themePresets: Record<string, ThemeConfig> = {
       border: "rgba(255,255,255,0.14)",
       card: "rgba(24,22,38,0.45)",
     },
-    // Deliberately "modern" (plain glyph icons), not a frosted icon style —
-    // the glass treatment belongs to windows/taskbar surfaces, not icons.
+    // Deliberately "modern" (plain glyph icons) — glass only affects
+    // windows/taskbar surfaces, never icons.
     iconPack: "modern",
     cursor: "default",
     wallpaper:

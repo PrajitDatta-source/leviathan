@@ -1,18 +1,18 @@
-// Cut down from 15 themes / 5 shell families to exactly what was asked
-// for: Windows 11, Windows 7 Aero, Light, Dark, Glass. Fewer, better,
-// each one actually distinct instead of 10 near-duplicate dark palettes.
-export type Theme = "windows11" | "windows7-aero" | "light" | "dark" | "glass";
+// Cut down again per explicit request: just three themes now — Windows 11,
+// Windows 7 Aero, and Iris Glass. No separate Light/Dark, no separate icon
+// picker — each theme owns its own icon look, full stop.
+export type Theme = "windows11" | "windows7-aero" | "glass";
 
-// Only two real taskbar/window-chrome layouts now. Light, Dark and Glass
-// all use the modern "win11" layout (they're color/material variations of
-// the same shell) — Windows 7 Aero is the one genuinely different layout.
+// Two taskbar/window-chrome layouts. Glass reuses the Windows 11 layout
+// (it's a material/color variation of it — extra blur/translucency, not a
+// different structure) with its own icon pack.
 export type ShellStyle = "win11" | "win7-aero";
 
-// Only two icon languages: "modern" (flat glyph, no background tile —
-// used by Windows 11 / Light / Dark / Glass) and "aero" (glossy 3D chip,
-// used only by Windows 7 Aero for period-correct nostalgia). Icons are
-// intentionally decoupled from `glass` — a glass-surfaced theme still
-// renders plain glyph icons, not frosted ones.
+// One icon pack per shell family — "modern" (flat glyph, no background
+// chip) covers both Windows 11 and Glass, since Glass's frosted treatment
+// applies to windows/taskbar surfaces only, never to icons. "aero" is the
+// glossy chip look, kept only for Windows 7 Aero. Icons are never
+// user-selectable separately from the theme.
 export type IconPack = "modern" | "aero";
 
 export interface ThemeConfig {
@@ -34,7 +34,8 @@ export interface ThemeConfig {
   soundPack?: "synthetic" | "none";
   shellStyle: ShellStyle;
   mode: "light" | "dark";
-  /** True for the Glass theme's frosted, translucent surfaces. Never
-   * affects icon rendering — see IconPack above. */
+  /** True only for the Glass theme's frosted, translucent window/taskbar
+   * surfaces. Deliberately never affects icon rendering — icons for Glass
+   * use the plain "glass" pack, which is flat/sharp, not frosted. */
   glass?: boolean;
 }

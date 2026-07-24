@@ -5,77 +5,54 @@ export interface CustomWallpaperItem {
   createdAt: number;
 }
 
-const DB_NAME = "iris_wallpaper_db";
-const DB_VERSION = 1;
-const STORE_NAME = "wallpapers";
+/**
+ * This used to be an IndexedDB store — meaning a wallpaper you uploaded
+ * was only ever visible on the exact browser/device you uploaded it from.
+ * Now backed by Supabase (see /api/wallpapers and
+ * supabase/schema_custom_wallpapers.sql) so it's the same everywhere,
+ * matching how the rest of Iris's state (settings, VFS, vault) works.
+ */
 
-export function openWallpaperDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    if (typeof window === "undefined" || !window.indexedDB) {
-      reject(new Error("IndexedDB is not supported in this environment"));
-      return;
-    }
-
-    const request = window.indexedDB.open(DB_NAME, DB_VERSION);
-
-    request.onerror = () => {
-      reject(request.error || new Error("Failed to open IndexedDB"));
-    };
-
-    request.onsuccess = () => {
-      resolve(request.result);
-    };
-
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "id" });
-      }
-    };
-  });
+interface WallpaperRow {
+  id: string;
+  name: string;
+  data_url: string;
+  created_at: string;
 }
 
 export async function saveWallpaperToDb(item: CustomWallpaperItem): Promise<CustomWallpaperItem> {
-  const db = await openWallpaperDb();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, "readwrite");
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.put(item);
-
-    request.onsuccess = () => resolve(item);
-    request.onerror = () => reject(request.error || new Error("Failed to save wallpaper"));
+  const res = await fetch("/api/wallpapers", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: item.id, name: item.name, dataUrl: item.dataUrl }),
   });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || "Failed to save wallpaper");
+  }
+  return item;
 }
 
 export async function getAllWallpapersFromDb(): Promise<CustomWallpaperItem[]> {
   try {
-    const db = await openWallpaperDb();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, "readonly");
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.getAll();
-
-      request.onsuccess = () => {
-        const results = (request.result as CustomWallpaperItem[]) || [];
-        results.sort((a, b) => b.createdAt - a.createdAt);
-        resolve(results);
-      };
-
-      request.onerror = () => reject(request.error || new Error("Failed to get wallpapers"));
-    });
+    const res = await fetch("/api/wallpapers");
+    if (!res.ok) return [];
+    const rows: WallpaperRow[] = await res.json();
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      dataUrl: r.data_url,
+      createdAt: new Date(r.created_at).getTime(),
+    }));
   } catch {
     return [];
   }
 }
 
 export async function deleteWallpaperFromDb(id: string): Promise<void> {
-  const db = await openWallpaperDb();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, "readwrite");
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.delete(id);
-
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error || new Error("Failed to delete wallpaper"));
-  });
+  const res = await fetch(`/api/wallpapers?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || "Failed to delete wallpaper");
+  }
 }

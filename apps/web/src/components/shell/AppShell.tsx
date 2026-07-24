@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useThemeStore } from "@/modules/theme/useThemeStore";
 import { Taskbar } from "@/components/shell/Taskbar";
 import { DesktopIcons } from "@/components/shell/DesktopIcons";
-import { ToastHost } from "@/components/shell/Toast";
+import { ToastHost, showToast } from "@/components/shell/Toast";
 import { Desktop } from "@/components/window/Desktop";
 import { CommandPalette } from "@/components/command/CommandPalette";
 import { ContextMenu } from "./ContextMenu";
@@ -233,6 +233,16 @@ export function AppShell() {
     setMounted(true);
     bootstrap();
 
+    // Returning from Google's OAuth screen is a full page navigation, which
+    // wipes all in-memory window state — so if Gmail wasn't already open
+    // before you clicked "connect", its code-exchange handler never mounts
+    // and you land back on a bare desktop with a `?gmail_code=...` sitting
+    // uselessly in the address bar. Force the Gmail window open here so its
+    // own exchange effect actually runs.
+    if (typeof window !== "undefined" && window.location.search.includes("gmail_code=")) {
+      openWindow("gmail");
+    }
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
@@ -307,13 +317,18 @@ export function AppShell() {
       const reader = new FileReader();
       reader.onload = async (event) => {
         const dataUri = event.target?.result as string;
-        await saveWallpaperToDb({
-          id: `wp_${Date.now()}`,
-          name: file.name,
-          dataUrl: dataUri,
-          createdAt: Date.now(),
-        });
-        useThemeStore.getState().setWallpaper(dataUri);
+        try {
+          await saveWallpaperToDb({
+            id: `wp_${Date.now()}`,
+            name: file.name,
+            dataUrl: dataUri,
+            createdAt: Date.now(),
+          });
+          useThemeStore.getState().setWallpaper(dataUri);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Failed to save wallpaper.";
+          showToast(message);
+        }
       };
       reader.readAsDataURL(file);
     }

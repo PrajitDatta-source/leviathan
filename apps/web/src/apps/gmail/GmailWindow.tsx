@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { showToast } from '@/components/shell/Toast';
 
 interface EmailItem {
   id: string;
@@ -157,7 +158,7 @@ export function GmailWindow() {
     const clientSecret = localStorage.getItem('iris_g_secret');
 
     if (!clientId || !clientSecret) {
-      alert('Please configure your Google Client ID and Secret in Settings first!');
+      showToast('Add your Google Client ID and Secret in Settings first.');
       setLoading(false);
       return;
     }
@@ -187,7 +188,7 @@ export function GmailWindow() {
         initializeMailClient(data.access_token, 'INBOX', true);
       } else {
         console.error('Token Exchange Error:', data);
-        alert('Authentication failed. Please check your Client ID and Secret in Settings.');
+        showToast('Google sign-in failed — check your Client ID/Secret in Settings.');
         handleDisconnect();
       }
     } catch (err) {
@@ -596,14 +597,14 @@ export function GmailWindow() {
       }
     } catch (e) {
       console.error('Failed to download attachment:', e);
-      alert('Failed to download attachment.');
+      showToast('Failed to download attachment.');
     }
   };
 
   const startLoginFlow = () => {
     const clientId = localStorage.getItem('iris_g_client_id');
     if (!clientId) {
-      alert('Please configure your Client ID in Settings first!');
+      showToast('Add your Google Client ID in Settings first.');
       return;
     }
     const redirectUri = encodeURIComponent(getGoogleRedirectUri());
@@ -1024,44 +1025,15 @@ export function GmailWindow() {
                         )}
                       </div>
 
-                      {/* Right: Timestamp vs. Minimal Hover Action Toolbar */}
+                      {/* Right: Timestamp — archive/delete removed for now:
+                          this app only requests gmail.readonly scope, so
+                          there was never a real API call behind these
+                          buttons; they just showed a fake "mapped" alert.
+                          Re-add once gmail.modify scope + real calls exist. */}
                       <div className="flex items-center justify-end flex-shrink-0 w-28 text-right">
-                        <span className={`text-xs font-mono group-hover:hidden ${msg.isUnread ? 'text-white font-semibold' : 'text-slate-400'}`}>
+                        <span className={`text-xs font-mono ${msg.isUnread ? 'text-white font-semibold' : 'text-slate-400'}`}>
                           {msg.timePrimary}
                         </span>
-
-                        {/* Hover State: Ultra-Clean Monochrome Action Symbols */}
-                        <div className="hidden group-hover:flex items-center gap-2 text-slate-400 font-mono text-xs">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              alert('Archive action mapped.');
-                            }}
-                            className="w-6 h-6 flex items-center justify-center hover:text-white hover:bg-slate-800 rounded transition-colors"
-                            title="Archive"
-                          >
-                            ↓
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              alert('Delete action mapped.');
-                            }}
-                            className="w-6 h-6 flex items-center justify-center hover:text-white hover:bg-slate-800 rounded transition-colors"
-                            title="Delete"
-                          >
-                            ✕
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                            }}
-                            className="w-6 h-6 flex items-center justify-center hover:text-white hover:bg-slate-800 rounded transition-colors"
-                            title="Mark as read"
-                          >
-                            ▪
-                          </button>
-                        </div>
                       </div>
                     </div>
                   );
